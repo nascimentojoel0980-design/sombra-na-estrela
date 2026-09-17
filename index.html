@@ -473,7 +473,10 @@ function ajustaTopo() {
   const s = document.getElementById('sheet');
   if (s && !s.hidden) {
     const rs = s.getBoundingClientRect();
-    if (rs.height > 0 && rs.top > r.top) alt = Math.max(120, Math.round(rs.top - r.top));
+    // so quando o painel esta em baixo a ocupar a largura toda (telemovel);
+    // no computador o painel fica a esquerda e o mapa usa a altura inteira
+    const emBaixo = rs.height > 0 && rs.width >= r.width * 0.85 && rs.bottom >= r.bottom - 6;
+    if (emBaixo && rs.top > r.top + 100) alt = Math.max(160, Math.round(rs.top - r.top));
   }
   caixaTopo.style.left = Math.round(r.left) + 'px'; caixaTopo.style.top = Math.round(r.top) + 'px';
   caixaTopo.style.width = Math.round(r.width) + 'px'; caixaTopo.style.height = alt + 'px';
