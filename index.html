@@ -433,12 +433,19 @@ function ligaSat(modo) {
       // descartava a imagem em silencio e o mapa parecia nao mudar
       camDGT = L.tileLayer.wms(DGT_WMS, { layers: 'Ortos2025-RGB', format: 'image/jpeg', transparent: false, version: '1.3.0',
         pane: 'onlineP', maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
-      let falhas = 0, avisado = false;
-      camDGT.on('tileerror', () => {
-        falhas++;
-        if (falhas >= 4 && !avisado) { avisado = true; toast('O servidor da DGT não está a responder. Volto às ortofotos guardadas.'); ligaSat(0); }
+      camDGT.__ok = 0; camDGT.__erro = 0;
+      const marca = () => {
+        const n = document.getElementById('sat-diag');
+        if (n) n.textContent = camDGT.__ok + ' imagens carregadas, ' + camDGT.__erro + ' falhadas';
+      };
+      camDGT.on('tileload', () => { camDGT.__ok++; marca(); });
+      camDGT.on('tileerror', (e) => {
+        camDGT.__erro++; marca();
+        if (camDGT.__erro === 3) {
+          const u = (e && e.tile && e.tile.src) || '';
+          toast('A DGT recusou 3 imagens. ' + (u ? u.slice(0, 90) : 'sem url'));
+        }
       });
-      camDGT.on('tileload', () => { falhas = 0; });
     }
     camDGT.addTo(map);
   } else if (satModo === 2) {
@@ -449,7 +456,7 @@ function ligaSat(modo) {
   if (n) {
     n.hidden = satModo === 0;
     n.innerHTML = satModo === 1
-      ? '<strong>DGT 2025 em directo</strong><br>Ortofoto oficial a 25 cm, a melhor que existe da serra. Precisa de rede e pode demorar a pintar.'
+      ? '<strong>DGT 2025 em directo</strong><br>Ortofoto oficial a 25 cm. <span id="sat-diag">a pedir…</span>'
       : '<strong>Esri / Maxar</strong><br>Boa nas vilas, muitas vezes pior do que a nossa na serra. Precisa de rede.';
   }
   document.getElementById('btn-sat').setAttribute('aria-pressed', satModo ? 'true' : 'false');
