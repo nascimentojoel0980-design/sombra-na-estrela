@@ -102,7 +102,13 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const u = new URL(req.url);
-  if (u.origin !== location.origin) return;
+  if (u.origin !== location.origin) {
+    // satelite online: serve-se da cache quando existir (guardado por zona)
+    if (/arcgisonline\.com$/.test(u.hostname)) {
+      e.respondWith(caches.match(req).then((hit) => hit || fetch(req).catch(() => hit || Response.error())));
+    }
+    return;
+  }
 
   if (u.pathname.endsWith('topo.pmtiles')) { e.respondWith(serveTopo(req)); return; }
 

@@ -136,6 +136,7 @@ body.building .picon,body.building .plabel,body.building .leaflet-marker-icon{po
 @media (min-width:900px){.fabs{left:418px}}
 @media (min-width:900px){.sheet{top:12px;bottom:12px;left:12px;right:auto;width:390px;max-height:none;border-radius:16px}.sheet .grab{display:none}.legend{left:auto;right:64px}.onote{top:auto;bottom:12px;right:12px}
 .cnote{border-left-color:var(--accent);top:auto;bottom:12px;right:auto;left:12px;max-width:190px}
+.snote{border-left-color:#3E86C6;top:auto;bottom:12px;right:12px;max-width:200px}
 .off{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .off h3{font:600 13px/1.2 var(--f-display),system-ui;margin:0 0 6px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
 .off .lin{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
@@ -178,8 +179,9 @@ body.building .picon,body.building .plabel,body.building .leaflet-marker-icon{po
         </div>
       </details>
     </div>
-    <div class="mapctl"><button id="btn-topo" class="mctl" aria-pressed="false" aria-label="Mapa topográfico" title="Topográfico / Fotografia"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M2 17l6-9 4 5 3-4 7 8z"/><path d="M5 20h14"/></g></svg></button><button id="btn-relevo" class="mctl" hidden aria-pressed="false" aria-label="Relevo 3D" title="Relevo 3D"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 16l9-5 9 5-9 5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 11l9-5 9 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity=".55"/></svg></button><button id="btn-gps" class="mctl" aria-pressed="false" aria-label="A minha localização" title="Onde estou"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round"/></g></svg></button><button id="btn-full" class="mctl" aria-pressed="false" aria-label="Ecrã inteiro" title="Ecrã inteiro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="toast" id="toast" role="status" hidden></div><div class="me-info" id="me-info" hidden></div>
-    <div class="onote cnote" id="cam-note" hidden>Aproxima o mapa para ver os caminhos desta zona.</div>
+    <div class="mapctl"><button id="btn-topo" class="mctl" aria-pressed="false" aria-label="Mapa topográfico" title="Topográfico / Fotografia"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M2 17l6-9 4 5 3-4 7 8z"/><path d="M5 20h14"/></g></svg></button><button id="btn-sat" class="mctl" aria-pressed="false" aria-label="Satélite online de alta resolução" title="Satélite online (mais nítido, precisa de rede)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 4.2a7.8 7.8 0 0 1 7.8 7.8M12 19.8A7.8 7.8 0 0 1 4.2 12" stroke-linecap="round"/></g></svg></button><button id="btn-relevo" class="mctl" hidden aria-pressed="false" aria-label="Relevo 3D" title="Relevo 3D"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 16l9-5 9 5-9 5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 11l9-5 9 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity=".55"/></svg></button><button id="btn-gps" class="mctl" aria-pressed="false" aria-label="A minha localização" title="Onde estou"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round"/></g></svg></button><button id="btn-full" class="mctl" aria-pressed="false" aria-label="Ecrã inteiro" title="Ecrã inteiro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="toast" id="toast" role="status" hidden></div><div class="me-info" id="me-info" hidden></div>
+    <div class="onote snote" id="sat-note" hidden>Satélite online: Esri, Maxar, Earthstar Geographics. Precisa de rede; as ortofotos da DGT continuam a funcionar sem ela.</div>
+      <div class="onote cnote" id="cam-note" hidden>Aproxima o mapa para ver os caminhos desta zona.</div>
       <div class="onote" id="ortho-note" hidden>Zoom alto: ortofotos DGT de mar–jul 2025, antes dos fogos de agosto. Nas zonas ardidas a floresta verde já não existe.</div>
     <div class="fabs" id="fabs" hidden><button class="fab" id="fab-3d">Ver em 3D</button><button class="fab alt" id="fab-sheet">Ficha</button></div>
 <section class="sheet" id="sheet" aria-live="polite"></section>
@@ -249,9 +251,9 @@ const fmt = (v, d = 0) => v == null || isNaN(v) ? '—' : Number(v).toLocaleStri
 const score = (r) => r.lidar ? r.lidar.sombra : (r.arv ?? -1);
 const BOUNDS = [[40.0, -8.10], [40.70, -7.15]];
 
-const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 18, preferCanvas: false, tap: false });
+const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 19, preferCanvas: false, tap: false });
 L.control.zoom({ position: 'topright' }).addTo(map);
-[['satP', 380], ['ortoP', 390], ['detP', 395]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; map.getPane(n).style.pointerEvents = 'none'; });
+[['satP', 380], ['ortoP', 390], ['detP', 395], ['onlineP', 397]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; map.getPane(n).style.pointerEvents = 'none'; });
 const base = L.imageOverlay('dados/fundo.jpg', BOUNDS, { interactive: false, pane: 'satP' }).addTo(map);
 map.fitBounds(BOUNDS, { padding: [0, 0] });
 function enquadraInicio() {
@@ -411,6 +413,25 @@ function unfocus() {
   routePoi = new Set(); refreshPoi();
 }
 map.on('moveend zoomend', osmByZoom); osmByZoom();
+
+// ---------------- Satelite online de alta resolucao (ESRI World Imagery) ----------------
+// mais nitido que as nossas ortofotos, mas vem de fora e precisa de rede
+let satOnline = null;
+const SAT_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+function ligaSat(on) {
+  if (on) {
+    if (!satOnline) satOnline = L.tileLayer(SAT_URL, { pane: 'onlineP', maxZoom: 19, maxNativeZoom: 19, crossOrigin: true, attribution: 'Esri, Maxar, Earthstar Geographics' });
+    satOnline.addTo(map);
+    const n = document.getElementById('sat-note'); if (n) n.hidden = false;
+  } else {
+    if (satOnline) satOnline.remove();
+    const n = document.getElementById('sat-note'); if (n) n.hidden = true;
+  }
+  document.getElementById('btn-sat').setAttribute('aria-pressed', on ? 'true' : 'false');
+  try { localStorage.setItem('sne-sat', on ? '1' : '0'); } catch (e) {}
+}
+document.getElementById('btn-sat').onclick = () => ligaSat(!satOnline || !map.hasLayer(satOnline));
+try { if (localStorage.getItem('sne-sat') === '1') ligaSat(true); } catch (e) {}
 
 // ---------------- Mapa topografico (vetorial, MapLibre + PMTiles) ----------------
 const TOPO_URL = 'dados/topo.pmtiles';
@@ -634,7 +655,24 @@ function fotosDaVista() {
   DET.forEach((t) => { if (vb.intersects(L.latLngBounds([t[0], t[1]], [t[2], t[3]]))) urls.add('dados/det/' + t[4]); });
   ORTHO.forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
   (CHUNKS || []).forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
+  if (satOnline && map.hasLayer(satOnline)) satTiles(vb).forEach((u) => urls.add(u));
   return [...urls];
+}
+// quadrados do satelite online que cobrem a vista, do zoom actual ate ao maximo
+function satTiles(vb, ate) {
+  const out = [], zMax = Math.min(19, Math.round(map.getZoom()) + (ate == null ? 1 : ate));
+  const zMin = Math.max(12, Math.round(map.getZoom()));
+  for (let z = zMin; z <= zMax; z++) {
+    const n = 2 ** z;
+    const x0 = Math.floor((vb.getWest() + 180) / 360 * n), x1 = Math.floor((vb.getEast() + 180) / 360 * n);
+    const la = (l) => { const r = l * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n); };
+    const y0 = la(vb.getNorth()), y1 = la(vb.getSouth());
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+      out.push(SAT_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y));
+      if (out.length > 1200) return out;
+    }
+  }
+  return out;
 }
 function blocoOffline() {
   const e = offEstado;
