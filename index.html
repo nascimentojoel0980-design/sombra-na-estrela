@@ -42,6 +42,10 @@ header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 main{position:relative;min-height:0}
 #map{position:absolute;inset:0;background:#2a2f28;z-index:0;isolation:isolate}
+#mapt{position:fixed;left:0;top:0;width:100%;height:100%;background:#F7F4EC;z-index:5}
+#map.escondido{visibility:hidden}
+#mapt .maplibregl-ctrl-attrib{display:none}
+.topo-lbl{font:600 11px/1.1 var(--f-display),system-ui;color:#3B3226;text-shadow:0 0 3px #F7F4EC,0 0 6px #F7F4EC;white-space:nowrap;pointer-events:none}
 main.listing .legend,main.listing .onote,main.listing .sheet{display:none!important}
 /* Leaflet essentials (inline) */
 .leaflet-container{overflow:hidden;touch-action:none;-webkit-tap-highlight-color:transparent;font-family:var(--f-body);outline:0}
@@ -131,7 +135,16 @@ body.building .picon,body.building .plabel,body.building .leaflet-marker-icon{po
 .toast .tbtn{margin-left:8px;border:0;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer}
 @media (min-width:900px){.fabs{left:418px}}
 @media (min-width:900px){.sheet{top:12px;bottom:12px;left:12px;right:auto;width:390px;max-height:none;border-radius:16px}.sheet .grab{display:none}.legend{left:auto;right:64px}.onote{top:auto;bottom:12px;right:12px}
-.cnote{border-left-color:var(--accent);top:130px;bottom:auto}}
+.cnote{border-left-color:var(--accent);top:auto;bottom:12px;right:auto;left:12px;max-width:190px}
+.off{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.off h3{font:600 13px/1.2 var(--f-display),system-ui;margin:0 0 6px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+.off .lin{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.off .bt{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer}
+.off .bt.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.off .bt[disabled]{opacity:.55;cursor:default}
+.barra{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin:6px 0}
+.barra i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.off .est{font-size:12.5px;color:var(--muted);line-height:1.45}}
 @media (prefers-reduced-motion: reduce){.leaflet-zoom-anim .leaflet-zoom-animated{transition:none}}
 </style>
 <div class="app">
@@ -165,7 +178,7 @@ body.building .picon,body.building .plabel,body.building .leaflet-marker-icon{po
         </div>
       </details>
     </div>
-    <div class="mapctl"><button id="btn-gps" class="mctl" aria-pressed="false" aria-label="A minha localização" title="Onde estou"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round"/></g></svg></button><button id="btn-full" class="mctl" aria-pressed="false" aria-label="Ecrã inteiro" title="Ecrã inteiro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="toast" id="toast" role="status" hidden></div><div class="me-info" id="me-info" hidden></div>
+    <div class="mapctl"><button id="btn-topo" class="mctl" aria-pressed="false" aria-label="Mapa topográfico" title="Topográfico / Fotografia"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M2 17l6-9 4 5 3-4 7 8z"/><path d="M5 20h14"/></g></svg></button><button id="btn-relevo" class="mctl" hidden aria-pressed="false" aria-label="Relevo 3D" title="Relevo 3D"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 16l9-5 9 5-9 5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M3 11l9-5 9 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" opacity=".55"/></svg></button><button id="btn-gps" class="mctl" aria-pressed="false" aria-label="A minha localização" title="Onde estou"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round"/></g></svg></button><button id="btn-full" class="mctl" aria-pressed="false" aria-label="Ecrã inteiro" title="Ecrã inteiro"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div><div class="toast" id="toast" role="status" hidden></div><div class="me-info" id="me-info" hidden></div>
     <div class="onote cnote" id="cam-note" hidden>Aproxima o mapa para ver os caminhos desta zona.</div>
       <div class="onote" id="ortho-note" hidden>Zoom alto: ortofotos DGT de mar–jul 2025, antes dos fogos de agosto. Nas zonas ardidas a floresta verde já não existe.</div>
     <div class="fabs" id="fabs" hidden><button class="fab" id="fab-3d">Ver em 3D</button><button class="fab alt" id="fab-sheet">Ficha</button></div>
@@ -253,7 +266,8 @@ function enquadraInicio() {
   map.setView([cen.lat - desv * 0.55, cen.lng], 10, { animate: false });
 }
 addEventListener('load', () => setTimeout(enquadraInicio, 60));
-addEventListener('resize', () => { clearTimeout(window.__rq); window.__rq = setTimeout(enquadraInicio, 200); });
+addEventListener('resize', () => { clearTimeout(window.__rq); window.__rq = setTimeout(enquadraInicio, 200); if (topoAberto) { ajustaTopo(); if (mapT) mapT.resize(); } });
+document.addEventListener('fullscreenchange', () => { if (topoAberto) { setTimeout(() => { ajustaTopo(); if (mapT) mapT.resize(); }, 120); } });
 const CHUNKS = window.__CHUNKS__; const loaded = new Set();
 function loadChunks() {
   if (map.getZoom() < 11) return;
@@ -398,6 +412,271 @@ function unfocus() {
 }
 map.on('moveend zoomend', osmByZoom); osmByZoom();
 
+// ---------------- Mapa topografico (vetorial, MapLibre + PMTiles) ----------------
+const TOPO_URL = 'dados/topo.pmtiles';
+// o contentor vive no corpo da pagina, nao dentro do <main>: dentro do main o navegador
+// nao compoe o canvas do MapLibre e o mapa sai em branco
+let caixaTopo = null;
+function garanteCaixa() {
+  if (caixaTopo) return caixaTopo;
+  const d = document.createElement('div');
+  d.id = 'mapt'; d.setAttribute('aria-label', 'Mapa topográfico');
+  document.body.appendChild(d);
+  caixaTopo = d;
+  return d;
+}
+function ajustaTopo() {
+  const m = document.querySelector('main'); if (!m || !caixaTopo) return;
+  const r = m.getBoundingClientRect();
+  // so a area realmente visivel: se o contentor passar por baixo do painel,
+  // o navegador deixa de compor o canvas e o mapa sai em branco
+  let alt = r.height;
+  const s = document.getElementById('sheet');
+  if (s && !s.hidden) {
+    const rs = s.getBoundingClientRect();
+    if (rs.height > 0 && rs.top > r.top) alt = Math.max(120, Math.round(rs.top - r.top));
+  }
+  caixaTopo.style.left = Math.round(r.left) + 'px'; caixaTopo.style.top = Math.round(r.top) + 'px';
+  caixaTopo.style.width = Math.round(r.width) + 'px'; caixaTopo.style.height = alt + 'px';
+}
+let mapT = null, topoAberto = false, topoRelevo = false, pmProto = null, topoMarks = [];
+const CS = {
+  papel: '#F7F4EC', floresta: '#C5D7B8', matos: '#DFD9BC', rocha: '#E6E3DC',
+  agricola: '#F0E9D2', urbano: '#E6DCD4', agua: '#A8C9E0', outro: '#EDE9DE',
+};
+function estiloTopo() {
+  return {
+    version: 8,
+    glyphs: 'glifos/{fontstack}/{range}.pbf',
+    sources: {
+      topo: { type: 'vector', url: 'pmtiles://' + new URL(TOPO_URL, location.href).href, attribution: '' },
+      dem: { type: 'raster-dem', tiles: ['dem://{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 12 },
+    },
+    layers: [
+      { id: 'fundo', type: 'background', paint: { 'background-color': CS.papel } },
+      { id: 'solo', type: 'fill', source: 'topo', 'source-layer': 'solo',
+        paint: { 'fill-color': ['match', ['get', 'g'], 'floresta', CS.floresta, 'matos', CS.matos, 'rocha', CS.rocha, 'agricola', CS.agricola, 'urbano', CS.urbano, 'agua', CS.agua, CS.outro], 'fill-opacity': 0.9 } },
+      { id: 'relevo', type: 'hillshade', source: 'dem',
+        paint: { 'hillshade-exaggeration': 0.38, 'hillshade-shadow-color': '#7C6F55', 'hillshade-highlight-color': '#FFFDF4', 'hillshade-accent-color': '#9C8E70' } },
+      { id: 'curva', type: 'line', source: 'topo', 'source-layer': 'curvas', minzoom: 12.5,
+        filter: ['all', ['==', ['get', 'g'], 0], ['==', ['get', 'm'], 0]],
+        paint: { 'line-color': '#B39A72', 'line-width': 0.5, 'line-opacity': 0.75 } },
+      { id: 'curva-m', type: 'line', source: 'topo', 'source-layer': 'curvas', minzoom: 11,
+        filter: ['==', ['get', 'm'], 1],
+        paint: { 'line-color': '#A88C5E', 'line-width': 0.8, 'line-opacity': 0.8 } },
+      { id: 'curva-g', type: 'line', source: 'topo', 'source-layer': 'curvas', minzoom: 9.5,
+        filter: ['==', ['get', 'g'], 1],
+        paint: { 'line-color': '#8E7346', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1.4], 'line-opacity': 0.9 } },
+      { id: 'curva-txt', type: 'symbol', source: 'topo', 'source-layer': 'curvas', minzoom: 13,
+        filter: ['==', ['get', 'g'], 1],
+        layout: { 'symbol-placement': 'line', 'text-field': ['concat', ['to-string', ['get', 'alt']], ' m'], 'text-font': ['Sans Bold'], 'text-size': 10, 'symbol-spacing': 320, 'text-max-angle': 25, 'text-padding': 4 },
+        paint: { 'text-color': '#7A6139', 'text-halo-color': CS.papel, 'text-halo-width': 1.4 } },
+      { id: 'agua-a', type: 'fill', source: 'topo', 'source-layer': 'aguaA',
+        paint: { 'fill-color': '#9CC3DD', 'fill-outline-color': '#5E93B8' } },
+      { id: 'agua-l', type: 'line', source: 'topo', 'source-layer': 'aguaL', minzoom: 10,
+        paint: { 'line-color': '#5E93B8', 'line-width': ['match', ['get', 'w'], 'river', 2.2, 'stream', 1.1, 0.8] } },
+      { id: 'casas', type: 'fill', source: 'topo', 'source-layer': 'casas', minzoom: 13.5,
+        paint: { 'fill-color': '#CBB9A4', 'fill-outline-color': '#9A836A' } },
+      { id: 'nac-c', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 8,
+        filter: ['==', ['get', 't'], 'nacional'],
+        paint: { 'line-color': '#A34C1C', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 2.4, 15, 6] }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'nac', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 8,
+        filter: ['==', ['get', 't'], 'nacional'],
+        paint: { 'line-color': '#E8813F', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.2, 15, 3.6] }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'estr-c', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 9.5,
+        filter: ['==', ['get', 't'], 'estrada'],
+        paint: { 'line-color': '#A87418', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.8, 15, 4.6] }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'estr', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 9.5,
+        filter: ['==', ['get', 't'], 'estrada'],
+        paint: { 'line-color': '#F0BC63', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.9, 15, 2.8] }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'cam', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 11.5,
+        filter: ['==', ['get', 't'], 'caminho'],
+        paint: { 'line-color': '#9E9A90', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.7, 16, 2] } },
+      { id: 'estradao', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 11.5,
+        filter: ['==', ['get', 't'], 'estradao'],
+        paint: { 'line-color': '#8A6A3A', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.8, 16, 2.2], 'line-dasharray': [5, 2.5] } },
+      { id: 'trilho', type: 'line', source: 'topo', 'source-layer': 'caminhos', minzoom: 11.5,
+        filter: ['==', ['get', 't'], 'trilho'],
+        paint: { 'line-color': '#B23A2E', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.9, 16, 2.4], 'line-dasharray': [2.5, 1.6] } },
+      { id: 'rota-c', type: 'line', source: 'topo', 'source-layer': 'rotas', minzoom: 8,
+        paint: { 'line-color': '#FFFFFF', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.6, 16, 7], 'line-opacity': 0.85 }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'rota', type: 'line', source: 'topo', 'source-layer': 'rotas', minzoom: 8,
+        paint: { 'line-color': ['case', ['<', ['get', 'sombra'], 0], '#5C5A94',
+                   ['interpolate', ['linear'], ['get', 'sombra'], 0, '#E4572E', 40, '#E8A33D', 70, '#8FBF5A', 100, '#2E7D4F']],
+                 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.4, 16, 4] }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'cam-txt', type: 'symbol', source: 'topo', 'source-layer': 'caminhos', minzoom: 14.5,
+        filter: ['has', 'n'],
+        layout: { 'symbol-placement': 'line', 'text-field': ['get', 'n'], 'text-font': ['Sans'], 'text-size': 10.5, 'symbol-spacing': 260, 'text-max-angle': 30 },
+        paint: { 'text-color': '#4A4236', 'text-halo-color': CS.papel, 'text-halo-width': 1.6 } },
+      { id: 'agua-txt', type: 'symbol', source: 'topo', 'source-layer': 'aguaL', minzoom: 13,
+        filter: ['has', 'n'],
+        layout: { 'symbol-placement': 'line', 'text-field': ['get', 'n'], 'text-font': ['Sans'], 'text-size': 10.5, 'symbol-spacing': 300 },
+        paint: { 'text-color': '#3C6C8E', 'text-halo-color': CS.papel, 'text-halo-width': 1.5 } },
+      { id: 'rota-txt', type: 'symbol', source: 'topo', 'source-layer': 'rotas', minzoom: 12.5,
+        filter: ['all', ['has', 'ref'], ['!=', ['get', 'ref'], '']],
+        layout: { 'symbol-placement': 'line', 'text-field': ['get', 'ref'], 'text-font': ['Sans Bold'], 'text-size': 11, 'symbol-spacing': 400 },
+        paint: { 'text-color': '#1C2118', 'text-halo-color': '#FFFFFF', 'text-halo-width': 2 } },
+      { id: 'cume-p', type: 'symbol', source: 'topo', 'source-layer': 'pontos', minzoom: 10,
+        filter: ['==', ['get', 'k'], 'cume'],
+        layout: { 'text-field': '▲', 'text-font': ['Sans'], 'text-size': 11, 'text-allow-overlap': true },
+        paint: { 'text-color': '#6B5233', 'text-halo-color': CS.papel, 'text-halo-width': 1.2 } },
+      { id: 'cume-t', type: 'symbol', source: 'topo', 'source-layer': 'pontos', minzoom: 11.5,
+        filter: ['==', ['get', 'k'], 'cume'],
+        layout: { 'text-field': ['case', ['has', 'ele'], ['concat', ['get', 'n'], '\n', ['to-string', ['get', 'ele']], ' m'], ['get', 'n']],
+                  'text-font': ['Sans Bold'], 'text-size': 10.5, 'text-offset': [0, 0.9], 'text-anchor': 'top' },
+        paint: { 'text-color': '#584427', 'text-halo-color': CS.papel, 'text-halo-width': 1.6 } },
+      { id: 'servico', type: 'circle', source: 'topo', 'source-layer': 'pontos', minzoom: 13,
+        filter: ['all', ['!=', ['get', 'k'], 'cume'], ['!=', ['get', 'k'], 'povoacao']],
+        paint: { 'circle-radius': 3.4, 'circle-color': '#2E7D4F', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 1.4 } },
+      { id: 'servico-t', type: 'symbol', source: 'topo', 'source-layer': 'pontos', minzoom: 14.5,
+        filter: ['all', ['!=', ['get', 'k'], 'cume'], ['!=', ['get', 'k'], 'povoacao'], ['has', 'n']],
+        layout: { 'text-field': ['get', 'n'], 'text-font': ['Sans'], 'text-size': 10, 'text-offset': [0, 0.8], 'text-anchor': 'top' },
+        paint: { 'text-color': '#2A4A36', 'text-halo-color': CS.papel, 'text-halo-width': 1.5 } },
+      { id: 'povoacao', type: 'symbol', source: 'topo', 'source-layer': 'pontos',
+        filter: ['==', ['get', 'k'], 'povoacao'],
+        minzoom: 8,
+        layout: { 'text-field': ['get', 'n'], 'text-font': ['Sans Bold'],
+          'text-size': ['interpolate', ['linear'], ['get', 'c'], 1, 16, 2, 13.5, 3, 11.5, 4, 10.5, 5, 9.5],
+          'text-transform': ['case', ['<=', ['get', 'c'], 2], 'uppercase', 'none'],
+          'text-letter-spacing': ['case', ['<=', ['get', 'c'], 2], 0.06, 0],
+          'text-padding': 6 },
+        paint: { 'text-color': '#33291C', 'text-halo-color': CS.papel, 'text-halo-width': 2 } },
+    ],
+  };
+}
+async function abreTopo() {
+  const cx = garanteCaixa();
+  try { await ensureML(); } catch (e) { toast('Não foi possível carregar o mapa topográfico.'); return; }
+  if (!pmProto) {
+    try {
+      await loadScript('lib/pmtiles.js');
+      pmProto = new pmtiles.Protocol();
+      maplibregl.addProtocol('pmtiles', pmProto.tile);
+    } catch (e) { toast('Falta a biblioteca do mapa topográfico.'); return; }
+  }
+  const c = map.getCenter(), z = map.getZoom();
+  cx.style.display = 'block';
+  ajustaTopo();
+  document.getElementById('map').classList.add('escondido');
+  if (!mapT) {
+    mapT = new maplibregl.Map({ container: 'mapt', attributionControl: false, style: estiloTopo(),
+      center: [c.lng, c.lat], zoom: z, maxPitch: 80, minZoom: 8, maxZoom: 17.5 });
+    mapT.on('click', (e) => topoClique(e));
+    mapT.on('error', (e) => { if (e && e.error && /pmtiles|topo/i.test(String(e.error.message || ''))) toast('Mapa topográfico indisponível.'); });
+  } else { mapT.jumpTo({ center: [c.lng, c.lat], zoom: z }); }
+  mapT.resize();
+  requestAnimationFrame(() => { if (mapT && topoAberto) { ajustaTopo(); mapT.resize(); } });
+  setTimeout(() => { if (mapT && topoAberto) mapT.resize(); }, 250);
+  topoAberto = true;
+  document.getElementById('btn-topo').setAttribute('aria-pressed', 'true');
+  document.getElementById('btn-relevo').hidden = false;
+  if (meLast) meTopo(meLast);
+}
+function fechaTopo() {
+  if (!topoAberto) return;
+  if (mapT) { const c = mapT.getCenter(); map.setView([c.lat, c.lng], Math.round(mapT.getZoom()), { animate: false }); }
+  if (caixaTopo) caixaTopo.style.display = 'none';
+  document.getElementById('map').classList.remove('escondido');
+  topoAberto = false;
+  document.getElementById('btn-topo').setAttribute('aria-pressed', 'false');
+  document.getElementById('btn-relevo').hidden = true;
+}
+function topoClique(e) {
+  if (!mapT) return;
+  const fs = mapT.queryRenderedFeatures(e.point, { layers: ['rota', 'trilho', 'estradao', 'cam', 'estr', 'nac'] });
+  if (!fs.length) return;
+  const rota = fs.find((f) => f.layer.id === 'rota');
+  if (rota) { const r = D.routes.find((x) => x.id === rota.properties.id); if (r) { fechaTopo(); select(r, true); return; } }
+  const f = fs[0], p = f.properties || {};
+  const nome = { trilho: 'Trilho a pé', estradao: 'Estradão', cam: 'Caminho', estr: 'Estrada', nac: 'Estrada nacional' }[f.layer.id] || 'Caminho';
+  const linhas = [`<strong>${nome}</strong>`];
+  if (p.n) linhas.push(esc(p.n));
+  if (p.s) linhas.push('Piso: ' + esc(p.s));
+  new maplibregl.Popup({ closeButton: true, maxWidth: '240px' }).setLngLat(e.lngLat).setHTML(linhas.join('<br>')).addTo(mapT);
+}
+function meTopo(p) {
+  if (!mapT) return;
+  const ll = [p.coords.longitude, p.coords.latitude];
+  if (!mapT.__me) { const el = document.createElement('div'); el.className = 'me'; el.innerHTML = '<span class="me-dot"></span>'; mapT.__me = new maplibregl.Marker({ element: el }).setLngLat(ll).addTo(mapT); }
+  else mapT.__me.setLngLat(ll);
+}
+document.getElementById('btn-topo').onclick = () => { if (topoAberto) fechaTopo(); else abreTopo(); };
+
+// ---------------- Usar sem rede ----------------
+let SW = null, offEstado = { topo: false, topoMB: 0, uso: 0, quota: 0 };
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    SW = reg.active || reg.waiting || reg.installing;
+    navigator.serviceWorker.ready.then((r) => { SW = r.active; pedeEstado(); });
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.tipo === 'estado') { offEstado = d; pintaOffline(); }
+    if (d.tipo === 'progresso') {
+      const b = document.getElementById('off-barra-' + d.fase);
+      if (b) b.firstElementChild.style.width = d.pct + '%';
+      const t = document.getElementById('off-pct-' + d.fase);
+      if (t) t.textContent = d.pct + '%';
+    }
+    if (d.tipo === 'pronto') { toast(d.fase === 'topo' ? 'Mapa topográfico guardado.' : 'Fotografia desta zona guardada.'); pedeEstado(); }
+    if (d.tipo === 'erro') toast('Não consegui guardar: ' + d.msg);
+    if (d.tipo === 'apagado') { toast('Apaguei o que estava guardado.'); pedeEstado(); }
+  });
+}
+function pedeEstado() { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'estado' }); }
+function mandaSW(msg) {
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) { toast('Ainda a preparar. Tenta daqui a uns segundos.'); return; }
+  navigator.serviceWorker.controller.postMessage(msg);
+}
+const MB = (n) => n >= 1000e6 ? (n / 1e9).toFixed(1).replace('.', ',') + ' GB' : Math.round(n / 1e6) + ' MB';
+function fotosDaVista() {
+  const vb = map.getBounds(), urls = new Set();
+  DET.forEach((t) => { if (vb.intersects(L.latLngBounds([t[0], t[1]], [t[2], t[3]]))) urls.add('dados/det/' + t[4]); });
+  ORTHO.forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
+  (CHUNKS || []).forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
+  return [...urls];
+}
+function blocoOffline() {
+  const e = offEstado;
+  const nFotos = fotosDaVista().length;
+  return `<div class="off">
+    <h3>Usar sem rede</h3>
+    <p class="est">Na serra não há rede. O que guardares aqui fica no telemóvel e funciona sem sinal — o GPS não precisa de rede nenhuma.</p>
+    <div class="lin">
+      <button class="bt ${e.topo ? 'on' : ''}" id="off-topo">${e.topo ? '✓ Mapa topográfico guardado (' + e.topoMB + ' MB)' : 'Guardar mapa topográfico (91 MB)'}</button>
+    </div>
+    <div class="barra" id="off-barra-topo"><i></i></div>
+    <div class="lin">
+      <button class="bt" id="off-fotos">Guardar a fotografia desta zona (${nFotos} imagens)</button>
+    </div>
+    <div class="barra" id="off-barra-fotos"><i></i></div>
+    <p class="est">Guardado: ${MB(e.uso || 0)}${e.quota ? ' de ' + MB(e.quota) + ' disponíveis' : ''}.
+      ${e.topo ? 'Com o topográfico guardado tens curvas de nível, caminhos, água e os percursos todos sem rede.' : ''}</p>
+    <div class="lin"><button class="bt" id="off-apagar">Apagar o que está guardado</button></div>
+  </div>`;
+}
+function pintaOffline() {
+  const alvo = document.querySelector('#sheet .off');
+  if (!alvo) return;
+  alvo.outerHTML = blocoOffline();
+  ligaOffline();
+}
+function ligaOffline() {
+  const a = document.getElementById('off-topo');
+  if (a) a.onclick = () => { if (offEstado.topo) { toast('Já está guardado.'); return; } toast('A guardar o mapa topográfico…'); mandaSW({ tipo: 'guardar-topo' }); };
+  const b = document.getElementById('off-fotos');
+  if (b) b.onclick = () => { const u = fotosDaVista(); if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; } toast('A guardar ' + u.length + ' imagens…'); mandaSW({ tipo: 'guardar-fotos', urls: u }); };
+  const c = document.getElementById('off-apagar');
+  if (c) c.onclick = () => { if (confirm('Apagar o mapa e as imagens guardadas no telemóvel?')) mandaSW({ tipo: 'apagar' }); };
+}
+document.getElementById('btn-relevo').onclick = () => {
+  if (!mapT) return;
+  topoRelevo = !topoRelevo;
+  document.getElementById('btn-relevo').setAttribute('aria-pressed', topoRelevo);
+  if (topoRelevo) { mapT.setTerrain({ source: 'dem', exaggeration: 1.25 }); mapT.easeTo({ pitch: 58, duration: 600 }); }
+  else { mapT.setTerrain(null); mapT.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+};
+
 const layers = new Map();
 let selected = null;
 function styleFor(r, hi) {
@@ -437,7 +716,9 @@ function sheetIdle() {
       <div class="stat"><div class="v">20 358 km</div><div class="l">de caminhos na rede</div></div>
     </div>
     <div class="kchips">${OSM_KINDS.map((k) => `<span class="kc"><i style="border-top-color:${OSM_STYLE[k].color}"></i>${OSM_NOME[k]}</span>`).join('')}</div>
-    <p class="note">Os caminhos aparecem a partir do zoom médio. A cor dos percursos marcados mostra a sombra medida por LiDAR, onde existe.</p>`;
+    <p class="note">Os caminhos aparecem a partir do zoom médio. A cor dos percursos marcados mostra a sombra medida por LiDAR, onde existe.</p>
+    ${blocoOffline()}`;
+  ligaOffline(); pedeEstado();
 }
 function select(r, fly = false) {
   if (selected) restyle(selected, false); if (elMarker) elMarker.remove();
