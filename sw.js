@@ -82,10 +82,11 @@ async function guardaTopo() {
 async function guardaFotos(urls) {
   const c = await caches.open(V);
   let n = 0;
+  const passo = Math.max(1, Math.round(urls.length / 60));
   for (const u of urls) {
     try { const r = await fetch(u); if (r.ok) await c.put(u, r.clone()); } catch (err) {}
     n++;
-    if (n % 5 === 0 || n === urls.length) avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / urls.length * 100) });
+    if (n % passo === 0 || n === urls.length) avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / urls.length * 100), feito: n, total: urls.length });
   }
   avisa({ tipo: 'pronto', fase: 'fotos' });
   estado();

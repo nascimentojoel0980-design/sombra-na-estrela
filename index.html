@@ -144,7 +144,9 @@ body.building .picon,body.building .plabel,body.building .leaflet-marker-icon{po
 .off .bt.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .off .bt[disabled]{opacity:.55;cursor:default}
 .barra{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin:6px 0}
-.barra i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.barra i{display:block;height:100%;background:#2E7D4F;width:0;transition:width .3s}
+.barra.feito i{background:#2E7D4F}
+.barra.feito{box-shadow:inset 0 0 0 1px #2E7D4F}
 .off .est{font-size:12.5px;color:var(--muted);line-height:1.45}}
 @media (prefers-reduced-motion: reduce){.leaflet-zoom-anim .leaflet-zoom-animated{transition:none}}
 </style>
@@ -251,7 +253,7 @@ const fmt = (v, d = 0) => v == null || isNaN(v) ? '—' : Number(v).toLocaleStri
 const score = (r) => r.lidar ? r.lidar.sombra : (r.arv ?? -1);
 const BOUNDS = [[40.0, -8.10], [40.70, -7.15]];
 
-const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 19, preferCanvas: false, tap: false });
+const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 20, preferCanvas: false, tap: false });
 L.control.zoom({ position: 'topright' }).addTo(map);
 [['satP', 380], ['ortoP', 390], ['detP', 395], ['onlineP', 397]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; map.getPane(n).style.pointerEvents = 'none'; });
 const base = L.imageOverlay('dados/fundo.jpg', BOUNDS, { interactive: false, pane: 'satP' }).addTo(map);
@@ -416,22 +418,38 @@ map.on('moveend zoomend', osmByZoom); osmByZoom();
 
 // ---------------- Satelite online de alta resolucao (ESRI World Imagery) ----------------
 // mais nitido que as nossas ortofotos, mas vem de fora e precisa de rede
-let satOnline = null;
 const SAT_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-function ligaSat(on) {
-  if (on) {
-    if (!satOnline) satOnline = L.tileLayer(SAT_URL, { pane: 'onlineP', maxZoom: 19, maxNativeZoom: 19, crossOrigin: true, attribution: 'Esri, Maxar, Earthstar Geographics' });
-    satOnline.addTo(map);
-    const n = document.getElementById('sat-note'); if (n) n.hidden = false;
-  } else {
-    if (satOnline) satOnline.remove();
-    const n = document.getElementById('sat-note'); if (n) n.hidden = true;
+const DGT_WMS = 'https://cartografia.dgterritorio.gov.pt/wms/ortos2025';
+let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
+const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
+function camadaAtiva() { return satModo === 1 ? camDGT : satModo === 2 ? camEsri : null; }
+function ligaSat(modo) {
+  satModo = ((modo % 3) + 3) % 3;
+  if (camDGT) camDGT.remove();
+  if (camEsri) camEsri.remove();
+  if (satModo === 1) {
+    if (!camDGT) camDGT = L.tileLayer.wms(DGT_WMS, { layers: 'Ortos2025-RGB', format: 'image/jpeg', transparent: false, version: '1.3.0',
+      pane: 'onlineP', maxZoom: 20, maxNativeZoom: 20, crossOrigin: true, attribution: 'Ortofotos DGT 2025' });
+    camDGT.addTo(map);
+  } else if (satModo === 2) {
+    if (!camEsri) camEsri = L.tileLayer(SAT_URL, { pane: 'onlineP', maxZoom: 19, maxNativeZoom: 19, crossOrigin: true, attribution: 'Esri, Maxar, Earthstar Geographics' });
+    camEsri.addTo(map);
   }
-  document.getElementById('btn-sat').setAttribute('aria-pressed', on ? 'true' : 'false');
-  try { localStorage.setItem('sne-sat', on ? '1' : '0'); } catch (e) {}
+  const n = document.getElementById('sat-note');
+  if (n) {
+    n.hidden = satModo === 0;
+    n.innerHTML = satModo === 1
+      ? '<strong>DGT 2025 em directo</strong><br>Ortofoto oficial a 25 cm, a melhor que existe da serra. Precisa de rede e pode demorar a pintar.'
+      : '<strong>Esri / Maxar</strong><br>Boa nas vilas, muitas vezes pior do que a nossa na serra. Precisa de rede.';
+  }
+  document.getElementById('btn-sat').setAttribute('aria-pressed', satModo ? 'true' : 'false');
+  document.getElementById('btn-sat').title = SAT_NOME[satModo];
+  if (satModo) toast(SAT_NOME[satModo]);
+  if (typeof actualizaContagem === 'function') actualizaContagem();
+  try { localStorage.setItem('sne-sat', String(satModo)); } catch (e) {}
 }
-document.getElementById('btn-sat').onclick = () => ligaSat(!satOnline || !map.hasLayer(satOnline));
-try { if (localStorage.getItem('sne-sat') === '1') ligaSat(true); } catch (e) {}
+document.getElementById('btn-sat').onclick = () => ligaSat(satModo + 1);
+try { const m = +(localStorage.getItem('sne-sat') || 0); if (m) ligaSat(m); } catch (e) {}
 
 // ---------------- Mapa topografico (vetorial, MapLibre + PMTiles) ----------------
 const TOPO_URL = 'dados/topo.pmtiles';
@@ -636,10 +654,18 @@ if ('serviceWorker' in navigator) {
     if (d.tipo === 'progresso') {
       const b = document.getElementById('off-barra-' + d.fase);
       if (b) b.firstElementChild.style.width = d.pct + '%';
-      const t = document.getElementById('off-pct-' + d.fase);
-      if (t) t.textContent = d.pct + '%';
+      const bt = document.getElementById(d.fase === 'topo' ? 'off-topo' : 'off-fotos');
+      if (bt) bt.textContent = (d.fase === 'topo' ? 'A guardar o mapa… ' : 'A guardar as imagens… ')
+        + (d.feito != null && d.total != null ? d.feito + ' de ' + d.total : d.pct + '%');
     }
-    if (d.tipo === 'pronto') { toast(d.fase === 'topo' ? 'Mapa topográfico guardado.' : 'Fotografia desta zona guardada.'); pedeEstado(); }
+    if (d.tipo === 'pronto') {
+      const b = document.getElementById('off-barra-' + d.fase);
+      if (b) { b.firstElementChild.style.width = '100%'; b.classList.add('feito'); }
+      const bt = document.getElementById(d.fase === 'topo' ? 'off-topo' : 'off-fotos');
+      if (bt) { bt.textContent = d.fase === 'topo' ? '✓ Mapa topográfico guardado' : '✓ Fotografia desta zona guardada'; bt.classList.add('on'); }
+      toast(d.fase === 'topo' ? 'Mapa topográfico guardado.' : 'Fotografia desta zona guardada.');
+      setTimeout(pedeEstado, 2500);
+    }
     if (d.tipo === 'erro') toast('Não consegui guardar: ' + d.msg);
     if (d.tipo === 'apagado') { toast('Apaguei o que estava guardado.'); pedeEstado(); }
   });
@@ -655,7 +681,7 @@ function fotosDaVista() {
   DET.forEach((t) => { if (vb.intersects(L.latLngBounds([t[0], t[1]], [t[2], t[3]]))) urls.add('dados/det/' + t[4]); });
   ORTHO.forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
   (CHUNKS || []).forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
-  if (satOnline && map.hasLayer(satOnline)) satTiles(vb).forEach((u) => urls.add(u));
+  if (satModo === 2) satTiles(vb).forEach((u) => urls.add(u));
   return [...urls];
 }
 // quadrados do satelite online que cobrem a vista, do zoom actual ate ao maximo
@@ -693,6 +719,14 @@ function blocoOffline() {
     <div class="lin"><button class="bt" id="off-apagar">Apagar o que está guardado</button></div>
   </div>`;
 }
+function actualizaContagem() {
+  const b = document.getElementById('off-fotos');
+  if (!b || /guardar as imagens|guardada/i.test(b.textContent)) return;
+  const n = fotosDaVista().length;
+  b.textContent = 'Guardar a fotografia desta zona (' + fmt(n) + ' imagens)';
+}
+let contaT = null;
+map.on('moveend zoomend', () => { clearTimeout(contaT); contaT = setTimeout(actualizaContagem, 400); });
 function pintaOffline() {
   const alvo = document.querySelector('#sheet .off');
   if (!alvo) return;
@@ -703,7 +737,8 @@ function ligaOffline() {
   const a = document.getElementById('off-topo');
   if (a) a.onclick = () => { if (offEstado.topo) { toast('Já está guardado.'); return; } toast('A guardar o mapa topográfico…'); mandaSW({ tipo: 'guardar-topo' }); };
   const b = document.getElementById('off-fotos');
-  if (b) b.onclick = () => { const u = fotosDaVista(); if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; } toast('A guardar ' + u.length + ' imagens…'); mandaSW({ tipo: 'guardar-fotos', urls: u }); };
+  if (b) b.onclick = () => { const u = fotosDaVista(); if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; } b.textContent = 'A guardar as imagens… 0 de ' + u.length; mandaSW({ tipo: 'guardar-fotos', urls: u }); };
+  actualizaContagem();
   const c = document.getElementById('off-apagar');
   if (c) c.onclick = () => { if (confirm('Apagar o mapa e as imagens guardadas no telemóvel?')) mandaSW({ tipo: 'apagar' }); };
 }
