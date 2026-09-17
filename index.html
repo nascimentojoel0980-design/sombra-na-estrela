@@ -428,8 +428,18 @@ function ligaSat(modo) {
   if (camDGT) camDGT.remove();
   if (camEsri) camEsri.remove();
   if (satModo === 1) {
-    if (!camDGT) camDGT = L.tileLayer.wms(DGT_WMS, { layers: 'Ortos2025-RGB', format: 'image/jpeg', transparent: false, version: '1.3.0',
-      pane: 'onlineP', maxZoom: 20, maxNativeZoom: 20, crossOrigin: true, attribution: 'Ortofotos DGT 2025' });
+    if (!camDGT) {
+      // sem crossOrigin: se o servidor nao mandar os cabecalhos de partilha, o browser
+      // descartava a imagem em silencio e o mapa parecia nao mudar
+      camDGT = L.tileLayer.wms(DGT_WMS, { layers: 'Ortos2025-RGB', format: 'image/jpeg', transparent: false, version: '1.3.0',
+        pane: 'onlineP', maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
+      let falhas = 0, avisado = false;
+      camDGT.on('tileerror', () => {
+        falhas++;
+        if (falhas >= 4 && !avisado) { avisado = true; toast('O servidor da DGT não está a responder. Volto às ortofotos guardadas.'); ligaSat(0); }
+      });
+      camDGT.on('tileload', () => { falhas = 0; });
+    }
     camDGT.addTo(map);
   } else if (satModo === 2) {
     if (!camEsri) camEsri = L.tileLayer(SAT_URL, { pane: 'onlineP', maxZoom: 19, maxNativeZoom: 19, crossOrigin: true, attribution: 'Esri, Maxar, Earthstar Geographics' });
