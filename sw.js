@@ -47,16 +47,22 @@ self.addEventListener('message', (e) => {
   if (d.tipo === 'guardar-topo') e.waitUntil(guardaTopo());
   if (d.tipo === 'guardar-fotos') e.waitUntil(guardaFotos(d.urls || []));
   if (d.tipo === 'estado') e.waitUntil(estado());
+  if (d.tipo === 'quantos') e.waitUntil(jaTenho(d.urls || []).then((f) => avisa({ tipo: 'quantos', faltam: f.length, total: (d.urls || []).length })));
+  if (d.tipo === 'cobertura') e.waitUntil(indice().then((q) => avisa({ tipo: 'cobertura', quadrados: q })));
   if (d.tipo === 'apagar') e.waitUntil(apagaTudo());
 });
+
+async function indice() { return (await tira('quadrados')) || []; }
+async function guardaIndice(lista) { await poe('quadrados', lista); }
 
 async function estado() {
   const b = await tira('topo.pmtiles');
   const c = await caches.open(V);
   const n = (await c.keys()).length;
+  const idx = await indice();
   let uso = 0, quota = 0;
   try { const q = await navigator.storage.estimate(); uso = q.usage || 0; quota = q.quota || 0; } catch (err) {}
-  avisa({ tipo: 'estado', topo: !!b, topoMB: b ? Math.round(b.size / 1e6) : 0, ficheiros: n, uso, quota });
+  avisa({ tipo: 'estado', topo: !!b, topoMB: b ? Math.round(b.size / 1e6) : 0, ficheiros: n, uso, quota, quadrados: idx.length });
 }
 
 async function guardaTopo() {
@@ -79,21 +85,56 @@ async function guardaTopo() {
   } catch (err) { avisa({ tipo: 'erro', fase: 'topo', msg: String(err && err.message || err) }); }
 }
 
+// chave do quadrado a partir do endereco, para o mapa poder mostrar o que ja esta guardado
+function chaveQuadrado(u) {
+  const m = /bbox=(-?[\d.]+),(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)/.exec(u);
+  if (!m) return null;
+  const R = 20037508.342789244, x0 = +m[1], y0 = +m[2], x1 = +m[3];
+  const s = x1 - x0; if (!(s > 0)) return null;
+  const z = Math.round(Math.log2(2 * R / s));
+  const n = 2 ** z;
+  return z + '/' + Math.round((x0 + R) / (2 * R) * n) + '/' + Math.round((R - (y0 + s)) / (2 * R) * n);
+}
+
+async function jaTenho(urls) {
+  const c = await caches.open(V);
+  const faltam = [];
+  for (const u of urls) { if (!(await c.match(u))) faltam.push(u); }
+  return faltam;
+}
+
 async function guardaFotos(urls) {
   const c = await caches.open(V);
-  let n = 0;
-  const passo = Math.max(1, Math.round(urls.length / 60));
-  for (const u of urls) {
-    try { const r = await fetch(u); if (r.ok) await c.put(u, r.clone()); } catch (err) {}
+  const faltam = await jaTenho(urls);
+  const jaLa = urls.length - faltam.length;
+  if (!faltam.length) { avisa({ tipo: 'pronto', fase: 'fotos', novas: 0, jaLa }); estado(); return; }
+  const idx = new Set(await indice());
+  let n = 0, guardadas = 0;
+  const passo = Math.max(1, Math.round(faltam.length / 60));
+  for (const u of faltam) {
+    try {
+      const r = await fetch(u);
+      if (r.ok) {
+        await c.put(u, r.clone());
+        guardadas++;
+        const k = chaveQuadrado(u); if (k) idx.add(k);
+      }
+    } catch (err) {}
     n++;
-    if (n % passo === 0 || n === urls.length) avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / urls.length * 100), feito: n, total: urls.length });
+    if (n % passo === 0 || n === faltam.length) {
+      avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });
+      if (n % (passo * 10) === 0) await guardaIndice([...idx]);
+    }
+    if (n % 8 === 0) await new Promise((ok) => setTimeout(ok, 120));   // ritmo civilizado para o servidor
   }
-  avisa({ tipo: 'pronto', fase: 'fotos' });
+  await guardaIndice([...idx]);
+  avisa({ tipo: 'pronto', fase: 'fotos', novas: guardadas, jaLa });
   estado();
 }
 
 async function apagaTudo() {
   await caches.delete(V);
+  try { await poe('quadrados', []); } catch (err) {}
   try { const db = await abreBD(); const t = db.transaction(LOJA, 'readwrite'); t.objectStore(LOJA).clear(); } catch (err) {}
   avisa({ tipo: 'apagado' });
 }
@@ -105,7 +146,7 @@ self.addEventListener('fetch', (e) => {
   const u = new URL(req.url);
   if (u.origin !== location.origin) {
     // satelite online: serve-se da cache quando existir (guardado por zona)
-    if (/arcgisonline\.com$/.test(u.hostname)) {
+    if (/arcgisonline\.com$/.test(u.hostname) || /dgterritorio\.gov\.pt$/.test(u.hostname)) {
       e.respondWith(caches.match(req).then((hit) => hit || fetch(req).catch(() => hit || Response.error())));
     }
     return;

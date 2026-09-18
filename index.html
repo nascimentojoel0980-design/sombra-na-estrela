@@ -423,6 +423,31 @@ map.on('moveend zoomend', osmByZoom); osmByZoom();
 // mais nitido que as nossas ortofotos, mas vem de fora e precisa de rede
 const SAT_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const DGT_WMS = 'https://cartografia.dgterritorio.gov.pt/wms/ortos2025';
+const R38 = 20037508.342789244;
+// endereco fixo por quadrado: e o que permite ao telemovel guarda-los para usar sem rede
+function dgtUrl(z, x, y, px) {
+  const n = 2 ** z, s = 2 * R38 / n;
+  const x0 = -R38 + x * s, y1 = R38 - y * s, x1 = x0 + s, y0 = y1 - s;
+  return DGT_WMS + '?service=WMS&version=1.3.0&request=GetMap&layers=Ortos2025-RGB&styles='
+    + '&crs=EPSG:3857&format=image/jpeg&width=' + (px || 256) + '&height=' + (px || 256)
+    + '&bbox=' + x0.toFixed(1) + ',' + y0.toFixed(1) + ',' + x1.toFixed(1) + ',' + y1.toFixed(1);
+}
+const CamadaDGT = L.TileLayer.extend({
+  getTileUrl: function (c) { return dgtUrl(this._getZoomForUrl(), c.x, c.y, this.options.tileSize); },
+});
+// quadrados da DGT que cobrem a vista, para guardar no telemovel
+function dgtTiles(vb, zAlvo) {
+  const out = [], z = Math.min(19, Math.max(14, Math.round(zAlvo == null ? map.getZoom() : zAlvo)));
+  const n = 2 ** z;
+  const x0 = Math.floor((vb.getWest() + 180) / 360 * n), x1 = Math.floor((vb.getEast() + 180) / 360 * n);
+  const ly = (l) => { const r = l * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n); };
+  const y0 = ly(vb.getNorth()), y1 = ly(vb.getSouth());
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    out.push(dgtUrl(z, x, y, 256));
+    if (out.length > 2500) return out;
+  }
+  return out;
+}
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 function camadaAtiva() { return satModo === 1 ? camDGT : satModo === 2 ? camEsri : null; }
@@ -432,10 +457,7 @@ function ligaSat(modo) {
   if (camEsri) camEsri.remove();
   if (satModo === 1) {
     if (!camDGT) {
-      // sem crossOrigin: se o servidor nao mandar os cabecalhos de partilha, o browser
-      // descartava a imagem em silencio e o mapa parecia nao mudar
-      camDGT = L.tileLayer.wms(DGT_WMS, { layers: 'Ortos2025-RGB', format: 'image/jpeg', transparent: false, version: '1.3.0',
-        pane: 'onlineP', maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
+      camDGT = new CamadaDGT({ pane: 'onlineP', tileSize: 256, maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
       camDGT.__ok = 0; camDGT.__erro = 0;
       const marca = () => {
         const n = document.getElementById('sat-diag');
@@ -675,10 +697,22 @@ if ('serviceWorker' in navigator) {
       const b = document.getElementById('off-barra-' + d.fase);
       if (b) { b.firstElementChild.style.width = '100%'; b.classList.add('feito'); }
       const bt = document.getElementById(d.fase === 'topo' ? 'off-topo' : 'off-fotos');
-      if (bt) { bt.textContent = d.fase === 'topo' ? '✓ Mapa topográfico guardado' : '✓ Fotografia desta zona guardada'; bt.classList.add('on'); }
-      toast(d.fase === 'topo' ? 'Mapa topográfico guardado.' : 'Fotografia desta zona guardada.');
-      setTimeout(pedeEstado, 2500);
+      if (bt) { bt.textContent = d.fase === 'topo' ? '✓ Mapa topográfico guardado' : '✓ Zona guardada'; bt.classList.add('on'); }
+      if (d.fase === 'fotos') toast(d.novas ? ('Guardadas ' + fmt(d.novas) + ' imagens novas' + (d.jaLa ? ' (' + fmt(d.jaLa) + ' já tinhas)' : '') + '.') : 'Esta zona já estava toda guardada.');
+      else toast('Mapa topográfico guardado.');
+      pedeCobertura();
+      setTimeout(pedeEstado, 2000);
     }
+    if (d.tipo === 'quantos') {
+      const b = document.getElementById('off-fotos');
+      if (b && !/A guardar|✓/.test(b.textContent)) {
+        const q = satModo === 1 ? ' a 25 cm' : '';
+        b.textContent = d.faltam
+          ? 'Guardar esta zona' + q + ' (' + fmt(d.faltam) + ' novas de ' + fmt(d.total) + ')'
+          : 'Esta zona já está toda guardada' + q;
+      }
+    }
+    if (d.tipo === 'cobertura') { COB = d.quadrados || []; desenhaCobertura(); }
     if (d.tipo === 'erro') toast('Não consegui guardar: ' + d.msg);
     if (d.tipo === 'apagado') { toast('Apaguei o que estava guardado.'); pedeEstado(); }
   });
@@ -694,6 +728,7 @@ function fotosDaVista() {
   DET.forEach((t) => { if (vb.intersects(L.latLngBounds([t[0], t[1]], [t[2], t[3]]))) urls.add('dados/det/' + t[4]); });
   ORTHO.forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
   (CHUNKS || []).forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
+  if (satModo === 1) dgtTiles(vb).forEach((u) => urls.add(u));
   if (satModo === 2) satTiles(vb).forEach((u) => urls.add(u));
   return [...urls];
 }
@@ -724,9 +759,12 @@ function blocoOffline() {
     </div>
     <div class="barra" id="off-barra-topo"><i></i></div>
     <div class="lin">
-      <button class="bt" id="off-fotos">Guardar a fotografia desta zona (${nFotos} imagens)</button>
+      <button class="bt" id="off-fotos">Guardar esta zona (${nFotos} imagens)</button>
+      <button class="bt ${cobLigada ? 'on' : ''}" id="off-ver">${cobLigada ? '✓ A mostrar a alta resolução' : 'Ver o que já guardei a 25 cm'}</button>
     </div>
     <div class="barra" id="off-barra-fotos"><i></i></div>
+    <p class="est">Guardas por zonas, quantas vezes quiseres: ele traz só o que ainda não tens e junta ao resto, sem repetir nada.
+      ${e.quadrados ? 'Já tens <strong>' + fmt(Math.round(KM2(e.quadrados))) + ' km²</strong> a 25 cm.' : 'Para guardar a 25 cm, liga primeiro o satélite da DGT (o botão do meio, na coluna à direita).'}</p>
     <p class="est">Guardado: ${MB(e.uso || 0)}${e.quota ? ' de ' + MB(e.quota) + ' disponíveis' : ''}.
       ${e.topo ? 'Com o topográfico guardado tens curvas de nível, caminhos, água e os percursos todos sem rede.' : ''}</p>
     <div class="lin"><button class="bt" id="off-apagar">Apagar o que está guardado</button></div>
@@ -734,10 +772,35 @@ function blocoOffline() {
 }
 function actualizaContagem() {
   const b = document.getElementById('off-fotos');
-  if (!b || /guardar as imagens|guardada/i.test(b.textContent)) return;
-  const n = fotosDaVista().length;
-  b.textContent = 'Guardar a fotografia desta zona (' + fmt(n) + ' imagens)';
+  if (!b || /A guardar/i.test(b.textContent)) return;
+  const u = fotosDaVista();
+  if (!u.length) { b.textContent = 'Aproxima o mapa da zona a guardar'; return; }
+  b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' imagens)';
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'quantos', urls: u });
 }
+// ---- o que ja esta guardado, desenhado no mapa ----
+let COB = [], cobGrupo = null, cobLigada = false;
+function pedeCobertura() { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'cobertura' }); }
+const KM2 = (n) => n * (2 * 20037508.342789244 / 2 ** 19 * 256 / 256) ** 2 / 1e6;   // area de um quadrado z19
+function desenhaCobertura() {
+  if (!cobLigada) { if (cobGrupo) { cobGrupo.remove(); cobGrupo = null; } return; }
+  if (!cobGrupo) cobGrupo = L.layerGroup().addTo(map);
+  cobGrupo.clearLayers();
+  const vb = map.getBounds();
+  let n = 0;
+  for (const k of COB) {
+    const [z, x, y] = k.split('/').map(Number);
+    const nn = 2 ** z;
+    const lo0 = x / nn * 360 - 180, lo1 = (x + 1) / nn * 360 - 180;
+    const la1 = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / nn))) * 180 / Math.PI;
+    const la0 = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y + 1) / nn))) * 180 / Math.PI;
+    const b = L.latLngBounds([la0, lo0], [la1, lo1]);
+    if (!vb.intersects(b)) continue;
+    if (++n > 3000) break;
+    L.rectangle(b, { color: '#2E7D4F', weight: 0, fillColor: '#2E7D4F', fillOpacity: 0.22, interactive: false }).addTo(cobGrupo);
+  }
+}
+map.on('moveend zoomend', () => { if (cobLigada) desenhaCobertura(); });
 let contaT = null;
 map.on('moveend zoomend', () => { clearTimeout(contaT); contaT = setTimeout(actualizaContagem, 400); });
 function pintaOffline() {
@@ -752,6 +815,14 @@ function ligaOffline() {
   const b = document.getElementById('off-fotos');
   if (b) b.onclick = () => { const u = fotosDaVista(); if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; } b.textContent = 'A guardar as imagens… 0 de ' + u.length; mandaSW({ tipo: 'guardar-fotos', urls: u }); };
   actualizaContagem();
+  const v = document.getElementById('off-ver');
+  if (v) v.onclick = () => {
+    cobLigada = !cobLigada;
+    v.textContent = cobLigada ? '✓ A mostrar a alta resolução' : 'Ver o que já guardei a 25 cm';
+    v.classList.toggle('on', cobLigada);
+    if (cobLigada) { pedeCobertura(); if (!COB.length) toast('Ainda não guardaste nada a 25 cm. Liga o satélite da DGT e guarda uma zona.'); }
+    else desenhaCobertura();
+  };
   const c = document.getElementById('off-apagar');
   if (c) c.onclick = () => { if (confirm('Apagar o mapa e as imagens guardadas no telemóvel?')) mandaSW({ tipo: 'apagar' }); };
 }
@@ -804,7 +875,7 @@ function sheetIdle() {
     <div class="kchips">${OSM_KINDS.map((k) => `<span class="kc"><i style="border-top-color:${OSM_STYLE[k].color}"></i>${OSM_NOME[k]}</span>`).join('')}</div>
     <p class="note">Os caminhos aparecem a partir do zoom médio. A cor dos percursos marcados mostra a sombra medida por LiDAR, onde existe.</p>
     ${blocoOffline()}`;
-  ligaOffline(); pedeEstado();
+  ligaOffline(); pedeEstado(); pedeCobertura();
 }
 function select(r, fly = false) {
   if (selected) restyle(selected, false); if (elMarker) elMarker.remove();
