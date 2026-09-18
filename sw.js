@@ -78,7 +78,7 @@ async function estado() {
   const idx = await indice();
   let uso = 0, quota = 0;
   try { const q = await navigator.storage.estimate(); uso = q.usage || 0; quota = q.quota || 0; } catch (err) {}
-  const q17 = idx.filter((k) => k.indexOf('19/') === 0).length;
+  const q17 = idx.filter((k) => k.indexOf('16/') === 0).length;
   avisa({ tipo: 'estado', topo: !!b, topoMB: b ? Math.round(b.size / 1e6) : 0, ficheiros: n, uso, quota, quadrados: q17 });
 }
 
@@ -128,7 +128,7 @@ async function guardaFotos(urls) {
   const idx = new Set(await indice());
   let n = 0, guardadas = 0, i = 0;
   const passo = Math.max(1, Math.round(faltam.length / 80));
-  // quatro ao mesmo tempo: rapido para quem espera, sem martelar o servidor
+  // tres ao mesmo tempo: foi o que a medicao mostrou ser o melhor com blocos grandes
   async function trabalhador() {
     while (i < faltam.length) {
       const u = faltam[i++];
@@ -145,10 +145,9 @@ async function guardaFotos(urls) {
         avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });
         if (n % (passo * 2) === 0) await guardaIndice([...idx]);
       }
-      await new Promise((ok) => setTimeout(ok, 40));
     }
   }
-  await Promise.all([trabalhador(), trabalhador(), trabalhador(), trabalhador()]);
+  await Promise.all([trabalhador(), trabalhador(), trabalhador()]);
   await guardaIndice([...idx]);
   avisa({ tipo: 'pronto', fase: 'fotos', novas: guardadas, jaLa });
   estado();
