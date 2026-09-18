@@ -109,29 +109,24 @@ async function guardaFotos(urls) {
   const jaLa = urls.length - faltam.length;
   if (!faltam.length) { avisa({ tipo: 'pronto', fase: 'fotos', novas: 0, jaLa }); estado(); return; }
   const idx = new Set(await indice());
-  let n = 0, guardadas = 0, i = 0;
-  const passo = Math.max(1, Math.round(faltam.length / 80));
-  // quatro ao mesmo tempo: rapido para quem espera, sem martelar o servidor
-  async function trabalhador() {
-    while (i < faltam.length) {
-      const u = faltam[i++];
-      try {
-        const r = await fetch(u);
-        if (r.ok) {
-          await c.put(u, r.clone());
-          guardadas++;
-          const k = chaveQuadrado(u); if (k) idx.add(k);
-        }
-      } catch (err) {}
-      n++;
-      if (n % passo === 0 || n === faltam.length) {
-        avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });
-        if (n % (passo * 10) === 0) await guardaIndice([...idx]);
+  let n = 0, guardadas = 0;
+  const passo = Math.max(1, Math.round(faltam.length / 60));
+  for (const u of faltam) {
+    try {
+      const r = await fetch(u);
+      if (r.ok) {
+        await c.put(u, r.clone());
+        guardadas++;
+        const k = chaveQuadrado(u); if (k) idx.add(k);
       }
-      await new Promise((ok) => setTimeout(ok, 40));
+    } catch (err) {}
+    n++;
+    if (n % passo === 0 || n === faltam.length) {
+      avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });
+      if (n % (passo * 10) === 0) await guardaIndice([...idx]);
     }
+    if (n % 8 === 0) await new Promise((ok) => setTimeout(ok, 120));   // ritmo civilizado para o servidor
   }
-  await Promise.all([trabalhador(), trabalhador(), trabalhador(), trabalhador()]);
   await guardaIndice([...idx]);
   avisa({ tipo: 'pronto', fase: 'fotos', novas: guardadas, jaLa });
   estado();

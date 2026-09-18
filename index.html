@@ -438,16 +438,34 @@ const CamadaDGT = L.TileLayer.extend({
 // quadrados da DGT que cobrem a vista, para guardar no telemovel
 // guarda sempre no detalhe maximo (z19 = 30 cm por pixel), independentemente do zoom a que estas
 const Z_DGT = 19;
-function dgtTiles(vb, zAlvo) {
-  const out = [], z = zAlvo == null ? Z_DGT : zAlvo;
-  const n = 2 ** z;
-  const x0 = Math.floor((vb.getWest() + 180) / 360 * n), x1 = Math.floor((vb.getEast() + 180) / 360 * n);
+const DGT_CAP = 12000;
+// quantos quadrados a 25 cm cabem na vista; se for demais, fica-se pelo centro
+function dgtCaixa(vb, zAlvo) {
+  const z = zAlvo == null ? Z_DGT : zAlvo, n = 2 ** z;
+  let x0 = Math.floor((vb.getWest() + 180) / 360 * n), x1 = Math.floor((vb.getEast() + 180) / 360 * n);
   const ly = (l) => { const r = l * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n); };
-  const y0 = ly(vb.getNorth()), y1 = ly(vb.getSouth());
-  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
-    out.push(dgtUrl(z, x, y, 256));
-    if (out.length > 12000) return out;
+  let y0 = ly(vb.getNorth()), y1 = ly(vb.getSouth());
+  const lw = x1 - x0 + 1, lh = y1 - y0 + 1, tot = lw * lh;
+  let cortado = false;
+  if (tot > DGT_CAP) {
+    cortado = true;
+    const k = Math.sqrt(DGT_CAP / tot);
+    const nw = Math.max(1, Math.floor(lw * k)), nh = Math.max(1, Math.floor(lh * k));
+    const cx = Math.floor((x0 + x1) / 2), cy = Math.floor((y0 + y1) / 2);
+    x0 = cx - (nw >> 1); x1 = x0 + nw - 1;
+    y0 = cy - (nh >> 1); y1 = y0 + nh - 1;
   }
+  return { z: z, x0: x0, x1: x1, y0: y0, y1: y1, cortado: cortado, total: tot };
+}
+// area em km2 de um quadrado z19 a esta latitude
+function dgtKm2(z, y, n) {
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+  const m = 40075017 * Math.cos(lat * Math.PI / 180) / n;
+  return m * m / 1e6;
+}
+function dgtTiles(vb, zAlvo) {
+  const c = dgtCaixa(vb, zAlvo), out = [];
+  for (let x = c.x0; x <= c.x1; x++) for (let y = c.y0; y <= c.y1; y++) out.push(dgtUrl(c.z, x, y, 256));
   return out;
 }
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
@@ -766,6 +784,7 @@ function blocoOffline() {
       <button class="bt ${cobLigada ? 'on' : ''}" id="off-ver">${cobLigada ? '✓ A mostrar a alta resolução' : 'Ver o que já guardei a 25 cm'}</button>
     </div>
     <div class="barra" id="off-barra-fotos"><i></i></div>
+    <p class="est" id="off-aviso" style="display:none"></p>
     <p class="est">Guardas por zonas, quantas vezes quiseres: ele traz só o que ainda não tens e junta ao resto, sem repetir nada.
       ${e.quadrados ? 'Já tens <strong>' + fmt(Math.round(KM2(e.quadrados))) + ' km²</strong> a 25 cm.' : 'Para guardar a 25 cm, liga primeiro o satélite da DGT (o botão do meio, na coluna à direita).'}</p>
     <p class="est">Guardado: ${MB(e.uso || 0)}${e.quota ? ' de ' + MB(e.quota) + ' disponíveis' : ''}.
@@ -780,6 +799,18 @@ function actualizaContagem() {
   if (!u.length) { b.textContent = 'Aproxima o mapa da zona a guardar'; return; }
   const mb = satModo === 1 ? Math.round(u.length * 0.026) : 0;
   b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' imagens' + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')';
+  const av = document.getElementById('off-aviso');
+  if (av) {
+    if (satModo === 1) {
+      const c = dgtCaixa(map.getBounds());
+      if (c.cortado) {
+        const km = Math.round((c.x1 - c.x0 + 1) * (c.y1 - c.y0 + 1) * dgtKm2(c.z, c.y0, 2 ** c.z));
+        const kmT = Math.round(c.total * dgtKm2(c.z, c.y0, 2 ** c.z));
+        av.innerHTML = '<strong>A vista é grande demais para os 25 cm.</strong> Guarda só os <strong>' + fmt(km) + ' km²</strong> do centro; a vista toda seriam ' + fmt(kmT) + ' km² (~' + fmt(Math.round(kmT * 7.6 / 1000)) + ' GB). Aproxima mais para escolheres bem a zona.';
+        av.style.display = '';
+      } else { av.style.display = 'none'; }
+    } else { av.style.display = 'none'; }
+  }
   if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'quantos', urls: u });
 }
 // ---- o que ja esta guardado, desenhado no mapa ----
