@@ -433,7 +433,22 @@ const PX_DGT = 2048;
 // demora mais do que os 30 s de limite por pedido. Nao se advinha - mede-se
 // primeiro (ver as duas ligacoes de prova na conversa de 18/09) e so depois
 // se sobe. O resto do mecanismo fica como esta: mudar este numero chega.
-const PX_MAX = 2048, M_FONTE = 0.25;
+const M_FONTE = 0.25;
+// O TECTO DESCOBRE-SE, NAO SE ADIVINHA. Nao consigo testar a DGT do sitio
+// onde corro (bloqueada a saida), e quando subi isto para 4096 as cegas parti
+// a descarga no telemovel dele -- ficou em "0 de 3". Agora tenta-se o maior,
+// e ao primeiro quadrado recusado desce-se para 2048 e fica escrito no
+// telemovel. Pior caso: uma imagem falhada e depois tudo como antes.
+let PX_MAX = 4096;
+try { const v = +localStorage.getItem('sne-pxdgt'); if (v >= 1024 && v <= 8192) PX_MAX = v; } catch (e) {}
+function baixaTecto() {
+  if (PX_MAX <= PX_DGT) return false;
+  PX_MAX = PX_DGT;
+  try { localStorage.setItem('sne-pxdgt', String(PX_MAX)); } catch (e) {}
+  toast('A DGT recusou imagens de 4096 px. Voltei a 2048.');
+  if (camDGT && satModo === 1) { camDGT.remove(); camDGT.addTo(map); }
+  return true;
+}
 function pxDGT(z, lat) {
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   const ladoM = 2 * R38 / 2 ** z * Math.cos((lat || 40.3) * Math.PI / 180);
@@ -544,6 +559,10 @@ function ligaSat(modo) {
       camDGT.on('tileerror', (e) => {
         camDGT.__erro++; marca();
         const t = e && e.tile;
+        // Pedido grande recusado? Baixa o tecto e recomeca a camada inteira --
+        // repetir o mesmo tamanho so repetiria a recusa.
+        const m = t && /[?&]width=(\d+)/.exec(t.src || '');
+        if (m && +m[1] > PX_DGT) { if (baixaTecto()) return; }
         if (t && !t.__retry) {
           t.__retry = 1;
           const src = t.src;

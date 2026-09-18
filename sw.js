@@ -135,7 +135,11 @@ async function guardaFotos(urls) {
       // limite de tempo por pedido: sem isto, um pedido que nunca responde pendura tudo
       for (let tenta = 0; tenta < 2; tenta++) {
         const ctrl = new AbortController();
-        const relogio = setTimeout(() => ctrl.abort(), 30000);
+        // O LIMITE CRESCE COM O TAMANHO. 30 s chegavam para um bloco de 2048 px;
+        // um de 4096 tem quatro vezes os pixels e o servidor tem de o desenhar.
+        const mw = /[?&]width=(\d+)/.exec(u);
+        const msTempo = mw && +mw[1] > 2048 ? 75000 : 30000;
+        const relogio = setTimeout(() => ctrl.abort(), msTempo);
         try {
           const r = await fetch(u, { signal: ctrl.signal });
           clearTimeout(relogio);
