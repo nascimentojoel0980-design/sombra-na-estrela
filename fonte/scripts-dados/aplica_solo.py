@@ -62,14 +62,14 @@ __ARVORES__
 // as arvores ligadas passarem de 55 ms (menos de 18 por segundo), corta o
 // tecto a metade e guarda a decisao. E a mesma defesa do tecto da DGT, pela
 // mesma razao: da ultima vez que eu adivinhei um numero, o download parou.
-const ARV_TECTO = 40000;
+const ARV_TECTO = 150000;
 function arvTecto() {
   let v = 0;
-  try { v = +localStorage.getItem('sne-arv-tecto2'); } catch (e) {}
+  try { v = +localStorage.getItem('sne-arv-tecto3'); } catch (e) {}
   // chave nova de proposito: o valor que o telemovel dele guardou foi
   // decidido com o codigo velho, que era muito mais pesado, e manteria-o
   // preso em 3 750 arvores para sempre.
-  return v >= 6000 && v <= ARV_TECTO ? v : ARV_TECTO;
+  return v >= 20000 && v <= ARV_TECTO ? v : ARV_TECTO;
 }
 function vigiaArvores() {
   if (!mapT) return;
@@ -77,9 +77,9 @@ function vigiaArvores() {
     if (!ARV || !arvQuer) return;
     const r = ARV.ritmo(), tec = arvTecto();
     if (r == null) return;
-    if (r > 55 && tec > 8000) {
+    if (r > 55 && tec > 25000) {
       const novo = Math.round(tec / 2);
-      try { localStorage.setItem('sne-arv-tecto2', String(novo)); } catch (e) {}
+      try { localStorage.setItem('sne-arv-tecto3', String(novo)); } catch (e) {}
       // baixar o tecto na camada que ja existe. Antes destruia-se e criava-se
       // outra, e por isso o aviso repetia-se de cada vez -- era o que ele
       // estava farto de ver. Uma vez chega: ele ja percebeu.

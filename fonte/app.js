@@ -880,6 +880,52 @@ function ligaPadroes(m) {
 // cortar de repente.
 // ===========================================================================
 
+// ===========================================================================
+// Arvores em 3D, instanciadas -- camada propria do MapLibre (WebGL directo)
+// ---------------------------------------------------------------------------
+// Um so modelo de arvore, 40 triangulos, desenhado N vezes numa unica chamada
+// de desenho (instancing). 30 000 arvores custam o mesmo que uma em numero de
+// chamadas; o que cresce e so o buffer de instancias.
+//
+// Nao usa three.js. Sao ~13 KB de codigo contra ~600 KB de biblioteca, e a
+// biblioteca faria exactamente isto por baixo.
+//
+// AS TRES COISAS QUE VEM DO DADO, E A QUE NAO VEM
+//
+//   onde   as arvores nascem dentro dos poligonos de floresta (COS n1=5) e de
+//          montado (n1=4). Fora deles nao ha nenhuma. Nunca uma arvore em cima
+//          de rocha, de pastagem ou de agua; os buracos do poligono contam.
+//   quantas  densidade tirada da cobertura de copa 'd' da mancha, pela relacao
+//          de Poisson  lambda = -ln(1 - d/100) / (pi * r^2).  Nao e um numero
+//          escolhido a olho: e quantas copas de raio r sao precisas para tapar
+//          d% do chao. Montado a 30% da ~45 arvores/ha, pinhal a 70% da ~430.
+//   que altura  'h' da mancha, com variacao por arvore. Cada uma tem a sua, e
+//          assenta na cota do seu proprio ponto -- a copa acompanha a encosta.
+//
+//   QUAL  a especie desenhada (copa de cone ou copa redonda) NAO vem do dado.
+//          A COS ao nivel 1 nao distingue pinhal de carvalhal. A forma e
+//          decorativa e sorteada por posicao; a altura e a densidade sao dado.
+//
+// E 'd'/'h' so sao medidos onde ha LiDAR (ver cos_extrai.py --chm). Onde nao
+// ha, sao valores por defeito da classe e a mancha traz m=0. A legenda tem de
+// dizer "modelado", como o resto do projecto ja faz com as cotas.
+//
+// COMO SE DESENHA LONGE SEM MATAR O TELEMOVEL
+//
+// A primeira versao punha arvores num circulo de 800 m a volta do centro do
+// mapa. Com o ecra inclinado isso da uma FAIXA: o chao ali a frente e as
+// serras ao fundo ficam os dois fora do circulo, e nao tinham arvore nenhuma.
+// Foi o que ele apanhou, e tinha razao.
+//
+// Agora ha tres niveis, por distancia. A grelha de pontos e sempre a mesma, e
+// os niveis sao sub-grelhas dela: o nivel 0 sao os pontos de 9 em 9, o nivel 1
+// os de 3 em 3, o nivel 2 todos. Por isso o nivel 0 esta contido no 1, que
+// esta contido no 2 -- aproximar ACRESCENTA arvores, nunca troca uma por
+// outra. E o que faz a transicao nao piscar. Cada arvore traz o seu nivel e e
+// o shader que a encolhe ate desaparecer no limite do nivel dela, em vez de a
+// cortar de repente.
+// ===========================================================================
+
 function ligaArvores(map, op) {
   op = op || {};
   // O zoom nao e um interruptor: e uma rampa. Semeia-se a partir de ZSEM e as
@@ -908,7 +954,10 @@ function ligaArvores(map, op) {
   // se constroi nada. O que sobra e desenho, e 40 000 arvores sao 1,8 milhoes
   // de triangulos numa so chamada -- coisa que qualquer telemovel destes faz
   // sem dar por ela. O vigia continua la para o caso de eu estar enganado.
-  let TECTO = op.tecto == null ? 40000 : op.tecto;
+  // 150 000 arvores sao ~6,9 M de triangulos numa so chamada de desenho, e um
+  // telemovel destes desenha bem ate uns 5 a 10 M. O vigia continua a cortar
+  // se eu estiver enganado; mais vale enganar-me para cima e ele avisa.
+  let TECTO = op.tecto == null ? 150000 : op.tecto;
   const ORCAMENTO = op.orcamento == null ? 400 : op.orcamento; // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
   const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
@@ -1258,6 +1307,20 @@ function ligaArvores(map, op) {
     if (!isFinite(A) || A < 120) A = 120;
     return { perto, A: Math.min(9000, A), f };
   }
+  // ESCADA FIXA. Este e o defeito que ele apanhou: "volto atras pelo mesmo
+  // caminho e volta a desbloquear arvores". A chave de cada celula inclui o
+  // salto, e o salto vinha de limites(), que varia CONTINUAMENTE com o zoom,
+  // a inclinacao e a posicao. Bastava um dedo a mais para o salto mudar, a
+  // chave mudar, e o mesmo pedaco de chao ser calculado de novo -- para
+  // sempre, sem nunca assentar.
+  //
+  // Agora os limites que decidem o salto sobem para o degrau seguinte de uma
+  // escada fixa. O chao so muda de detalhe quando se atravessa um degrau, e
+  // atravessa-lo para tras devolve a MESMA chave -- logo, a celula guardada.
+  const ESCADA = [120, 240, 480, 960, 1920, 3840, 7680];
+  const degrau = (v) => ESCADA.find((x) => x >= v) || ESCADA[ESCADA.length - 1];
+  const limitesFixos = () => limites().map(degrau);
+
   // O escDens so aperta os DOIS DE PERTO, que sao os que custam.
   function limites() {
     const v = vista(), A = v.A, f = v.f;
@@ -1292,7 +1355,10 @@ function ligaArvores(map, op) {
 
     const RMAX = limites()[3];
     const comRelevo = !!(map.getTerrain && map.getTerrain());
-    const L = limites();                 // uma vez por semeadura, nao por celula
+    // Para CONSTRUIR usam-se os limites em degraus (chaves estaveis); para
+    // DESENHAR usam-se os continuos, que dao o desvanecer suave. Construir
+    // sempre por cima do que o shader mostra garante que nada falta.
+    const L = limitesFixos();            // uma vez por semeadura, nao por celula
     const cv2 = vista().perto;
     const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(cv2.lat * Math.PI / 180));
     const tx0 = lonTile(cv2.lng - RMAX * mLon), tx1 = lonTile(cv2.lng + RMAX * mLon);
@@ -1338,6 +1404,7 @@ function ligaArvores(map, op) {
         // liga. Sem isto, ligar o 3D deixava as arvores enterradas.
         const ch = tx + '/' + ty + '/' + salto + (comRelevo ? 't' : 'p');
         let c = celulas.get(ch);
+        if (c !== undefined) { celulas.delete(ch); celulas.set(ch, c); }   // usada = recente
         if (c === undefined) {
           // orcamento por passagem: encher tudo de uma vez trancava o ecra.
           // O que faltar fica para a passagem seguinte, marcada aqui.
@@ -1348,7 +1415,9 @@ function ligaArvores(map, op) {
             msConstruir += (typeof performance !== 'undefined' ? performance : Date).now() - t0; }
           if (c === null) { faltouDEM = true; continue; }
           celulas.set(ch, c);
-          if (celulas.size > 9000) celulas.delete(celulas.keys().next().value);
+          // Map guarda a ordem de insercao, e acima cada acerto re-insere: por
+          // isso o primeiro da lista e mesmo o MENOS usado, nao o mais antigo.
+          if (celulas.size > 30000) celulas.delete(celulas.keys().next().value);
         }
         if (c.length) { partes.push([d, c]); total += c.length / 11; }
       }
@@ -1623,11 +1692,11 @@ function ligaArvores(map, op) {
 // as arvores ligadas passarem de 55 ms (menos de 18 por segundo), corta o
 // tecto a metade e guarda a decisao. E a mesma defesa do tecto da DGT, pela
 // mesma razao: da ultima vez que eu adivinhei um numero, o download parou.
-const ARV_TECTO = 40000;
+const ARV_TECTO = 150000;
 function arvTecto() {
   let v = 0;
-  try { v = +localStorage.getItem('sne-arv-tecto2'); } catch (e) {}
-  return v >= 6000 && v <= ARV_TECTO ? v : ARV_TECTO;
+  try { v = +localStorage.getItem('sne-arv-tecto3'); } catch (e) {}
+  return v >= 20000 && v <= ARV_TECTO ? v : ARV_TECTO;
 }
 function vigiaArvores() {
   if (!mapT) return;
@@ -1635,9 +1704,9 @@ function vigiaArvores() {
     if (!ARV || !arvQuer) return;
     const r = ARV.ritmo(), tec = arvTecto();
     if (r == null) return;
-    if (r > 55 && tec > 8000) {
+    if (r > 55 && tec > 25000) {
       const novo = Math.round(tec / 2);
-      try { localStorage.setItem('sne-arv-tecto2', String(novo)); } catch (e) {}
+      try { localStorage.setItem('sne-arv-tecto3', String(novo)); } catch (e) {}
       // baixar o tecto na camada que ja existe. Antes destruia-se e criava-se
       // outra, e por isso o aviso repetia-se de cada vez -- era o que ele
       // estava farto de ver. Uma vez chega: ele ja percebeu.

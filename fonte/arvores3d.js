@@ -72,7 +72,10 @@ function ligaArvores(map, op) {
   // se constroi nada. O que sobra e desenho, e 40 000 arvores sao 1,8 milhoes
   // de triangulos numa so chamada -- coisa que qualquer telemovel destes faz
   // sem dar por ela. O vigia continua la para o caso de eu estar enganado.
-  let TECTO = op.tecto == null ? 40000 : op.tecto;
+  // 150 000 arvores sao ~6,9 M de triangulos numa so chamada de desenho, e um
+  // telemovel destes desenha bem ate uns 5 a 10 M. O vigia continua a cortar
+  // se eu estiver enganado; mais vale enganar-me para cima e ele avisa.
+  let TECTO = op.tecto == null ? 150000 : op.tecto;
   const ORCAMENTO = op.orcamento == null ? 400 : op.orcamento; // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
   const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
@@ -422,6 +425,20 @@ function ligaArvores(map, op) {
     if (!isFinite(A) || A < 120) A = 120;
     return { perto, A: Math.min(9000, A), f };
   }
+  // ESCADA FIXA. Este e o defeito que ele apanhou: "volto atras pelo mesmo
+  // caminho e volta a desbloquear arvores". A chave de cada celula inclui o
+  // salto, e o salto vinha de limites(), que varia CONTINUAMENTE com o zoom,
+  // a inclinacao e a posicao. Bastava um dedo a mais para o salto mudar, a
+  // chave mudar, e o mesmo pedaco de chao ser calculado de novo -- para
+  // sempre, sem nunca assentar.
+  //
+  // Agora os limites que decidem o salto sobem para o degrau seguinte de uma
+  // escada fixa. O chao so muda de detalhe quando se atravessa um degrau, e
+  // atravessa-lo para tras devolve a MESMA chave -- logo, a celula guardada.
+  const ESCADA = [120, 240, 480, 960, 1920, 3840, 7680];
+  const degrau = (v) => ESCADA.find((x) => x >= v) || ESCADA[ESCADA.length - 1];
+  const limitesFixos = () => limites().map(degrau);
+
   // O escDens so aperta os DOIS DE PERTO, que sao os que custam.
   function limites() {
     const v = vista(), A = v.A, f = v.f;
@@ -456,7 +473,10 @@ function ligaArvores(map, op) {
 
     const RMAX = limites()[3];
     const comRelevo = !!(map.getTerrain && map.getTerrain());
-    const L = limites();                 // uma vez por semeadura, nao por celula
+    // Para CONSTRUIR usam-se os limites em degraus (chaves estaveis); para
+    // DESENHAR usam-se os continuos, que dao o desvanecer suave. Construir
+    // sempre por cima do que o shader mostra garante que nada falta.
+    const L = limitesFixos();            // uma vez por semeadura, nao por celula
     const cv2 = vista().perto;
     const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(cv2.lat * Math.PI / 180));
     const tx0 = lonTile(cv2.lng - RMAX * mLon), tx1 = lonTile(cv2.lng + RMAX * mLon);
@@ -502,6 +522,7 @@ function ligaArvores(map, op) {
         // liga. Sem isto, ligar o 3D deixava as arvores enterradas.
         const ch = tx + '/' + ty + '/' + salto + (comRelevo ? 't' : 'p');
         let c = celulas.get(ch);
+        if (c !== undefined) { celulas.delete(ch); celulas.set(ch, c); }   // usada = recente
         if (c === undefined) {
           // orcamento por passagem: encher tudo de uma vez trancava o ecra.
           // O que faltar fica para a passagem seguinte, marcada aqui.
@@ -512,7 +533,9 @@ function ligaArvores(map, op) {
             msConstruir += (typeof performance !== 'undefined' ? performance : Date).now() - t0; }
           if (c === null) { faltouDEM = true; continue; }
           celulas.set(ch, c);
-          if (celulas.size > 9000) celulas.delete(celulas.keys().next().value);
+          // Map guarda a ordem de insercao, e acima cada acerto re-insere: por
+          // isso o primeiro da lista e mesmo o MENOS usado, nao o mais antigo.
+          if (celulas.size > 30000) celulas.delete(celulas.keys().next().value);
         }
         if (c.length) { partes.push([d, c]); total += c.length / 11; }
       }
