@@ -251,6 +251,12 @@ function ligaArvores(map, op) {
   // Estava ao contrario: eu encolhia o alcance todo, e o que ficava de fora
   // era justamente o que ele queria ver -- o horizonte, que quase nao custa.
   let escDens = 1;
+  // Contabilidade do custo: quanto tempo se gasta a CONSTRUIR celulas (uma vez
+  // cada) e quanto se gasta a JUNTAR o que ja esta construido (a cada gesto).
+  // E a diferenca entre estas duas que diz se valeria a pena trazer as arvores
+  // num ficheiro feito de antemao, ou se isso nao mudava nada.
+  let msConstruir = 0, msJuntar = 0, nSemeias = 0, msManchas = 0, msLista = 0, msCopiar = 0;
+  const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
 
   const tileLon = (x) => x / P2 * 360 - 180;
   const tileLat = (y) => {
@@ -428,6 +434,8 @@ function ligaArvores(map, op) {
   }
 
   function semeia(soReusar) {
+    const tSemeia = (typeof performance !== 'undefined' ? performance : Date).now();
+    const msAntes = msConstruir;
     if (map.getZoom() < ZSEM) { nInst = 0; incompleto = false; return; }
     const ct = map.getCenter();
     // As manchas so se pedem se houver mesmo celula nova para construir: com
@@ -436,16 +444,19 @@ function ligaArvores(map, op) {
     let feats = null;
     const manchas = () => {
       if (feats) return feats;
+      const tM = agoraMs();
       feats = map.querySourceFeatures('topo', {
         sourceLayer: 'solo',
         filter: ['in', ['coalesce', ['get', 'c'],
           ['match', ['get', 'g'], 'rocha', 5, 'matos', 4, 0]], ['literal', [4, 5]]],
       });
+      msManchas += agoraMs() - tM;
       return feats;
     };
 
     const RMAX = limites()[3];
     const comRelevo = !!(map.getTerrain && map.getTerrain());
+    const L = limites();                 // uma vez por semeadura, nao por celula
     const cv2 = vista().perto;
     const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(cv2.lat * Math.PI / 180));
     const tx0 = lonTile(cv2.lng - RMAX * mLon), tx1 = lonTile(cv2.lng + RMAX * mLon);
@@ -457,6 +468,7 @@ function ligaArvores(map, op) {
     // fronteira recta a separar -- que e exactamente o que ele fotografou.
     // Do centro para fora, uma passagem a meio le-se como "ainda a carregar",
     // que e a verdade.
+    const tL = agoraMs();
     const lista = [];
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
@@ -469,6 +481,7 @@ function ligaArvores(map, op) {
       }
     }
     lista.sort((a, b) => a[0] - b[0]);
+    msLista += agoraMs() - tL;
 
     const partes = []; let total = 0, novas = 0;
     let faltouDEM = false, faltouTempo = false;
@@ -479,7 +492,10 @@ function ligaArvores(map, op) {
         // desenhar arvores de detalhe fino que a celula nem tinha construido --
         // e essas nao ha maneira de as murchar, simplesmente faltavam.
         const FOLGA = 250;
-        const L = limites();
+        // L vem de FORA do ciclo. Estava aqui dentro, e limites() chama duas
+        // unproject() do MapLibre -- que com o relevo ligado lancam um raio
+        // contra a malha do terreno. Eram sete mil raios por gesto, e era isso
+        // (nao as arvores, nao o desenho) que fazia meio segundo de espera.
         const salto = d < L[0] + FOLGA ? 1 : (d < L[1] + FOLGA ? 3 : (d < L[2] + FOLGA ? 9 : 27));
         // A chave leva o estado do relevo: sem relevo as cotas sao todas zero
         // (e certo, o mapa e plano), e essa celula nao serve quando o relevo
@@ -491,7 +507,9 @@ function ligaArvores(map, op) {
           // O que faltar fica para a passagem seguinte, marcada aqui.
           if (soReusar || novas >= ORCAMENTO) { faltouTempo = true; continue; }
           if (!manchas().length) { faltouTempo = true; continue; }
-          c = fazCelula(tx, ty, salto, feats); novas++;
+          { const t0 = (typeof performance !== 'undefined' ? performance : Date).now();
+            c = fazCelula(tx, ty, salto, feats); novas++;
+            msConstruir += (typeof performance !== 'undefined' ? performance : Date).now() - t0; }
           if (c === null) { faltouDEM = true; continue; }
           celulas.set(ch, c);
           if (celulas.size > 9000) celulas.delete(celulas.keys().next().value);
@@ -517,6 +535,7 @@ function ligaArvores(map, op) {
     //
     // O alcance move-se devagar (um quarto do caminho de cada vez) para nao
     // saltar de um fotograma para o outro.
+    const tC = agoraMs();
     const buf = new Float32Array(Math.min(total, TECTO) * 11);
     let k = 0, cortou = false;
     for (const [d, c] of partes) {
@@ -524,6 +543,7 @@ function ligaArvores(map, op) {
       if (k + nc > TECTO) { cortou = true; break; }
       buf.set(c, k * 11); k += nc;
     }
+    msCopiar += agoraMs() - tC;
     // Ajuste da densidade de perto: aperta quando nao cabe, alarga quando
     // sobra folga. Um terco do caminho de cada vez, para nao saltar.
     const alvo = total > TECTO ? escDens * 0.78
@@ -531,6 +551,9 @@ function ligaArvores(map, op) {
     escDens = Math.max(0.15, Math.min(1, escDens + (alvo - escDens) * 0.35));
     INST = buf; nInst = k;
     cortado = cortou;
+    nSemeias++;
+    msJuntar += ((typeof performance !== 'undefined' ? performance : Date).now() - tSemeia)
+              - (msConstruir - msAntes);
     if (op.aoContar) op.aoContar(k, cortado, incompleto);
   }
 
@@ -744,6 +767,9 @@ function ligaArvores(map, op) {
         niv[INST[i * 11 + 10]]++;
       }
       return { n: nInst, celulas: celulas.size, niveis: niv, incompleto, cortado,
+               msConstruir: Math.round(msConstruir), msJuntar: Math.round(msJuntar),
+               msManchas: Math.round(msManchas), msLista: Math.round(msLista), msCopiar: Math.round(msCopiar),
+               semeias: nSemeias,
                limites: limites().map(Math.round),
                cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
