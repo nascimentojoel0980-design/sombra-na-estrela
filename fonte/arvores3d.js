@@ -291,6 +291,16 @@ function ligaArvores(map, op) {
 
   // -------------------------------------------------------------- a camada
   let prog, locs, bufV, bufI, inst2, cap = 0;
+  // Ritmo de desenho medido no proprio sitio onde custa: entre chamadas ao
+  // render desta camada. Serve para a pagina baixar o tecto sozinha se o
+  // telemovel nao acompanhar -- que e uma coisa que nao se adivinha de fora.
+  // So contam os fotogramas desenhados enquanto o mapa se mexe: ai o MapLibre
+  // repinta sem parar e a diferenca entre dois renders E o custo do fotograma.
+  // Com o mapa parado nao ha repintura e a diferenca e tempo de espera, que
+  // nao quer dizer nada. Filtrar por "salto menor que meio segundo" era o erro
+  // obvio e ao contrario: quanto mais lento o telemovel, menos media -- e era
+  // justamente o telemovel lento que isto tinha de apanhar.
+  let tAnterior = 0, mexiaAntes = false; const ritmos = [];
 
   const camada = {
     id: op.id || 'arvores', type: 'custom', renderingMode: '3d',
@@ -377,6 +387,13 @@ function ligaArvores(map, op) {
       gl.uniform2f(locs.uCentro, c[0], c[1]);
       gl.uniform2f(locs.uFade, RAIO * 0.45, RAIO);
       gl.uniform3f(locs.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
+      const agora = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const mexe = typeof map.isMoving === 'function' ? map.isMoving() : true;
+      if (tAnterior && mexe && mexiaAntes) {
+        ritmos.push(agora - tAnterior);
+        if (ritmos.length > 60) ritmos.shift();
+      }
+      tAnterior = agora; mexiaAntes = mexe;
       inst2.draw(NVERT, nInst);
 
       // devolver o divisor a zero: o MapLibre reutiliza estes indices
@@ -403,6 +420,15 @@ function ligaArvores(map, op) {
     camada,
     semeia: () => { assinatura = ''; talvezSemeia(); },
     quantas: () => nInst,
+    // mediana de ms entre fotogramas desta camada, ou null se ainda nao ha
+    // amostra que chegue para dizer alguma coisa
+    ritmo() {
+      // seis chegam: um telemovel que esteja mesmo a sofrer desenha poucos
+      // fotogramas, e exigir vinte amostras era nunca apanhar justamente esse.
+      if (ritmos.length < 6) return null;
+      const o = ritmos.slice().sort((a, b) => a - b);
+      return +o[o.length >> 1].toFixed(1);
+    },
     // Para diagnostico: cada arvore assenta na cota do SEU ponto (chaoAbs e
     // chamado por arvore, nao por mancha) e tem a SUA altura. Se o intervalo
     // de cotas for zero numa encosta, ha alguma coisa errada -- e isto diz-o.
