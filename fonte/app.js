@@ -215,11 +215,20 @@ function dgtKm2(z, y, n) {
   return m * m / 1e6;
 }
 // guarda o nivel maximo (19) e tambem o 18 e o 17, para funcionar sem rede em qualquer zoom
+// O NIVEL TEM DE SAIR DO ZOOM, NAO DE UMA CONSTANTE.
+// A camada DGT tem tileSize 2048 com zoomOffset -3, por isso pede sempre o
+// nivel (zoom do mapa - 3) -- confirmado no proprio objecto: mapa em 18 da
+// _getZoomForUrl() 15. A descarga usava Z_DGT fixo e guardava 14/15/16, que
+// so servem os zooms 17-19. Medido a 18/09/2026, pedido a pedido: nos zooms
+// 14, 15 e 16 -- aqueles em que se anda a olhar para o mapa -- ZERO dos
+// quadrados guardados era aproveitado, e sem rede a camada ficava vazia.
+// O satTiles, do Esri, ja fazia isto bem; e dele que vem a forma.
+function zDGT() { return Math.min(16, Math.max(6, Math.round(map.getZoom()) - 3)); }
 function dgtTiles(vb, zAlvo) {
-  const c = dgtCaixa(vb, zAlvo), out = [];
+  const c = dgtCaixa(vb, zAlvo == null ? zDGT() : zAlvo), out = [];
   for (let d = 2; d >= 0; d--) {
     const z = c.z - d;
-    if (z < 12) continue;
+    if (z < 6) continue;
     const x0 = c.x0 >> d, x1 = c.x1 >> d, y0 = c.y0 >> d, y1 = c.y1 >> d;
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push(dgtUrl(z, x, y, PX_DGT));
   }
@@ -272,7 +281,19 @@ function ligaSat(modo) {
         if (t && !t.__retry) {
           t.__retry = 1;
           const src = t.src;
-          setTimeout(() => { try { t.src = src + '&r=1'; } catch (err) {} }, 1500 + Math.random() * 2000);
+          // SEM REDE, MUDAR O ENDERECO E PERDER O QUADRADO. O '&r=1' existe para
+          // fugir ao estrangulamento da DGT quando ha rede; sem rede, esse
+          // endereco nao esta na cache -- e por isso ate os quadrados JA
+          // GUARDADOS ficavam em branco. Medido a 18/09/2026: dos pedidos de
+          // uma vista, os limpos estavam 100% na descarga e os '&r=1' 0%.
+          // Offline repete-se o MESMO endereco (tirar e repor o src, senao o
+          // browser nao recarrega), para o service worker o poder servir.
+          setTimeout(() => {
+            try {
+              if (navigator.onLine) { t.src = src + '&r=1'; }
+              else { t.removeAttribute('src'); t.src = src; }
+            } catch (err) {}
+          }, 1500 + Math.random() * 2000);
         }
       });
     }
@@ -595,7 +616,7 @@ function actualizaContagem() {
   const av = document.getElementById('off-aviso');
   if (av) {
     if (satModo === 1) {
-      const c = dgtCaixa(vistaUtil());
+      const c = dgtCaixa(vistaUtil(), zDGT());
       if (c.cortado) {
         const km = Math.round((c.x1 - c.x0 + 1) * (c.y1 - c.y0 + 1) * dgtKm2(c.z, c.y0, 2 ** c.z));
         const kmT = Math.round(c.total * dgtKm2(c.z, c.y0, 2 ** c.z));
