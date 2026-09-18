@@ -112,8 +112,13 @@ function loadDet() {
     ov.addTo(detGroup); dLoaded.set(i, ov);
   }
 }"""
-assert OLD_LOADDET in h
-h=h.replace(OLD_LOADDET,NEW_LOADDET)
+# Estas tres reescritas so fazem sentido enquanto a aplicacao tiver fotografia
+# de satelite. Depois do sem_satelite.py o codigo original deixa de la estar, e
+# entao nao ha nada para reescrever -- avisa-se e segue-se, em vez de rebentar.
+SEM_SAT = 'dados/relevo.jpg' in h
+if OLD_LOADDET in h: h=h.replace(OLD_LOADDET,NEW_LOADDET)
+elif not SEM_SAT: raise SystemExit('build: loadDet nao encontrado e a aplicacao ainda tem satelite')
+else: print('sem satelite: loadDet nao precisa de reescrita')
 
 OLD_B3 = """const detTiles3 = new Map();
 function detBundle3(i) {
@@ -121,13 +126,13 @@ function detBundle3(i) {
   return detTiles3.get(i);
 }"""
 NEW_B3 = """function det3(LB) { return DET.filter((t) => LB.intersects(detBounds(t))).slice(0, 20).map((t) => [DETB + t[4], [[t[0], t[1]], [t[2], t[3]]]]); }"""
-assert OLD_B3 in h
-h=h.replace(OLD_B3,NEW_B3)
+if OLD_B3 in h: h=h.replace(OLD_B3,NEW_B3)
+elif not SEM_SAT: raise SystemExit('build: detBundle3 nao encontrado e a aplicacao ainda tem satelite')
 
 OLD_IDS = """const ids = DET.map((d, i) => d[1].some((b) => LB.intersects(L.latLngBounds(b))) ? i : -1).filter((i) => i >= 0); layers.push((await Promise.all(ids.map(detBundle3))).flat()); }"""
 NEW_IDS = """layers.push(det3(LB)); }"""
-assert OLD_IDS in h
-h=h.replace(OLD_IDS,NEW_IDS)
+if OLD_IDS in h: h=h.replace(OLD_IDS,NEW_IDS)
+elif not SEM_SAT: raise SystemExit('build: o recorte do detalhe nao foi encontrado e a aplicacao ainda tem satelite')
 
 
 for k,v in m.items(): h=h.replace(k,v)

@@ -32,7 +32,7 @@ header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var
 .seg button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.02em;cursor:pointer;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 main{position:relative;min-height:0}
-#map{position:absolute;inset:0;background:#2a2f28;z-index:0;isolation:isolate}
+#map{position:absolute;inset:0;background:#EDEADD;z-index:0;isolation:isolate}
 #mapt{position:fixed;inset:0;background:#F7F4EC;z-index:1200}
 .mapctl{z-index:1400!important}
 .toast{z-index:1460!important}
@@ -251,7 +251,7 @@ const BOUNDS = [[40.0, -8.10], [40.70, -7.15]];
 const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 20, preferCanvas: false, tap: false });
 L.control.zoom({ position: 'topright' }).addTo(map);
 [['satP', 380], ['ortoP', 390], ['detP', 395], ['onlineP', 397]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; map.getPane(n).style.pointerEvents = 'none'; });
-const base = L.imageOverlay('/_blob/bbb0be3a812c34296b0abe310453249c', BOUNDS, { interactive: false, pane: 'satP' }).addTo(map);
+const base = L.imageOverlay('dados/relevo.jpg', BOUNDS, { interactive: false, pane: 'satP' }).addTo(map);
 map.fitBounds(BOUNDS, { padding: [0, 0] });
 function enquadraInicio() {
   if (selected || document.body.classList.contains('building')) return;
@@ -269,6 +269,8 @@ addEventListener('resize', () => { clearTimeout(window.__rq); window.__rq = setT
 document.addEventListener('fullscreenchange', () => { if (topoAberto) { setTimeout(() => { ajustaTopo(); if (mapT) mapT.resize(); }, 120); } });
 const CHUNKS = window.__CHUNKS__; const loaded = new Set();
 function loadChunks() {
+  return;   // sem fotografia de satelite: ver fonte/scripts-dados/sem_satelite.py
+  /* eslint-disable no-unreachable */
   if (map.getZoom() < 11) return;
   const vb = map.getBounds().pad(0.3);
   CHUNKS.forEach(([src, b], i) => {
@@ -278,10 +280,15 @@ function loadChunks() {
     ov.addTo(map); ov.bringToBack(); base.bringToBack();
   });
 }
-map.on('moveend zoomend', loadChunks);
+function opacidadeFundo() {
+  const z = map.getZoom();
+  base.setOpacity(z <= 12 ? 1 : Math.max(0.3, 1 - (z - 12) / 3.5 * 0.7));
+}
+map.on('zoomend', opacidadeFundo); opacidadeFundo();
 // Ortofotos DGT 2025 (antes dos fogos de agosto de 2025), faixa de 400 m à volta dos percursos
 const ORTHO = window.__ORTHO__ || []; const oLoaded = new Set(); const orthoGroup = L.layerGroup().addTo(map);
 function loadOrtho() {
+  return;   // sem ortofotos: ver fonte/scripts-dados/sem_satelite.py
   if (map.getZoom() < 12) { orthoGroup.eachLayer(l => l.setOpacity(0)); return; }
   orthoGroup.eachLayer(l => l.setOpacity(1));
   const vb = map.getBounds().pad(0.2);
@@ -295,6 +302,7 @@ map.on('moveend zoomend', loadOrtho);
 // Detalhe 0,6 m/px: ortofotos DGT 2025 numa faixa de ~75 m de cada lado dos percursos (zoom >= 15)
 const DET = window.__DET__ || []; const dLoaded = new Set(); const detGroup = L.layerGroup().addTo(map);
 function loadDet() {
+  return;   // sem detalhe a 25 cm: ver fonte/scripts-dados/sem_satelite.py
   const z = map.getZoom(); detGroup.eachLayer((l) => l.setOpacity(z >= 15 ? 1 : 0));
   if (z < 15) return;
   const vb = map.getBounds();
@@ -601,7 +609,9 @@ function ligaSat(modo) {
   if (typeof actualizaContagem === 'function') actualizaContagem();
   try { localStorage.setItem('sne-sat', String(satModo)); } catch (e) {}
 }
-document.getElementById('btn-sat').onclick = () => ligaSat(satModo + 1);
+// O botao do satelite sai: nao ha satelite nenhum para ligar. O mapa
+// topografico (o botao das montanhas) e agora o unico detalhe, e e vectorial.
+{ const bs = document.getElementById('btn-sat'); if (bs) bs.hidden = true; }
 try { const m = +(localStorage.getItem('sne-sat') || 0); if (m) ligaSat(m); } catch (e) {}
 
 // ---------------- Mapa topografico (vetorial, MapLibre + PMTiles) ----------------
@@ -1683,6 +1693,8 @@ function mandaSW(msg) {
 }
 const MB = (n) => n >= 1000e6 ? (n / 1e9).toFixed(1).replace('.', ',') + ' GB' : Math.round(n / 1e6) + ' MB';
 function fotosDaVista() {
+  return [];   // sem fotografia nao ha imagens desta zona para guardar
+  // eslint-disable-next-line no-unreachable
   const vb = vistaUtil(), urls = new Set();
   DET.forEach((t) => { if (vb.intersects(L.latLngBounds([t[0], t[1]], [t[2], t[3]]))) urls.add('dados/det/' + t[4]); });
   ORTHO.forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
@@ -1820,6 +1832,7 @@ function desenhaZona() {
   if (!painelAberto && !aDescarregar) { limpaZona(); return; }
   const c = caixaDescarga();
   limpaZona();
+  return;   // sem fotografia nao ha zona de descarga para marcar
   zonaDesc = L.layerGroup().addTo(map);
   L.rectangle(c.b, {
     color: '#F0B24A', weight: aDescarregar ? 3 : 2, dashArray: aDescarregar ? null : '8 5',
@@ -1918,8 +1931,13 @@ function ligaOffline() {
     if (cobLigada) { pedeCobertura(); if (!COB.length) toast('Ainda não guardaste nada a 25 cm. Liga o satélite da DGT e guarda uma zona.'); }
     else desenhaCobertura();
   };
+  // Sem fotografia nao ha "guardar esta zona": o que se guarda agora e o mapa
+  // topografico, que e um ficheiro so e ja tem o seu botao.
+  ['off-fotos', 'off-ver', 'off-barra-fotos'].forEach((k) => {
+    const b = document.getElementById(k); if (b) b.hidden = true;
+  });
   const c = document.getElementById('off-apagar');
-  if (c) c.onclick = () => { if (confirm('Apagar o mapa e as imagens guardadas no telemóvel?')) mandaSW({ tipo: 'apagar' }); };
+  if (c) c.onclick = () => { if (confirm('Apagar o mapa guardado no telemóvel?')) mandaSW({ tipo: 'apagar' }); };
 }
 document.getElementById('btn-relevo').onclick = () => {
   if (!mapT) return;
@@ -2257,7 +2275,7 @@ async function ensureML() {
   if (!mlP) mlP = (async () => {
     try { await loadScript('lib/maplibre-gl-csp.js'); } catch (e) { await loadScript('https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl-csp.js'); }
     maplibregl.setWorkerUrl(new URL('lib/maplibre-gl-csp-worker.js', location.href).href);
-    maplibregl.addProtocol('dem', demTile); maplibregl.addProtocol('img', imgTile);
+    maplibregl.addProtocol('dem', demTile);
   })();
   return mlP;
 }
@@ -2332,14 +2350,27 @@ async function open3D(r) {
   const box = document.getElementById('v3d'), msg = document.getElementById('v3d-msg');
   box.hidden = false; msg.textContent = 'A carregar o relevo…';
   try { await ensureML(); } catch (e) { msg.textContent = 'Não foi possível carregar a vista 3D neste dispositivo.'; return; }
+  if (!pmProto) {
+    try {
+      await loadScript('lib/pmtiles.js');
+      pmProto = new pmtiles.Protocol();
+      maplibregl.addProtocol('pmtiles', pmProto.tile);
+    } catch (e) { msg.textContent = 'Falta a biblioteca do mapa topográfico.'; return; }
+  }
   const bb = L.latLngBounds(r.segs ? r.segs.flatMap((s) => segPts(s)) : geo(r).flat());
   if (!map3) {
-    map3 = new maplibregl.Map({ container: 'map3', attributionControl: false, maxPitch: 80, pitch: 62, bearing: -20, center: [bb.getCenter().lng, bb.getCenter().lat], zoom: 13,
-      style: { version: 8, sources: { img: { type: 'raster', tiles: ['img://{z}/{x}/{y}'], tileSize: 512, maxzoom: 18 }, dem: { type: 'raster-dem', tiles: ['dem://{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 12 }, rota: { type: 'geojson', data: route3dGeo(r) } },
-        layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#2a2f28' } }, { id: 'img', type: 'raster', source: 'img' },
-          { id: 'rota-c', type: 'line', source: 'rota', paint: { 'line-color': '#0B120D', 'line-width': 9, 'line-opacity': 0.6 }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
-          { id: 'rota', type: 'line', source: 'rota', paint: { 'line-color': ['get', 'c'], 'line-width': ['coalesce', ['get', 'w'], 5] }, layout: { 'line-join': 'round', 'line-cap': 'round' } }],
-        terrain: { source: 'dem', exaggeration: 1.3 } } });
+    // O fundo era fotografia recomposta em JavaScript azulejo a azulejo -- a
+    // coisa mais cara da aplicacao inteira. Passa a ser o mesmo mapa
+    // topografico vectorial do botao das montanhas, com o relevo por cima.
+    // Os nomes 'rota' e 'rota-c' ja existem nesse estilo, dai 'r3'.
+    const est = estiloTopo();
+    est.sources.rota = { type: 'geojson', data: route3dGeo(r) };
+    est.layers.push(
+      { id: 'r3-c', type: 'line', source: 'rota', paint: { 'line-color': '#0B120D', 'line-width': 9, 'line-opacity': 0.55 }, layout: { 'line-join': 'round', 'line-cap': 'round' } },
+      { id: 'r3', type: 'line', source: 'rota', paint: { 'line-color': ['get', 'c'], 'line-width': ['coalesce', ['get', 'w'], 5] }, layout: { 'line-join': 'round', 'line-cap': 'round' } });
+    est.terrain = { source: 'dem', exaggeration: 1.3 };
+    map3 = new maplibregl.Map({ container: 'map3', attributionControl: false, maxPitch: 80, pitch: 62, bearing: -20, center: [bb.getCenter().lng, bb.getCenter().lat], zoom: 13, maxZoom: 21, style: est });
+    ligaPadroes(map3);
     map3.on('error', (e) => { if (e && e.error) msg.textContent = 'Erro 3D: ' + (e.error.message || e.error); });
     map3.on('idle', () => { msg.textContent = ''; });
   } else { map3.getSource('rota').setData(route3dGeo(r)); map3.resize(); }
