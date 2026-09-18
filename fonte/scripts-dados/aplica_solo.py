@@ -62,7 +62,7 @@ __ARVORES__
 // as arvores ligadas passarem de 55 ms (menos de 18 por segundo), corta o
 // tecto a metade e guarda a decisao. E a mesma defesa do tecto da DGT, pela
 // mesma razao: da ultima vez que eu adivinhei um numero, o download parou.
-const ARV_TECTO = 30000;
+const ARV_TECTO = 14000;
 function arvTecto() {
   let v = 0;
   try { v = +localStorage.getItem('sne-arv-tecto'); } catch (e) {}

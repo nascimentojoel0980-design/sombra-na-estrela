@@ -535,7 +535,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 17:02';
+const VERSAO = '18/09 17:14';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 // a caixa de informacao do satelite desaparece sozinha; toca no botao do satelite para a ver outra vez
@@ -727,7 +727,10 @@ function ligaArvores(map, op) {
   const ZOOM1 = op.zoom1 == null ? 15.4 : op.zoom1;
   // limite de cada nivel, em metros: [todos, de 3 em 3, de 9 em 9]
   const DIST = op.dist || [600, 1500, 3000];
-  const TECTO = op.tecto == null ? 30000 : op.tecto;
+  // 30 000 era de mais: o telemovel dele baixou o tecto sozinho e disse-o no
+  // ecra. Comeca-se mais abaixo e o vigia sobe... nao, o vigia so desce, mas
+  // 14 000 ja da floresta cheia a vista e cabe num telefone.
+  const TECTO = op.tecto == null ? 14000 : op.tecto;
   const ORCAMENTO = op.orcamento == null ? 140 : op.orcamento; // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
   const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
@@ -943,11 +946,18 @@ function ligaArvores(map, op) {
   // grelhas grossas sao sub-conjuntos da fina, aproximar so ACRESCENTA arvores.
   const nivelDe = (i, j) => (i % 9 === 0 && j % 9 === 0) ? 0 : ((i % 3 === 0 && j % 3 === 0) ? 1 : 2);
 
-  // numero proprio de cada arvore, tirado so da sua posicao: nao muda com o
+  // Numero proprio de cada arvore, tirado so da sua posicao: nao muda com o
   // mapa, por isso o sorteio do tecto da sempre o mesmo conjunto.
+  //
+  // A primeira versao usava o fract(sin(...)) de manual de shaders. Nao serve
+  // AQUI: esse truque precisa que as coordenadas variem entre 0 e 1, e as
+  // coordenadas mercator variam 1e-5 ao longo de uma vista inteira. Nesse
+  // intervalo o seno e praticamente uma recta, e o fract de uma recta da
+  // FAIXAS -- arvores as riscas com corredores vazios pelo meio, que foi o que
+  // ele fotografou. Agora e um hash de inteiros, que da ruido a serio.
   function sorte(mx, my) {
-    const v = Math.sin(mx * 12.9898 + my * 78.233) * 43758.5453;
-    return v - Math.floor(v);
+    const a = (mx * 134217728) | 0, b = (my * 134217728) | 0;   // ~0,3 m por unidade
+    return baralha(a, b, 11);
   }
 
   function fazCelula(tx, ty, salto, feats) {
@@ -1025,7 +1035,10 @@ function ligaArvores(map, op) {
   }
 
   // ------------------------------------------------------------- semear
-  function semeia() {
+  // soReusar: durante o arrasto nao se constroi celula nenhuma -- junta-se o
+  // que ja esta guardado e pronto. Construir a meio de um movimento e o que o
+  // tornava pesado e pouco responsivo; o que faltar entra quando ele larga.
+  function semeia(soReusar) {
     if (map.getZoom() < ZSEM) { nInst = 0; incompleto = false; return; }
     const ct = map.getCenter();
     // As manchas so se pedem se houver mesmo celula nova para construir: com
@@ -1080,7 +1093,7 @@ function ligaArvores(map, op) {
         if (c === undefined) {
           // orcamento por passagem: encher tudo de uma vez trancava o ecra.
           // O que faltar fica para a passagem seguinte, marcada aqui.
-          if (novas >= ORCAMENTO) { faltouTempo = true; continue; }
+          if (soReusar || novas >= ORCAMENTO) { faltouTempo = true; continue; }
           if (!manchas().length) { faltouTempo = true; continue; }
           c = fazCelula(tx, ty, salto, feats); novas++;
           if (c === null) { faltouDEM = true; continue; }
@@ -1228,9 +1241,18 @@ function ligaArvores(map, op) {
       tAnterior = agora; mexiaAntes = mexe;
       inst2.draw(NVERT, nInst);
 
-      // devolver o divisor a zero: o MapLibre reutiliza estes indices
+      // Devolver o GL como estava. Nao chega por o divisor a zero: os arrays
+      // ficavam LIGADOS a apontar para o nosso buffer, e o MapLibre desenha a
+      // seguir com os mesmos indices de atributo. Dava aquele ecra de
+      // triangulos castanhos gigantes -- nao eram arvores, era o terreno dele
+      // a ler vertices nossos.
       inst2.div(locs.aPos, 0); inst2.div(locs.aArv, 0);
       inst2.div(locs.aTom, 0); inst2.div(locs.aNiv, 0);
+      gl.disableVertexAttribArray(locs.aPos); gl.disableVertexAttribArray(locs.aArv);
+      gl.disableVertexAttribArray(locs.aTom); gl.disableVertexAttribArray(locs.aNiv);
+      gl.disableVertexAttribArray(locs.aV); gl.disableVertexAttribArray(locs.aBossa);
+      gl.disable(gl.CULL_FACE);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
     },
   };
 
@@ -1258,7 +1280,7 @@ function ligaArvores(map, op) {
     const t = Date.now();
     if (t - ultimoMov < 220) return;
     ultimoMov = t;
-    semeia();
+    semeia(true);
   });
   map.on('moveend', () => talvezSemeia(false));
   map.on('sourcedata', (e) => {
@@ -1313,7 +1335,7 @@ function ligaArvores(map, op) {
 // as arvores ligadas passarem de 55 ms (menos de 18 por segundo), corta o
 // tecto a metade e guarda a decisao. E a mesma defesa do tecto da DGT, pela
 // mesma razao: da ultima vez que eu adivinhei um numero, o download parou.
-const ARV_TECTO = 30000;
+const ARV_TECTO = 14000;
 function arvTecto() {
   let v = 0;
   try { v = +localStorage.getItem('sne-arv-tecto'); } catch (e) {}
