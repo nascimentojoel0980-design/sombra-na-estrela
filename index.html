@@ -535,7 +535,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 16:23';
+const VERSAO = '18/09 16:44';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 // a caixa de informacao do satelite desaparece sozinha; toca no botao do satelite para a ver outra vez
@@ -1306,6 +1306,42 @@ function vigiaArvores() {
     }
   });
 }
+// ---- o canvas volta ao tamanho certo sozinho -----------------------------
+// Ele apanhou duas vezes o mapa desenhado num quadrado no meio do ecra com
+// rastos a volta. Isso e o canvas do MapLibre com um tamanho e a caixa com
+// outro: o navegador estica os pixeis da borda para tapar o resto, e sai
+// aquilo. Ja ha um ouvinte do 'resize', um do 'fullscreenchange', um
+// ResizeObserver e um do visualViewport, e mesmo assim voltou a acontecer.
+//
+// Entao deixo de tentar adivinhar o gatilho e trato do estado: de meio em
+// meio segundo compara-se o que o canvas tem com o que devia ter, e repoe-se.
+// Se cinco tentativas seguidas nao resolverem, desiste e diz porque -- ficar
+// a redimensionar em ciclo era pior do que o defeito.
+let vigiaTam = null, falhasTam = 0;
+function tamanhoCerto() {
+  if (!mapT || !topoAberto) return true;
+  const cv = mapT.getCanvas(); if (!cv) return true;
+  const dpr = window.devicePixelRatio || 1;
+  const qw = Math.round(innerWidth), qh = Math.round(innerHeight);
+  const cw = Math.round(cv.clientWidth), ch = Math.round(cv.clientHeight);
+  if (!cw || !ch) return true;
+  return Math.abs(cw - qw) <= 2 && Math.abs(ch - qh) <= 2
+      && Math.abs(cv.width - Math.round(cw * dpr)) <= 2
+      && Math.abs(cv.height - Math.round(ch * dpr)) <= 2;
+}
+function ligaVigiaTamanho() {
+  clearInterval(vigiaTam); falhasTam = 0;
+  vigiaTam = setInterval(() => {
+    if (!topoAberto || !mapT) { clearInterval(vigiaTam); vigiaTam = null; return; }
+    if (tamanhoCerto()) { falhasTam = 0; return; }
+    if (++falhasTam > 5) {
+      clearInterval(vigiaTam); vigiaTam = null;
+      console.warn('mapa topografico: o canvas nao aceita o tamanho da janela');
+      return;
+    }
+    ajustaTopo(); mapT.resize();
+  }, 500);
+}
 // As arvores nao dependem do botao do relevo: vistas de cima sao a mesma
 // floresta, e a altitude continua a ler-se pelo sombreado e pelas curvas de
 // nivel, que nao se mexem daqui. O botao do relevo so muda se o terreno se
@@ -1499,6 +1535,7 @@ async function abreTopo() {
   document.getElementById('btn-topo').setAttribute('aria-pressed', 'true');
   document.getElementById('btn-relevo').hidden = false;
   arvoresTopo(true);
+  ligaVigiaTamanho();
   if (meLast) meTopo(meLast);
 }
 function fechaTopo() {
@@ -1510,6 +1547,7 @@ function fechaTopo() {
   document.getElementById('btn-topo').setAttribute('aria-pressed', 'false');
   document.getElementById('btn-relevo').hidden = true;
   arvoresTopo(false);
+  clearInterval(vigiaTam); vigiaTam = null;
 }
 function topoClique(e) {
   if (!mapT) return;
