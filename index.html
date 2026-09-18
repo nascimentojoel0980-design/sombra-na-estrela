@@ -152,6 +152,7 @@ body.building .picon,body.building .plabel,body.building .leaflet-marker-icon{po
 .barra.feito{box-shadow:inset 0 0 0 1px #2E7D4F}
 .off .est{font-size:12.5px;color:var(--muted);line-height:1.45}}
 @media (prefers-reduced-motion: reduce){.leaflet-zoom-anim .leaflet-zoom-animated{transition:none}}
+.zrot span{display:inline-block;transform:translate(-50%,-140%);white-space:nowrap;background:#F0B24A;color:#20160a;font:600 11px/1.5 system-ui,sans-serif;padding:3px 9px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 </style>
 <div class="app">
   <header>
@@ -718,6 +719,7 @@ if ('serviceWorker' in navigator) {
       if (b) { b.firstElementChild.style.width = '100%'; b.classList.add('feito'); }
       const bt = document.getElementById(d.fase === 'topo' ? 'off-topo' : 'off-fotos');
       if (bt) { bt.textContent = d.fase === 'topo' ? '✓ Mapa topográfico guardado' : '✓ Zona guardada'; bt.classList.add('on'); }
+      if (d.fase === 'fotos') limpaZona();
       if (d.fase === 'fotos') toast(d.novas ? ('Guardadas ' + fmt(d.novas) + ' imagens novas' + (d.jaLa ? ' (' + fmt(d.jaLa) + ' já tinhas)' : '') + '.') : 'Esta zona já estava toda guardada.');
       else toast('Mapa topográfico guardado.');
       pedeCobertura();
@@ -838,6 +840,36 @@ function desenhaCobertura() {
 map.on('moveend zoomend', () => { if (cobLigada) desenhaCobertura(); });
 let contaT = null;
 map.on('moveend zoomend', () => { clearTimeout(contaT); contaT = setTimeout(actualizaContagem, 400); });
+// ---- rectangulo que marca a zona a descarregar ----
+let zonaDesc = null;
+function tileLL(z, x, y) {
+  const n = 2 ** z;
+  const lo = x / n * 360 - 180;
+  const la = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+  return [la, lo];
+}
+function caixaDescarga() {
+  if (satModo === 1) {
+    const c = dgtCaixa(map.getBounds());
+    const a = tileLL(c.z, c.x0, c.y1 + 1), b = tileLL(c.z, c.x1 + 1, c.y0);
+    const km = Math.round((c.x1 - c.x0 + 1) * (c.y1 - c.y0 + 1) * dgtKm2(c.z, c.y0, 2 ** c.z));
+    return { b: L.latLngBounds(a, b), km: km, tipo: '25 cm' };
+  }
+  const vb = map.getBounds();
+  const la = (vb.getNorth() - vb.getSouth()) * 111, lo = (vb.getEast() - vb.getWest()) * 111 * Math.cos(vb.getCenter().lat * Math.PI / 180);
+  return { b: vb, km: Math.round(la * lo), tipo: '63 cm' };
+}
+function marcaZona() {
+  limpaZona();
+  const c = caixaDescarga();
+  zonaDesc = L.layerGroup().addTo(map);
+  L.rectangle(c.b, { color: '#F0B24A', weight: 2, dashArray: '8 5', fill: true, fillColor: '#F0B24A', fillOpacity: .08, interactive: false }).addTo(zonaDesc);
+  L.marker(L.latLng(c.b.getNorth(), c.b.getCenter().lng), {
+    interactive: false,
+    icon: L.divIcon({ className: 'zrot', html: '<span>a descarregar · ' + fmt(c.km) + ' km² a ' + c.tipo + '</span>', iconSize: [0, 0] }),
+  }).addTo(zonaDesc);
+}
+function limpaZona() { if (zonaDesc) { zonaDesc.remove(); zonaDesc = null; } }
 function pintaOffline() {
   const alvo = document.querySelector('#sheet .off');
   if (!alvo) return;
@@ -853,6 +885,7 @@ function ligaOffline() {
     if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; }
     if (satModo === 1 && u.length > 6000 && !confirm('São ' + fmt(u.length) + ' imagens, cerca de ' + fmt(Math.round(u.length * 0.026)) + ' MB, e pode demorar bastante.\n\nQueres mesmo guardar esta área toda? Aproximar o mapa reduz o trabalho.')) return;
     b.textContent = 'A guardar as imagens… 0 de ' + u.length;
+    marcaZona();
     mandaSW({ tipo: 'guardar-fotos', urls: u });
   };
   actualizaContagem();
