@@ -24,9 +24,9 @@ diferença, **verifica antes de explicar porquê**. Ver a secção ARMADILHAS.
   .nojekyll         obrigatório, senão o GitHub Pages ignora pastas com _
   dados/            rede.json, osm.json, dem.webp, topo.pmtiles, det/*.webp
   orto/             ortofotos de fundo (63 cm)
-  sentado/          satélite
+  sat/              satélite
   glifos/           tipos de letra do MapLibre (PBF)
-  biblioteca/       leaflet.js, pmtiles.js, maplibre-gl-csp.js
+  lib/              leaflet.js, pmtiles.js, maplibre-gl-csp.js
   fonte/            ESTA pasta: o que gera tudo o resto
 ```
 
@@ -90,26 +90,23 @@ python3 fonte/build_site.py     # gera index.html, sw.js, teste.html na raiz
 bash  fonte/publicar.sh         # commit + push para o GitHub
 ```
 
-### LIMITAÇÃO IMPORTANTE do build_site.py
+### Como o build_site.py resolve os dados
 
-O script foi escrito numa sessão na nuvem onde existiam pastas de dados
-intermédios que **não estão no repositório** (eram dezenas de GB):
-`ortofull/`, `det40/`, `vec/`, `s2/`, `cos/`. Essas etapas vão falhar aqui.
+O script nasceu numa sessão na nuvem com pastas de dados intermédios que
+**não estão no repositório** (`ortofull/`, `det40/`, `vec/`, `s2/`, `d3/`,
+dezenas de GB). Desde 18/09/2026 corre sem elas: quando não existem, tira
+as correspondências (blob → `orto/*.webp`, índice `__DET__`) do
+**`index.html` já publicado na raiz** e usa os ficheiros que já estão em
+`dados/`, `orto/`, `sat/`, `glifos/` e `lib/`. Pára com erro se ficar algum
+blob por resolver ou faltar um ficheiro obrigatório.
 
-Os resultados delas **já estão publicados** em `dados/`, `orto/`, `sentado/`,
-`glifos/` e `biblioteca/` — não precisam de ser regeradas para mexer no código.
-
-Na primeira vez que o correres, protege as etapas de dados com try/except ou
-comenta-as, deixando só:
-
-1. ler `fonte/sombra-na-estrela.html`
-2. substituir `__VERSAO__` pela data/hora
-3. aplicar as reescritas de endereços dos recursos
-4. escrever `index.html` e copiar `fonte/sw.js` e `fonte/teste.html`
+Consequência: **não apagues o `index.html` da raiz antes de construir** — é
+ele que guarda as correspondências. Se um dia houver ortofotos ou detalhe
+novos, é preciso voltar a ter `ortofull/assets.json` e `det40/`.
 
 Compara sempre o `index.html` gerado com o que já está no repositório antes de
-publicar: devem ser quase iguais, a menos da tua alteração e da versão. Se a
-diferença for grande, alguma reescrita de endereços deixou de correr —
+publicar (`git diff --stat index.html`): devem diferir só na tua alteração e
+na versão. Se a diferença for grande, alguma reescrita deixou de correr —
 não publiques.
 
 

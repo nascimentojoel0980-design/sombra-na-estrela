@@ -132,14 +132,22 @@ async function guardaFotos(urls) {
   async function trabalhador() {
     while (i < faltam.length) {
       const u = faltam[i++];
-      try {
-        const r = await fetch(u);
-        if (r.ok) {
-          await c.put(u, r.clone());
-          guardadas++;
-          const k = chaveQuadrado(u); if (k) idx.add(k);
-        }
-      } catch (err) {}
+      // limite de tempo por pedido: sem isto, um pedido que nunca responde pendura tudo
+      for (let tenta = 0; tenta < 2; tenta++) {
+        const ctrl = new AbortController();
+        const relogio = setTimeout(() => ctrl.abort(), 30000);
+        try {
+          const r = await fetch(u, { signal: ctrl.signal });
+          clearTimeout(relogio);
+          if (r.ok) {
+            await c.put(u, r.clone());
+            guardadas++;
+            const k = chaveQuadrado(u); if (k) idx.add(k);
+            break;
+          }
+        } catch (err) { clearTimeout(relogio); }
+        if (tenta === 0) await new Promise((ok) => setTimeout(ok, 2000));
+      }
       n++;
       if (n % passo === 0 || n === faltam.length) {
         avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });

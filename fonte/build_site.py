@@ -13,10 +13,30 @@ h=open('fonte/sombra-na-estrela.html',encoding='utf-8').read()
 import datetime as _dt
 h=h.replace('__VERSAO__', _dt.datetime.now().strftime('%d/%m %H:%M'))
 m={}
+# As pastas de dados intermedios (ortofull/, det40/, s2/, d3/, vec/) so existiram na
+# sessao na nuvem que gerou os dados. Sem elas, os resultados ja publicados em
+# dados/, orto/ e no index.html anterior servem de fonte para as correspondencias.
+DADOS_LOCAIS = os.path.isdir('ortofull') and os.path.isdir('det40')
+INDEX_ANTIGO = open(SITE+'/index.html',encoding='utf-8').read() if os.path.exists(SITE+'/index.html') else ''
+if not DADOS_LOCAIS:
+    if not INDEX_ANTIGO: raise SystemExit('sem ortofull/ nem index.html anterior: nao ha como resolver os blobs')
+    print('sem pastas de dados: a reaproveitar correspondencias do index.html publicado')
 # ortofotos
-of=json.load(open('ortofull/assets.json'))
-for fn,url in of.items():
-    m[url]='orto/'+fn; cp('ortofull/'+fn, SITE+'/orto/'+fn)
+if DADOS_LOCAIS:
+    of=json.load(open('ortofull/assets.json'))
+    for fn,url in of.items():
+        m[url]='orto/'+fn; cp('ortofull/'+fn, SITE+'/orto/'+fn)
+else:
+    # emparelha cada blob de __ORTHO__ com o ficheiro orto/ do index.html pela caixa de coordenadas
+    def orto_idx(txt, chave):
+        seg=re.search(r'window\.__ORTHO__=\[(.*?)\];', txt, re.S).group(1)
+        return {bb: nome for nome, bb in re.findall(r'\["('+chave+r')",(\[\[[-0-9.,]+\],\[[-0-9.,]+\]\])\]', seg)}
+    de=orto_idx(h, r'/_blob/[0-9a-f]{32}'); para=orto_idx(INDEX_ANTIGO, r'orto/of_-?\d+_-?\d+\.webp')
+    for bb,url in de.items():
+        if bb not in para: raise SystemExit('ortofoto sem correspondencia no index.html: '+url+' '+bb)
+        m[url]=para[bb]
+        if not os.path.exists(SITE+'/'+para[bb]): print('AVISO: falta', para[bb])
+    print('ortofotos resolvidas',len(m))
 # detalhe
 import math
 def m2ll(x,y):
@@ -24,23 +44,38 @@ def m2ll(x,y):
     lat=math.degrees(2*math.atan(math.exp(y/20037508.34*math.pi))-math.pi/2)
     return lat,lon
 DETIDX=[]
-for f in sorted(glob.glob('det40/*.webp')):
-    fn=os.path.basename(f)
-    mm=re.match(r'd_(-?\d+)_(-?\d+)\.webp',fn); x=int(mm.group(1)); y=int(mm.group(2))
-    s0,w0=m2ll(x,y); n0,e0=m2ll(x+1280,y+1280)
-    DETIDX.append([round(s0,5),round(w0,5),round(n0,5),round(e0,5),fn])
-    cp(f, SITE+'/dados/det/'+fn)
+if DADOS_LOCAIS:
+    for f in sorted(glob.glob('det40/*.webp')):
+        fn=os.path.basename(f)
+        mm=re.match(r'd_(-?\d+)_(-?\d+)\.webp',fn); x=int(mm.group(1)); y=int(mm.group(2))
+        s0,w0=m2ll(x,y); n0,e0=m2ll(x+1280,y+1280)
+        DETIDX.append([round(s0,5),round(w0,5),round(n0,5),round(e0,5),fn])
+        cp(f, SITE+'/dados/det/'+fn)
+else:
+    DETIDX=json.loads(re.search(r'window\.__DET__=(\[.*?\]);', INDEX_ANTIGO, re.S).group(1))
+    faltam=[t[4] for t in DETIDX if not os.path.exists(SITE+'/dados/det/'+t[4])]
+    if faltam: print('AVISO: faltam',len(faltam),'imagens de detalhe, ex.',faltam[:3])
 print('det tiles',len(DETIDX))
 # outros
-m['/_blob/e60c51a172252278e9f49eb929ab53c2']='dados/rede.json'; shutil.copy('rede.json',SITE+'/dados/rede.json')
-m['/_blob/c297698b506811ad317814ae35dd2998']='dados/osm.json'; shutil.copy('s2/osm_enc_v2.json',SITE+'/dados/osm.json')
-m['/_blob/bbb0be3a812c34296b0abe310453249c']='dados/fundo.jpg'; shutil.copy('s2/fundo_3857_40m.jpg',SITE+'/dados/fundo.jpg')
-m['/_blob/61db3f421f32c3a31441a99ea7f0c42d']='dados/dem.webp'; shutil.copy('d3/dem_terrarium.webp',SITE+'/dados/dem.webp')
-shutil.copytree('fonte/sat',SITE+'/sat',dirs_exist_ok=True); shutil.copytree('fonte/lib',SITE+'/lib',dirs_exist_ok=True)
-shutil.copy('node_modules/leaflet/dist/leaflet.js', SITE+'/lib/leaflet.js')
-shutil.copytree('fonte/icons', SITE+'/icons',dirs_exist_ok=True)
-shutil.copytree('fonte/glifos', SITE+'/glifos', dirs_exist_ok=True)
-cp('vec/topo.pmtiles', SITE+'/dados/topo.pmtiles')
+m['/_blob/e60c51a172252278e9f49eb929ab53c2']='dados/rede.json'
+m['/_blob/c297698b506811ad317814ae35dd2998']='dados/osm.json'
+m['/_blob/bbb0be3a812c34296b0abe310453249c']='dados/fundo.jpg'
+m['/_blob/61db3f421f32c3a31441a99ea7f0c42d']='dados/dem.webp'
+def copia_se_existe(a,b,arvore=False):
+    if not os.path.exists(a): return
+    if arvore: shutil.copytree(a,b,dirs_exist_ok=True)
+    else: shutil.copy(a,b)
+copia_se_existe('rede.json',SITE+'/dados/rede.json')
+copia_se_existe('s2/osm_enc_v2.json',SITE+'/dados/osm.json')
+copia_se_existe('s2/fundo_3857_40m.jpg',SITE+'/dados/fundo.jpg')
+copia_se_existe('d3/dem_terrarium.webp',SITE+'/dados/dem.webp')
+copia_se_existe('fonte/sat',SITE+'/sat',True); copia_se_existe('fonte/lib',SITE+'/lib',True)
+copia_se_existe('node_modules/leaflet/dist/leaflet.js', SITE+'/lib/leaflet.js')
+copia_se_existe('fonte/icons', SITE+'/icons',True)
+copia_se_existe('fonte/glifos', SITE+'/glifos',True)
+if os.path.exists('vec/topo.pmtiles'): cp('vec/topo.pmtiles', SITE+'/dados/topo.pmtiles')
+for obrig in ['dados/rede.json','dados/osm.json','dados/fundo.jpg','dados/dem.webp','dados/topo.pmtiles','lib/leaflet.js','lib/pmtiles.js','lib/maplibre-gl-csp.js','lib/maplibre-gl-csp-worker.js']:
+    if not os.path.exists(SITE+'/'+obrig): raise SystemExit('falta ficheiro obrigatorio: '+obrig)
 shutil.copy('fonte/sw.js', SITE+'/sw.js')
 h=h.replace('src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"','src="lib/leaflet.js"')
 
@@ -98,6 +133,7 @@ h=h.replace(OLD_IDS,NEW_IDS)
 for k,v in m.items(): h=h.replace(k,v)
 left=re.findall(r'/_blob/[0-9a-f]{32}',h)
 print('blobs por resolver',len(set(left)),list(set(left))[:3])
+if left: raise SystemExit('ha blobs por resolver: o site ficaria com recursos partidos')
 # ---- adaptações para site autónomo ----
 # 1) GPX/zip sem a capability downloads
 h=h.replace("const downloadsP = (window.claude && claude.use) ? claude.use('downloads') : Promise.resolve(null);",
