@@ -78,7 +78,7 @@ async function estado() {
   const idx = await indice();
   let uso = 0, quota = 0;
   try { const q = await navigator.storage.estimate(); uso = q.usage || 0; quota = q.quota || 0; } catch (err) {}
-  const q17 = idx.filter((k) => k.indexOf('17/') === 0).length;
+  const q17 = idx.filter((k) => k.indexOf('19/') === 0).length;
   avisa({ tipo: 'estado', topo: !!b, topoMB: b ? Math.round(b.size / 1e6) : 0, ficheiros: n, uso, quota, quadrados: q17 });
 }
 

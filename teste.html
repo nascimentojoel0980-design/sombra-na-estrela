@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teste DGT</title>
+<style>
+ :root{color-scheme:light dark}
+ body{font:16px/1.5 system-ui,sans-serif;margin:0;padding:16px;max-width:720px;margin-inline:auto}
+ h1{font-size:20px;margin:0 0 4px}
+ p.sub{margin:0 0 16px;opacity:.7;font-size:14px}
+ button{display:block;width:100%;padding:14px;margin:8px 0;font-size:16px;border-radius:10px;border:1px solid #8886;background:#8881;cursor:pointer}
+ button:disabled{opacity:.5}
+ pre{white-space:pre-wrap;word-break:break-word;background:#8881;padding:12px;border-radius:10px;font-size:13px;min-height:60px}
+ .lin{display:flex;gap:8px}.lin button{margin:8px 0}
+</style>
+</head>
+<body>
+<h1>Teste de velocidade da DGT</h1>
+<p class="sub">Mede quanto tempo demora cada pedido e quanto terreno se traz por minuto. Não guarda nada.</p>
+
+<button id="b1">1 — pedidos de 256 px (um de cada vez)</button>
+<button id="b2">2 — pedidos de 1024 px (um de cada vez)</button>
+<button id="b3">3 — 256 px, 6 ao mesmo tempo</button>
+<button id="b4">4 — 1024 px, 6 ao mesmo tempo</button>
+<button id="b5">5 — 2048 px, 3 ao mesmo tempo</button>
+<button id="b6" style="border-color:#2a7">Correr tudo e comparar</button>
+<pre id="out">pronto.</pre>
+
+<script>
+const WMS='https://cartografia.dgterritorio.gov.pt/wms/ortos2025';
+const R=20037508.342789244;
+function url(z,x,y,px){
+  const n=2**z,s=2*R/n,x0=-R+x*s,y1=R-y*s,x1=x0+s,y0=y1-s;
+  return WMS+'?service=WMS&version=1.3.0&request=GetMap&layers=Ortos2025-RGB&styles='
+   +'&crs=EPSG:3857&format=image/jpeg&width='+px+'&height='+px
+   +'&bbox='+x0.toFixed(1)+','+y0.toFixed(1)+','+x1.toFixed(1)+','+y1.toFixed(1)
+   +'&t='+Math.random().toString(36).slice(2);
+}
+// zona de Manteigas
+const BASE={z:19,x:246800,y:194900};
+function lista(z,px,n){
+  // z do url conforme os px: 256->19, 1024->17, 2048->16
+  const zz = px===256?19: px===512?18: px===1024?17:16;
+  const d = 19-zz, bx=BASE.x>>d, by=BASE.y>>d;
+  const out=[];
+  for(let i=0;i<n;i++) out.push(url(zz,bx+(i%8),by+Math.floor(i/8),px));
+  return out;
+}
+const out=document.getElementById('out');
+function log(t){out.textContent+='\n'+t}
+async function corre(px,par,n){
+  const us=lista(19,px,n);
+  let bytes=0,ok=0,erro=0,i=0;
+  const t0=performance.now();
+  async function w(){
+    while(i<us.length){
+      const u=us[i++];
+      try{const r=await fetch(u,{cache:'no-store'});
+        if(r.ok){const b=await r.blob();bytes+=b.size;ok++}else erro++;
+      }catch(e){erro++}
+    }
+  }
+  await Promise.all(Array.from({length:par},w));
+  const seg=(performance.now()-t0)/1000;
+  // area de cada pedido, em km2, a 40.4 de latitude
+  const zz = px===256?19: px===1024?17:16;
+  const m = 40075017*Math.cos(40.4*Math.PI/180)/(2**zz);
+  const km2 = m*m/1e6*ok;
+  const r={px,par,n,ok,erro,seg:+seg.toFixed(1),
+    msPorPedido:Math.round(seg*1000/Math.max(1,ok)),
+    kbs:Math.round(bytes/1024/seg),
+    km2min:+(km2/seg*60).toFixed(1),
+    kbPorPedido:Math.round(bytes/1024/Math.max(1,ok))};
+  log(px+' px, '+par+' em paralelo: '+r.ok+' ok, '+r.erro+' falhas, '+r.seg+' s\n'
+    +'   '+r.msPorPedido+' ms/pedido · '+r.kbPorPedido+' KB/pedido · '+r.kbs+' KB/s\n'
+    +'   >>> '+r.km2min+' km2 por minuto');
+  return r;
+}
+function liga(id,px,par,n){
+  document.getElementById(id).onclick=async(e)=>{
+    document.querySelectorAll('button').forEach(b=>b.disabled=true);
+    out.textContent='a medir ('+n+' pedidos)...';
+    try{await corre(px,par,n)}catch(err){log('ERRO '+err)}
+    document.querySelectorAll('button').forEach(b=>b.disabled=false);
+  };
+}
+liga('b1',256,1,12);
+liga('b2',1024,1,6);
+liga('b3',256,6,24);
+liga('b4',1024,6,12);
+liga('b5',2048,3,6);
+document.getElementById('b6').onclick=async()=>{
+  document.querySelectorAll('button').forEach(b=>b.disabled=true);
+  out.textContent='a medir tudo, demora 1-3 minutos...';
+  const rs=[];
+  try{
+    rs.push(await corre(256,1,12));
+    rs.push(await corre(1024,1,6));
+    rs.push(await corre(256,6,24));
+    rs.push(await corre(1024,6,12));
+    rs.push(await corre(2048,3,6));
+    rs.sort((a,b)=>b.km2min-a.km2min);
+    log('\n===== MELHOR =====\n'+rs.map(r=>r.px+'px x'+r.par+' -> '+r.km2min+' km2/min').join('\n'));
+  }catch(err){log('ERRO '+err)}
+  document.querySelectorAll('button').forEach(b=>b.disabled=false);
+};
+</script>
+</body>
+</html>

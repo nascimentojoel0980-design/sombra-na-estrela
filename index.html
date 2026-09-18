@@ -433,15 +433,15 @@ function dgtUrl(z, x, y, px) {
     + '&crs=EPSG:3857&format=image/jpeg&width=' + (px || 256) + '&height=' + (px || 256)
     + '&bbox=' + x0.toFixed(1) + ',' + y0.toFixed(1) + ',' + x1.toFixed(1) + ',' + y1.toFixed(1);
 }
-const PX_DGT = 1024;
+const PX_DGT = 256;
 const CamadaDGT = L.TileLayer.extend({
   getTileUrl: function (c) { return dgtUrl(this._getZoomForUrl(), c.x, c.y, PX_DGT); },
 });
 // A DGT desenha cada pedido de raiz e demora o mesmo por pedido, grande ou pequeno.
 // Por isso pedimos blocos de 1024 px (z17) em vez de 256 px (z19): mesma nitidez
 // (22,8 cm por pixel), 16 vezes menos pedidos.
-const Z_DGT = 17;
-const DGT_CAP = 1500;
+const Z_DGT = 19;
+const DGT_CAP = 12000;
 // quantos quadrados a 25 cm cabem na vista; se for demais, fica-se pelo centro
 function dgtCaixa(vb, zAlvo) {
   const z = zAlvo == null ? Z_DGT : zAlvo, n = 2 ** z;
@@ -484,7 +484,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 09:10';
+const VERSAO = '18/09 09:41';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 // a caixa de informacao do satelite desaparece sozinha; toca no botao do satelite para a ver outra vez
@@ -507,7 +507,7 @@ function ligaSat(modo) {
   if (camEsri) camEsri.remove();
   if (satModo === 1) {
     if (!camDGT) {
-      camDGT = new CamadaDGT({ pane: 'onlineP', tileSize: PX_DGT, zoomOffset: -2, maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
+      camDGT = new CamadaDGT({ pane: 'onlineP', tileSize: 256, maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
       camDGT.__ok = 0; camDGT.__erro = 0;
       const marca = () => {
         const n = document.getElementById('sat-diag');
@@ -764,7 +764,7 @@ if ('serviceWorker' in navigator) {
       const b = document.getElementById('off-fotos');
       if (b && !aDescarregar && !/A guardar|A preparar|✓/.test(b.textContent)) {
         const q = satModo === 1 ? ' a 25 cm' : '';
-        const mb = satModo === 1 ? Math.round(d.faltam * 0.30) : 0;
+        const mb = satModo === 1 ? Math.round(d.faltam * 0.026) : 0;
         b.textContent = d.faltam
           ? 'Guardar esta zona' + q + ' (' + fmt(d.faltam) + ' novas de ' + fmt(d.total) + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')'
           : 'Esta zona já está toda guardada' + q;
@@ -782,7 +782,7 @@ function mandaSW(msg) {
 }
 const MB = (n) => n >= 1000e6 ? (n / 1e9).toFixed(1).replace('.', ',') + ' GB' : Math.round(n / 1e6) + ' MB';
 function fotosDaVista() {
-  const vb = map.getBounds(), urls = new Set();
+  const vb = vistaUtil(), urls = new Set();
   DET.forEach((t) => { if (vb.intersects(L.latLngBounds([t[0], t[1]], [t[2], t[3]]))) urls.add('dados/det/' + t[4]); });
   ORTHO.forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
   (CHUNKS || []).forEach(([u, bb]) => { if (vb.intersects(L.latLngBounds(bb))) urls.add(u); });
@@ -840,16 +840,16 @@ function actualizaContagem() {
   if (!b || aDescarregar || /A guardar|A preparar/i.test(b.textContent)) return;
   const u = fotosDaVista();
   if (!u.length) { b.textContent = 'Aproxima o mapa da zona a guardar'; return; }
-  const mb = satModo === 1 ? Math.round(u.length * 0.30) : 0;
-  b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' blocos' + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')';
+  const mb = satModo === 1 ? Math.round(u.length * 0.026) : 0;
+  b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' imagens' + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')';
   const av = document.getElementById('off-aviso');
   if (av) {
     if (satModo === 1) {
-      const c = dgtCaixa(map.getBounds());
+      const c = dgtCaixa(vistaUtil());
       if (c.cortado) {
         const km = Math.round((c.x1 - c.x0 + 1) * (c.y1 - c.y0 + 1) * dgtKm2(c.z, c.y0, 2 ** c.z));
         const kmT = Math.round(c.total * dgtKm2(c.z, c.y0, 2 ** c.z));
-        av.innerHTML = '<strong>A vista é grande demais para os 25 cm.</strong> Guarda só os <strong>' + fmt(km) + ' km²</strong> do centro; a vista toda seriam ' + fmt(kmT) + ' km² (~' + fmt(Math.round(kmT * 5.5 / 1000)) + ' GB). Aproxima mais para escolheres bem a zona.';
+        av.innerHTML = '<strong>A vista é grande demais para os 25 cm.</strong> Guarda só os <strong>' + fmt(km) + ' km²</strong> do centro; a vista toda seriam ' + fmt(kmT) + ' km² (~' + fmt(Math.round(kmT * 7.6 / 1000)) + ' GB). Aproxima mais para escolheres bem a zona.';
         av.style.display = '';
       } else { av.style.display = 'none'; }
     } else { av.style.display = 'none'; }
@@ -859,7 +859,7 @@ function actualizaContagem() {
 // ---- o que ja esta guardado, desenhado no mapa ----
 let COB = [], cobGrupo = null, cobLigada = false;
 function pedeCobertura() { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'cobertura' }); }
-const KM2 = (n) => n * (2 * 20037508.342789244 / 2 ** 17) ** 2 / 1e6;   // area de um bloco z17
+const KM2 = (n) => n * (2 * 20037508.342789244 / 2 ** 19) ** 2 / 1e6;   // area de um quadrado z19
 function desenhaCobertura() {
   if (!cobLigada) { if (cobGrupo) { cobGrupo.remove(); cobGrupo = null; } return; }
   if (!cobGrupo) cobGrupo = L.layerGroup().addTo(map);
@@ -889,25 +889,45 @@ function tileLL(z, x, y) {
   const la = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
   return [la, lo];
 }
+// so conta a parte do mapa que esta mesmo a ver: o painel de baixo tapa o resto
+function vistaUtil() {
+  try {
+    const el = document.getElementById('sheet');
+    const t = map.getSize();
+    let corte = 0;
+    if (el && !el.hidden && innerWidth < 900) corte = Math.min(el.offsetHeight, t.y - 80);
+    const nw = map.containerPointToLatLng([0, 0]);
+    const se = map.containerPointToLatLng([t.x, t.y - corte]);
+    return L.latLngBounds(nw, se);
+  } catch (err) { return map.getBounds(); }
+}
 function caixaDescarga() {
   if (satModo === 1) {
-    const c = dgtCaixa(map.getBounds());
+    const c = dgtCaixa(vistaUtil());
     const a = tileLL(c.z, c.x0, c.y1 + 1), b = tileLL(c.z, c.x1 + 1, c.y0);
     const km = Math.round((c.x1 - c.x0 + 1) * (c.y1 - c.y0 + 1) * dgtKm2(c.z, c.y0, 2 ** c.z));
     return { b: L.latLngBounds(a, b), km: km, tipo: '25 cm' };
   }
-  const vb = map.getBounds();
+  const vb = vistaUtil();
   const la = (vb.getNorth() - vb.getSouth()) * 111, lo = (vb.getEast() - vb.getWest()) * 111 * Math.cos(vb.getCenter().lat * Math.PI / 180);
   return { b: vb, km: Math.round(la * lo), tipo: '63 cm' };
 }
-function marcaZona() {
-  limpaZona();
+// o rectangulo esta sempre a mostrar o que vai ser guardado, antes e durante
+function marcaZona() { desenhaZona(); }
+function desenhaZona() {
+  const painelAberto = !!document.querySelector('#sheet .off');
+  if (!painelAberto && !aDescarregar) { limpaZona(); return; }
   const c = caixaDescarga();
+  limpaZona();
   zonaDesc = L.layerGroup().addTo(map);
-  L.rectangle(c.b, { color: '#F0B24A', weight: 2, dashArray: '8 5', fill: true, fillColor: '#F0B24A', fillOpacity: .08, interactive: false }).addTo(zonaDesc);
-  L.marker(L.latLng(c.b.getNorth(), c.b.getCenter().lng), {
+  L.rectangle(c.b, {
+    color: '#F0B24A', weight: aDescarregar ? 3 : 2, dashArray: aDescarregar ? null : '8 5',
+    fill: true, fillColor: '#F0B24A', fillOpacity: aDescarregar ? .12 : .06, interactive: false,
+  }).addTo(zonaDesc);
+  const txt = (aDescarregar ? 'a descarregar · ' : 'vai guardar · ') + fmt(c.km) + ' km² a ' + c.tipo;
+  L.marker(L.latLng(c.b.getSouth(), c.b.getCenter().lng), {
     interactive: false,
-    icon: L.divIcon({ className: 'zrot', html: '<span>a descarregar · ' + fmt(c.km) + ' km² a ' + c.tipo + '</span>', iconSize: [0, 0] }),
+    icon: L.divIcon({ className: 'zrot', html: '<span>' + txt + '</span>', iconSize: [0, 0] }),
   }).addTo(zonaDesc);
 }
 function limpaZona() { if (zonaDesc) { zonaDesc.remove(); zonaDesc = null; } }
@@ -935,7 +955,7 @@ async function arrancaDescarga(faltam, jaLa) {
       const bf = await reg.backgroundFetch.fetch('fotos', faltam, {
         title: 'Caminhos da Estrela \u2014 imagens do mapa',
         icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
-        downloadTotal: faltam.length * 300000,
+        downloadTotal: faltam.length * 26000,
       });
       segueFundo(bf);
       toast('A descarregar em segundo plano \u2014 podes sair da app.');
@@ -987,7 +1007,7 @@ function ligaOffline() {
   if (b) b.onclick = () => {
     const u = fotosDaVista();
     if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; }
-    if (satModo === 1 && u.length > 900 && !confirm('São ' + fmt(u.length) + ' blocos, cerca de ' + fmt(Math.round(u.length * 0.30)) + ' MB, e pode demorar bastante.\n\nQueres mesmo guardar esta área toda? Aproximar o mapa reduz o trabalho.')) return;
+    if (satModo === 1 && u.length > 6000 && !confirm('São ' + fmt(u.length) + ' imagens, cerca de ' + fmt(Math.round(u.length * 0.026)) + ' MB, e pode demorar bastante.\n\nQueres mesmo guardar esta área toda? Aproximar o mapa reduz o trabalho.')) return;
     b.textContent = 'A preparar…';
     aDescarregar = true;
     marcaZona();
@@ -995,6 +1015,7 @@ function ligaOffline() {
     mandaSW({ tipo: 'faltam', urls: u });
   };
   actualizaContagem();
+  desenhaZona();
   const v = document.getElementById('off-ver');
   if (v) v.onclick = () => {
     cobLigada = !cobLigada;
@@ -1044,6 +1065,7 @@ const fonteTxt = { oficial: 'GPX oficial', osm: 'OpenStreetMap (não oficial)', 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function sheetIdle() {
+  setTimeout(() => { if (typeof desenhaZona === 'function') desenhaZona(); }, 30);
   const n = D.routes.length, km = D.routes.reduce((s, r) => s + (r.km || 0), 0);
   $('sheet').innerHTML = `<div class="grab"></div>
     <p class="hint">Toca num percurso marcado ou em qualquer caminho do mapa para ver o que é. Para procurar, filtrar e ordenar, abre a <strong>Lista</strong>. Em <strong>Criar</strong> montas o teu próprio trilho.</p>
@@ -1272,6 +1294,7 @@ function refreshPoi() { poiOn.forEach((m) => poiLayer.removeLayer(m)); poiOn.cle
 let lastPoiZ = map.getZoom();
 map.on('moveend', () => { if ((lastPoiZ >= 15) !== (map.getZoom() >= 15)) { lastPoiZ = map.getZoom(); refreshPoi(); } else renderPoi(); });
 map.on('zoomend', notaLimite);
+map.on('moveend zoomend', () => { desenhaZona(); });
 renderPoi();
 // POI ao longo de um percurso (até 150 m do traçado), com km
 function poisAlong(r) {
