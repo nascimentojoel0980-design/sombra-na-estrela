@@ -469,21 +469,25 @@ function ligaArvores(map, op) {
       e: Math.min(b.getEast(), ct.lng + TOPO * mLon),
     };
   }
-  // A estimativa de area diz o degrau de partida; a REALIDADE corrige-o. O
-  // 0,35 de floresta e uma media da serra, e onde ele anda ha muito mais
-  // pinhal -- ou muito menos, no planalto. Em vez de eu adivinhar melhor, a
-  // pagina conta as arvores que saem e sobe ou desce um degrau conforme sobrou
-  // ou faltou. Assim usa o tecto todo onde o chao da para isso.
-  let ajustePasso = 0;
+  // O PASSO DEPENDE SO DO NIVEL DE ZOOM -- como os azulejos do mapa.
+  //
+  // Antes vinha da area a vista e de um ajuste automatico. Parecia esperto e
+  // era mau: a area muda quando ele inclina, quando arrasta, quando roda. E o
+  // passo esta na chave de cada celula, logo qualquer um desses gestos mandava
+  // reconstruir chao que ja estava feito. Era o "volto atras e desbloqueia
+  // outra vez".
+  //
+  // Agora e uma tabela por nivel de zoom, e mais nada. Arrastar nao muda o
+  // passo. Inclinar nao muda. Rodar nao muda. So mudar de nivel de zoom muda
+  // -- e isso e exactamente o que o mapa ja faz com os proprios azulejos, por
+  // isso nao surpreende ninguem. Entre niveis, as arvores sao parte do
+  // terreno: estao la, sempre as mesmas, e nao se constroem outra vez.
+  //
+  // Os numeros sao o passo na grelha base de 3 m: 1 = uma arvore por 3 m.
+  const PASSO_Z = { 18: 1, 17: 1, 16: 1, 15: 2, 14: 4, 13: 8 };
   function passoDaVista() {
-    const c = caixaVista(), mid = (c.s + c.n) / 2;
-    const larg = (c.e - c.w) * 111320 * Math.cos(mid * Math.PI / 180);
-    const alto = (c.n - c.s) * 110540;
-    const cheio = Math.max(1, larg * alto * FLORESTA * 0.0426);
-    const m = Math.sqrt(cheio / Math.max(1000, TECTO));
-    let i = PASSOS.findIndex((x) => x >= m);
-    if (i < 0) i = PASSOS.length - 1;
-    return PASSOS[Math.max(0, Math.min(PASSOS.length - 1, i + ajustePasso))];
+    const z = Math.max(13, Math.min(18, Math.floor(map.getZoom())));
+    return PASSO_Z[z] || 8;
   }
 
   // O escDens so aperta os DOIS DE PERTO, que sao os que custam.
@@ -615,12 +619,6 @@ function ligaArvores(map, op) {
     INST = buf; nInst = k;
     cortado = cortou;
     rSemeado = Math.max(600, maiorD);
-    // So se corrige quando a semeadura esta completa: a meio, o total esta
-    // sempre em baixo e o ajuste ia atras de um numero que ainda nao e real.
-    if (!incompleto) {
-      if (total > TECTO) ajustePasso = Math.min(4, ajustePasso + 1);
-      else if (total < TECTO * 0.45) ajustePasso = Math.max(-4, ajustePasso - 1);
-    }
     nSemeias++;
     msJuntar += ((typeof performance !== 'undefined' ? performance : Date).now() - tSemeia)
               - (msConstruir - msAntes);
@@ -760,7 +758,7 @@ function ligaArvores(map, op) {
   let pendente = null;
   function talvezSemeia(forca) {
     const ct = map.getCenter();
-    const a = [Math.round(map.getZoom() * 2), Math.round((map.getPitch() || 0) / 6),
+    const a = [Math.floor(map.getZoom()), Math.round((map.getPitch() || 0) / 10),
                ct.lng.toFixed(3), ct.lat.toFixed(3)].join('|');
     if (a === assinatura && !forca) return;
     assinatura = a;
@@ -841,7 +839,7 @@ function ligaArvores(map, op) {
                msConstruir: Math.round(msConstruir), msJuntar: Math.round(msJuntar),
                msManchas: Math.round(msManchas), msLista: Math.round(msLista), msCopiar: Math.round(msCopiar),
                semeias: nSemeias,
-               passo: passoDaVista(), ajuste: ajustePasso, alcance: Math.round(rSemeado),
+               passo: passoDaVista(), alcance: Math.round(rSemeado),
                cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
                alturaMedia: +(sa / nInst).toFixed(1) };
