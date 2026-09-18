@@ -421,8 +421,27 @@ function dgtUrl(z, x, y, px) {
     + '&bbox=' + x0.toFixed(1) + ',' + y0.toFixed(1) + ',' + x1.toFixed(1) + ',' + y1.toFixed(1);
 }
 const PX_DGT = 2048;
+// QUANTOS PIXELS PEDIR. Pedir 2048 da um pixel de imagem por pixel CSS -- e
+// num telemovel com DPR 2,75 isso e esticar a imagem 2,75x. E por isso que a
+// DGT parecia igual ou pior do que o detalhe que ja vem no ficheiro: medido a
+// 18/09/2026, no zoom 16 ela entregava 1,82 m/px contra os 0,48 m/px de
+// dados/det. Pede-se agora o que o ECRA mostra, com dois tectos: o detalhe da
+// fonte (25 cm -- abaixo disso a DGT interpola e nao ha nada a ganhar) e o
+// que o servidor aceita por pedido.
+const PX_MAX = 4096, M_FONTE = 0.25;
+function pxDGT(z, lat) {
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const ladoM = 2 * R38 / 2 ** z * Math.cos((lat || 40.3) * Math.PI / 180);
+  const porFonte = Math.ceil(ladoM / M_FONTE);
+  return Math.max(PX_DGT, Math.min(PX_MAX, porFonte, Math.round(PX_DGT * dpr)));
+}
+// bytes aproximados de um bloco, para as contas de MB: 0,73 MB aos 2048 px
+const mbDGT = (px) => 0.73 * (px / PX_DGT) ** 2;
 const CamadaDGT = L.TileLayer.extend({
-  getTileUrl: function (c) { return dgtUrl(this._getZoomForUrl(), c.x, c.y, PX_DGT); },
+  getTileUrl: function (c) {
+    const z = this._getZoomForUrl();
+    return dgtUrl(z, c.x, c.y, pxDGT(z, map.getCenter().lat));
+  },
 });
 // A DGT desenha cada pedido de raiz e demora o mesmo por pedido, grande ou pequeno.
 // Por isso pedimos blocos de 1024 px (z17) em vez de 256 px (z19): mesma nitidez
@@ -469,7 +488,10 @@ function dgtTiles(vb, zAlvo) {
     const z = c.z - d;
     if (z < 6) continue;
     const x0 = c.x0 >> d, x1 = c.x1 >> d, y0 = c.y0 >> d, y1 = c.y1 >> d;
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push(dgtUrl(z, x, y, PX_DGT));
+    // O MESMO NUMERO DE PIXELS QUE A CAMADA VAI PEDIR. Se a descarga guardar
+    // com outro tamanho, o endereco e outro e nada e aproveitado.
+    const px = pxDGT(z, vb.getCenter().lat);
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push(dgtUrl(z, x, y, px));
   }
   return out;
 }
@@ -774,7 +796,7 @@ if ('serviceWorker' in navigator) {
       const b = document.getElementById('off-fotos');
       if (b && !aDescarregar && !/A guardar|A preparar|✓/.test(b.textContent)) {
         const q = satModo === 1 ? ' a 25 cm' : '';
-        const mb = satModo === 1 ? Math.round(d.faltam * 0.73) : 0;
+        const mb = satModo === 1 ? Math.round(d.faltam * mbDGT(pxDGT(zDGT(), map.getCenter().lat))) : 0;
         b.textContent = d.faltam
           ? 'Guardar esta zona' + q + ' (' + fmt(d.faltam) + ' novas de ' + fmt(d.total) + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')'
           : 'Esta zona já está toda guardada' + q;
@@ -850,7 +872,7 @@ function actualizaContagem() {
   if (!b || aDescarregar || /A guardar|A preparar/i.test(b.textContent)) return;
   const u = fotosDaVista();
   if (!u.length) { b.textContent = 'Aproxima o mapa da zona a guardar'; return; }
-  const mb = satModo === 1 ? Math.round(u.length * 0.73) : 0;
+  const mb = satModo === 1 ? Math.round(u.length * mbDGT(pxDGT(zDGT(), map.getCenter().lat))) : 0;
   b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' blocos' + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')';
   const av = document.getElementById('off-aviso');
   if (av) {
