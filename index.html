@@ -464,10 +464,23 @@ function dgtKm2(z, y, n) {
   const m = 40075017 * Math.cos(lat * Math.PI / 180) / n;
   return m * m / 1e6;
 }
+// guarda o nivel maximo (19) e tambem o 18 e o 17, para funcionar sem rede em qualquer zoom
 function dgtTiles(vb, zAlvo) {
   const c = dgtCaixa(vb, zAlvo), out = [];
-  for (let x = c.x0; x <= c.x1; x++) for (let y = c.y0; y <= c.y1; y++) out.push(dgtUrl(c.z, x, y, 256));
+  for (let d = 2; d >= 0; d--) {
+    const z = c.z - d;
+    if (z < 12) continue;
+    const x0 = c.x0 >> d, x1 = c.x1 >> d, y0 = c.y0 >> d, y1 = c.y1 >> d;
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push(dgtUrl(z, x, y, 256));
+  }
   return out;
+}
+// avisa quando se passa o detalhe que a foto tem (25 cm = nivel 19)
+function notaLimite() {
+  const n = document.getElementById('sat-lim');
+  if (!n) return;
+  if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
+  else n.innerHTML = '';
 }
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
@@ -483,6 +496,7 @@ function ligaSat(modo) {
       const marca = () => {
         const n = document.getElementById('sat-diag');
         if (n) n.textContent = camDGT.__ok + ' imagens carregadas, ' + camDGT.__erro + ' falhadas';
+        notaLimite();
       };
       camDGT.on('tileload', () => { camDGT.__ok++; marca(); });
       camDGT.on('tileerror', (e) => {
@@ -502,7 +516,7 @@ function ligaSat(modo) {
   if (n) {
     n.hidden = satModo === 0;
     n.innerHTML = satModo === 1
-      ? '<strong>DGT 2025 em directo</strong><br>Ortofoto oficial a 25 cm. <span id="sat-diag">a pedir…</span>'
+      ? '<strong>DGT 2025 em directo</strong><br>Ortofoto oficial a 25 cm. <span id="sat-diag">a pedir…</span><span id="sat-lim"></span>'
       : '<strong>Esri / Maxar</strong><br>Boa nas vilas, muitas vezes pior do que a nossa na serra. Precisa de rede.';
   }
   document.getElementById('btn-sat').setAttribute('aria-pressed', satModo ? 'true' : 'false');
@@ -702,7 +716,7 @@ let SW = null, offEstado = { topo: false, topoMB: 0, uso: 0, quota: 0 };
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
     SW = reg.active || reg.waiting || reg.installing;
-    navigator.serviceWorker.ready.then((r) => { SW = r.active; pedeEstado(); });
+    navigator.serviceWorker.ready.then((r) => { SW = r.active; pedeEstado(); retomaFundo(); });
   }).catch(() => {});
   navigator.serviceWorker.addEventListener('message', (e) => {
     const d = e.data || {};
@@ -719,15 +733,16 @@ if ('serviceWorker' in navigator) {
       if (b) { b.firstElementChild.style.width = '100%'; b.classList.add('feito'); }
       const bt = document.getElementById(d.fase === 'topo' ? 'off-topo' : 'off-fotos');
       if (bt) { bt.textContent = d.fase === 'topo' ? '✓ Mapa topográfico guardado' : '✓ Zona guardada'; bt.classList.add('on'); }
-      if (d.fase === 'fotos') limpaZona();
+      if (d.fase === 'fotos') { limpaZona(); largaEcra(); aDescarregar = false; }
       if (d.fase === 'fotos') toast(d.novas ? ('Guardadas ' + fmt(d.novas) + ' imagens novas' + (d.jaLa ? ' (' + fmt(d.jaLa) + ' já tinhas)' : '') + '.') : 'Esta zona já estava toda guardada.');
       else toast('Mapa topográfico guardado.');
       pedeCobertura();
       setTimeout(pedeEstado, 2000);
     }
+    if (d.tipo === 'faltam') arrancaDescarga(d.urls || [], d.jaLa || 0);
     if (d.tipo === 'quantos') {
       const b = document.getElementById('off-fotos');
-      if (b && !/A guardar|✓/.test(b.textContent)) {
+      if (b && !aDescarregar && !/A guardar|A preparar|✓/.test(b.textContent)) {
         const q = satModo === 1 ? ' a 25 cm' : '';
         const mb = satModo === 1 ? Math.round(d.faltam * 0.026) : 0;
         b.textContent = d.faltam
@@ -796,7 +811,7 @@ function blocoOffline() {
 }
 function actualizaContagem() {
   const b = document.getElementById('off-fotos');
-  if (!b || /A guardar/i.test(b.textContent)) return;
+  if (!b || aDescarregar || /A guardar|A preparar/i.test(b.textContent)) return;
   const u = fotosDaVista();
   if (!u.length) { b.textContent = 'Aproxima o mapa da zona a guardar'; return; }
   const mb = satModo === 1 ? Math.round(u.length * 0.026) : 0;
@@ -870,6 +885,59 @@ function marcaZona() {
   }).addTo(zonaDesc);
 }
 function limpaZona() { if (zonaDesc) { zonaDesc.remove(); zonaDesc = null; } }
+// ---- manter o ecra aceso e continuar com a app fechada ----
+let trava = null;
+async function aguentaEcra() {
+  try { if (navigator.wakeLock && !trava) { trava = await navigator.wakeLock.request('screen'); trava.addEventListener('release', () => { trava = null; }); } } catch (err) {}
+}
+function largaEcra() { try { if (trava) { trava.release(); trava = null; } } catch (err) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && aDescarregar) aguentaEcra(); });
+let aDescarregar = false;
+async function arrancaDescarga(faltam, jaLa) {
+  const b = document.getElementById('off-fotos');
+  if (!faltam.length) {
+    aDescarregar = false; limpaZona(); largaEcra();
+    if (b) { b.textContent = '\u2713 Zona guardada'; b.classList.add('on'); }
+    toast('Esta zona j\u00e1 estava toda guardada.');
+    return;
+  }
+  const reg = await navigator.serviceWorker.ready.catch(() => null);
+  if (reg && reg.backgroundFetch) {
+    try {
+      const antigo = await reg.backgroundFetch.get('fotos');
+      if (antigo) { segueFundo(antigo); toast('J\u00e1 havia uma descarga a andar \u2014 continua.'); return; }
+      const bf = await reg.backgroundFetch.fetch('fotos', faltam, {
+        title: 'Caminhos da Estrela \u2014 imagens do mapa',
+        icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+        downloadTotal: faltam.length * 26000,
+      });
+      segueFundo(bf);
+      toast('A descarregar em segundo plano \u2014 podes sair da app.');
+      return;
+    } catch (err) {}
+  }
+  if (b) b.textContent = 'A guardar as imagens\u2026 0 de ' + faltam.length;
+  mandaSW({ tipo: 'guardar-fotos', urls: faltam });
+}
+function segueFundo(bf) {
+  aDescarregar = true;
+  const pinta = () => {
+    const barra = document.getElementById('off-barra-fotos');
+    const b = document.getElementById('off-fotos');
+    const tot = bf.downloadTotal || 1;
+    const pct = Math.max(0, Math.min(100, Math.round(bf.downloaded / tot * 100)));
+    if (barra) barra.firstElementChild.style.width = pct + '%';
+    if (b && !bf.result) b.textContent = 'A guardar\u2026 ' + pct + '% (podes sair da app)';
+  };
+  try { bf.addEventListener('progress', pinta); } catch (err) {}
+  pinta();
+}
+function retomaFundo() {
+  navigator.serviceWorker.ready.then((r) => {
+    if (!r.backgroundFetch) return;
+    r.backgroundFetch.get('fotos').then((bf) => { if (bf) segueFundo(bf); }).catch(() => {});
+  }).catch(() => {});
+}
 function pintaOffline() {
   const alvo = document.querySelector('#sheet .off');
   if (!alvo) return;
@@ -884,9 +952,11 @@ function ligaOffline() {
     const u = fotosDaVista();
     if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; }
     if (satModo === 1 && u.length > 6000 && !confirm('São ' + fmt(u.length) + ' imagens, cerca de ' + fmt(Math.round(u.length * 0.026)) + ' MB, e pode demorar bastante.\n\nQueres mesmo guardar esta área toda? Aproximar o mapa reduz o trabalho.')) return;
-    b.textContent = 'A guardar as imagens… 0 de ' + u.length;
+    b.textContent = 'A preparar…';
+    aDescarregar = true;
     marcaZona();
-    mandaSW({ tipo: 'guardar-fotos', urls: u });
+    aguentaEcra();
+    mandaSW({ tipo: 'faltam', urls: u });
   };
   actualizaContagem();
   const v = document.getElementById('off-ver');
@@ -1165,6 +1235,7 @@ function renderPoi() {
 function refreshPoi() { poiOn.forEach((m) => poiLayer.removeLayer(m)); poiOn.clear(); renderPoi(); }
 let lastPoiZ = map.getZoom();
 map.on('moveend', () => { if ((lastPoiZ >= 15) !== (map.getZoom() >= 15)) { lastPoiZ = map.getZoom(); refreshPoi(); } else renderPoi(); });
+map.on('zoomend', notaLimite);
 renderPoi();
 // POI ao longo de um percurso (até 150 m do traçado), com km
 function poisAlong(r) {

@@ -47,12 +47,28 @@ self.addEventListener('message', (e) => {
   if (d.tipo === 'guardar-topo') e.waitUntil(guardaTopo());
   if (d.tipo === 'guardar-fotos') e.waitUntil(guardaFotos(d.urls || []));
   if (d.tipo === 'estado') e.waitUntil(estado());
+  if (d.tipo === 'faltam') e.waitUntil(jaTenho(d.urls || []).then((f) => avisa({ tipo: 'faltam', urls: f, jaLa: (d.urls || []).length - f.length })));
   if (d.tipo === 'quantos') e.waitUntil(jaTenho(d.urls || []).then((f) => avisa({ tipo: 'quantos', faltam: f.length, total: (d.urls || []).length })));
   if (d.tipo === 'cobertura') e.waitUntil(indice().then((q) => avisa({ tipo: 'cobertura', quadrados: q })));
   if (d.tipo === 'apagar') e.waitUntil(apagaTudo());
 });
 
-async function indice() { return (await tira('quadrados')) || []; }
+async function indice() {
+  const g = (await tira('quadrados')) || [];
+  if (g.length) return g;
+  return varreCobertura();
+}
+// se o indice se perdeu (descarga interrompida), reconstroi-se a partir do que esta na cache
+async function varreCobertura() {
+  try {
+    const c = await caches.open(V);
+    const ks = await c.keys();
+    const set = new Set();
+    for (const r of ks) { const k = chaveQuadrado(r.url); if (k) set.add(k); }
+    if (set.size) await guardaIndice([...set]);
+    return [...set];
+  } catch (err) { return []; }
+}
 async function guardaIndice(lista) { await poe('quadrados', lista); }
 
 async function estado() {
@@ -109,28 +125,72 @@ async function guardaFotos(urls) {
   const jaLa = urls.length - faltam.length;
   if (!faltam.length) { avisa({ tipo: 'pronto', fase: 'fotos', novas: 0, jaLa }); estado(); return; }
   const idx = new Set(await indice());
-  let n = 0, guardadas = 0;
-  const passo = Math.max(1, Math.round(faltam.length / 60));
-  for (const u of faltam) {
-    try {
-      const r = await fetch(u);
-      if (r.ok) {
-        await c.put(u, r.clone());
-        guardadas++;
-        const k = chaveQuadrado(u); if (k) idx.add(k);
+  let n = 0, guardadas = 0, i = 0;
+  const passo = Math.max(1, Math.round(faltam.length / 80));
+  // quatro ao mesmo tempo: rapido para quem espera, sem martelar o servidor
+  async function trabalhador() {
+    while (i < faltam.length) {
+      const u = faltam[i++];
+      try {
+        const r = await fetch(u);
+        if (r.ok) {
+          await c.put(u, r.clone());
+          guardadas++;
+          const k = chaveQuadrado(u); if (k) idx.add(k);
+        }
+      } catch (err) {}
+      n++;
+      if (n % passo === 0 || n === faltam.length) {
+        avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });
+        if (n % (passo * 2) === 0) await guardaIndice([...idx]);
       }
-    } catch (err) {}
-    n++;
-    if (n % passo === 0 || n === faltam.length) {
-      avisa({ tipo: 'progresso', fase: 'fotos', pct: Math.round(n / faltam.length * 100), feito: n, total: faltam.length });
-      if (n % (passo * 10) === 0) await guardaIndice([...idx]);
+      await new Promise((ok) => setTimeout(ok, 40));
     }
-    if (n % 8 === 0) await new Promise((ok) => setTimeout(ok, 120));   // ritmo civilizado para o servidor
   }
+  await Promise.all([trabalhador(), trabalhador(), trabalhador(), trabalhador()]);
   await guardaIndice([...idx]);
   avisa({ tipo: 'pronto', fase: 'fotos', novas: guardadas, jaLa });
   estado();
 }
+
+// ---- descarga que continua com a app fechada (Background Fetch) ----
+async function absorve(reg) {
+  const c = await caches.open(V);
+  const idx = new Set(await indice());
+  let recs = [];
+  try { recs = await reg.matchAll(); } catch (err) {}
+  let guardadas = 0;
+  for (const rec of recs) {
+    try {
+      const resp = await rec.responseReady;
+      if (resp && resp.ok) {
+        await c.put(rec.request, resp.clone());
+        guardadas++;
+        const k = chaveQuadrado(rec.request.url); if (k) idx.add(k);
+      }
+    } catch (err) {}
+  }
+  await guardaIndice([...idx]);
+  avisa({ tipo: 'pronto', fase: 'fotos', novas: guardadas, jaLa: 0 });
+  estado();
+  return guardadas;
+}
+self.addEventListener('backgroundfetchsuccess', (e) => {
+  e.waitUntil((async () => {
+    const n = await absorve(e.registration);
+    try { await e.updateUI({ title: 'Caminhos da Estrela — ' + n + ' imagens guardadas' }); } catch (err) {}
+  })());
+});
+self.addEventListener('backgroundfetchfail', (e) => {
+  e.waitUntil((async () => {
+    const n = await absorve(e.registration);
+    try { await e.updateUI({ title: 'Caminhos da Estrela — guardadas ' + n + ', faltaram algumas' }); } catch (err) {}
+  })());
+});
+self.addEventListener('backgroundfetchabort', (e) => { e.waitUntil(absorve(e.registration)); });
+self.addEventListener('backgroundfetchclick', (e) => {
+  e.waitUntil(self.clients.matchAll({ type: 'window' }).then((cs) => (cs.length ? cs[0].focus() : self.clients.openWindow('./'))));
+});
 
 async function apagaTudo() {
   await caches.delete(V);
