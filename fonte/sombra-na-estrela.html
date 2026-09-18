@@ -1642,6 +1642,8 @@ async function abreTopo() {
   requestAnimationFrame(() => { if (mapT && topoAberto) { ajustaTopo(); mapT.resize(); } });
   setTimeout(() => { if (mapT && topoAberto) mapT.resize(); }, 250);
   topoAberto = true;
+  pedeEstado();
+  setTimeout(avisaTopoRede, 1200);
   document.getElementById('btn-topo').setAttribute('aria-pressed', 'true');
   document.getElementById('btn-relevo').hidden = false;
   arvoresTopo(true);
@@ -1725,6 +1727,21 @@ if ('serviceWorker' in navigator) {
   });
 }
 function pedeEstado() { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'estado' }); }
+// Sem o ficheiro guardado, CADA pedaco do mapa topografico e um pedido a rede.
+// Medido: abrir sao 9 pedidos e 2,5 MB; cada arrasto sao 3 a 9 pedidos. Num
+// telemovel isso e meio segundo de espera por gesto, antes de desenhar seja o
+// que for -- e o que ele sentia como "muito lento". O mapa topografico e agora
+// o unico mapa, por isso isto deixa de estar escondido num painel.
+let avisouRede = false;
+function avisaTopoRede() {
+  if (avisouRede || !topoAberto || (offEstado && offEstado.topo)) return;
+  avisouRede = true;
+  toastAction('Este mapa está a vir da rede aos pedaços — cada arrasto são várias idas à internet. Guardado no telemóvel fica instantâneo, e funciona na serra sem sinal.',
+    'Guardar (91 MB)',
+    () => { toast('A guardar o mapa topográfico…'); mandaSW({ tipo: 'guardar-topo' }); });
+  setTimeout(() => { const el = document.getElementById('toast');
+    if (el && el.querySelector('#t-act')) el.hidden = true; }, 15000);
+}
 function mandaSW(msg) {
   if (!navigator.serviceWorker || !navigator.serviceWorker.controller) { toast('Ainda a preparar. Tenta daqui a uns segundos.'); return; }
   navigator.serviceWorker.controller.postMessage(msg);

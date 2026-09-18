@@ -17,7 +17,12 @@ m={}
 # sessao na nuvem que gerou os dados. Sem elas, os resultados ja publicados em
 # dados/, orto/ e no index.html anterior servem de fonte para as correspondencias.
 DADOS_LOCAIS = os.path.isdir('ortofull') and os.path.isdir('det40')
-INDEX_ANTIGO = open(SITE+'/index.html',encoding='utf-8').read() if os.path.exists(SITE+'/index.html') else ''
+# O index.html publicado servia de indice para reencontrar as ortofotos e o
+# detalhe. Desde que os dados sairam para dados/dados.js, metade desse indice
+# esta no outro ficheiro -- por isso le-se os dois e junta-se.
+INDEX_ANTIGO = (open(SITE+'/index.html',encoding='utf-8').read() if os.path.exists(SITE+'/index.html') else '')
+if os.path.exists(SITE+'/dados/dados.js'):
+    INDEX_ANTIGO += open(SITE+'/dados/dados.js',encoding='utf-8').read()
 if not DADOS_LOCAIS:
     if not INDEX_ANTIGO: raise SystemExit('sem ortofull/ nem index.html anterior: nao ha como resolver os blobs')
     print('sem pastas de dados: a reaproveitar correspondencias do index.html publicado')
@@ -174,6 +179,48 @@ h=h.replace(old_load,new_load)
 h=h.replace("  $('sheet').scrollTop = 0; $('sheet').classList.remove('peek');","  loadTempo(r.wx);\n  $('sheet').scrollTop = 0; $('sheet').classList.remove('peek');")
 # 3) título e rodapé
 h=h.replace('<title>Caminhos da Estrela</title>','<title>Caminhos da Estrela</title>\n<meta name="theme-color" content="#1C2118">\n<link rel="manifest" href="manifest.json">\n<link rel="icon" href="icons/favicon.png" type="image/png">\n<link rel="apple-touch-icon" href="icons/icon-192.png">')
+
+# ---- os dados saem de dentro do html ---------------------------------------
+# O index.html tinha 1,53 MB, dos quais 1,30 MB eram os dados dos percursos
+# escritos em linha. Isso custava duas coisas: o browser lia-os como CODIGO
+# (mais lento do que ler JSON), e o service worker vai SEMPRE a rede buscar o
+# index.html, por isso esse megabyte e meio era descarregado a cada abertura.
+#
+# Passam para dados/dados.js, que o service worker guarda e nao volta a pedir,
+# e cada valor grande passa a JSON.parse -- que o motor le de uma assentada em
+# vez de o interpretar como programa.
+import json as _json
+_i = h.index('window.__DATA__=')
+_ini = h.rindex('<script>', 0, _i)
+_fim = h.index('</script>', _i) + len('</script>')
+_conteudo = h[_ini + len('<script>'):_fim - len('</script>')]
+
+_partes, _pos, _grandes = [], 0, []
+_dec = _json.JSONDecoder()
+while True:
+    _k = _conteudo.find('window.__', _pos)
+    if _k < 0:
+        break
+    _eq = _conteudo.index('=', _k)
+    _nome = _conteudo[_k:_eq]
+    try:
+        _obj, _end = _dec.raw_decode(_conteudo, _eq + 1)
+    except ValueError as e:
+        raise SystemExit('build: nao consegui ler o valor de %s: %s' % (_nome, e))
+    _txt = _conteudo[_eq + 1:_end]
+    if len(_txt) > 200000:
+        _partes.append('%s=JSON.parse(%s);' % (_nome, _json.dumps(_txt)))
+        _grandes.append((_nome, len(_txt)))
+    else:
+        _partes.append('%s=%s;' % (_nome, _txt))
+    _pos = _end
+
+_fora = '\n'.join(_partes) + '\n'
+open(SITE + '/dados/dados.js', 'w', encoding='utf-8').write(_fora)
+h = h[:_ini] + '<script src="dados/dados.js"></script>' + h[_fim:]
+print('dados/dados.js %.2f MB  (JSON.parse em: %s)'
+      % (len(_fora) / 1e6, ', '.join('%s %.2f MB' % (n, t / 1e6) for n, t in _grandes)))
+
 open(SITE+'/index.html','w',encoding='utf-8').write(
  '<!doctype html>\n<html lang="pt"><head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n<style>:root{color-scheme:light dark;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}html,body{height:100%}body{margin:0;font:14px/1.45 system-ui,sans-serif;background:#EEF0E9}img{max-width:100%}[hidden]{display:none!important}</style>\n'
  + h + '\n</body></html>\n')

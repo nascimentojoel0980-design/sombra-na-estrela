@@ -3,6 +3,10 @@ const V = 'ce-v1';
 const NUCLEO = [
   './', 'index.html', 'manifest.json',
   'lib/leaflet.js', 'lib/pmtiles.js', 'lib/maplibre-gl-csp.js', 'lib/maplibre-gl-csp-worker.js',
+  // dados/dados.js sao os percursos, que sairam de dentro do index.html.
+  // Tem de estar aqui: o index.html vai sempre a rede, mas este nao -- e e
+  // por isso que sair de la valeu a pena.
+  'dados/dados.js',
   'dados/rede.json', 'dados/osm.json', 'dados/dem.webp', 'dados/relevo.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/favicon.png',
 ];
