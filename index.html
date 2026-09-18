@@ -535,7 +535,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 15:49';
+const VERSAO = '18/09 16:11';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 // a caixa de informacao do satelite desaparece sozinha; toca no botao do satelite para a ver outra vez
@@ -674,49 +674,64 @@ function ligaPadroes(m) {
 // ===========================================================================
 // Arvores em 3D, instanciadas -- camada propria do MapLibre (WebGL directo)
 // ---------------------------------------------------------------------------
-// Um so modelo de arvore, 28 triangulos, desenhado N vezes numa unica chamada
-// de desenho (instancing). 20 000 arvores custam o mesmo que uma em numero de
-// chamadas; o que cresce e so o buffer de instancias, 40 bytes cada.
+// Um so modelo de arvore, 40 triangulos, desenhado N vezes numa unica chamada
+// de desenho (instancing). 30 000 arvores custam o mesmo que uma em numero de
+// chamadas; o que cresce e so o buffer de instancias.
 //
-// Nao usa three.js. Sao ~9 KB de codigo contra ~600 KB de biblioteca, e a
+// Nao usa three.js. Sao ~13 KB de codigo contra ~600 KB de biblioteca, e a
 // biblioteca faria exactamente isto por baixo.
 //
 // AS TRES COISAS QUE VEM DO DADO, E A QUE NAO VEM
 //
 //   onde   as arvores nascem dentro dos poligonos de floresta (COS n1=5) e de
-//          montado (n1=4). Fora deles nao ha nenhuma. Chao a chao: nunca uma
-//          arvore em cima de rocha, de pastagem ou de agua.
+//          montado (n1=4). Fora deles nao ha nenhuma. Nunca uma arvore em cima
+//          de rocha, de pastagem ou de agua; os buracos do poligono contam.
 //   quantas  densidade tirada da cobertura de copa 'd' da mancha, pela relacao
 //          de Poisson  lambda = -ln(1 - d/100) / (pi * r^2).  Nao e um numero
 //          escolhido a olho: e quantas copas de raio r sao precisas para tapar
 //          d% do chao. Montado a 30% da ~45 arvores/ha, pinhal a 70% da ~430.
-//          Sao os numeros reais destes povoamentos.
-//   que altura  'h' da mancha, em metros, escalado contra o terreno com o mesmo
-//          exagero do relevo. Uma arvore de 14 m mede 14 m ao lado da encosta.
+//   que altura  'h' da mancha, com variacao por arvore. Cada uma tem a sua, e
+//          assenta na cota do seu proprio ponto -- a copa acompanha a encosta.
 //
 //   QUAL  a especie desenhada (copa de cone ou copa redonda) NAO vem do dado.
 //          A COS ao nivel 1 nao distingue pinhal de carvalhal. A forma e
 //          decorativa e sorteada por posicao; a altura e a densidade sao dado.
-//          Quem olhar para isto tem de saber a diferenca.
 //
 // E 'd'/'h' so sao medidos onde ha LiDAR (ver cos_extrai.py --chm). Onde nao
 // ha, sao valores por defeito da classe e a mancha traz m=0. A legenda tem de
 // dizer "modelado", como o resto do projecto ja faz com as cotas.
+//
+// COMO SE DESENHA LONGE SEM MATAR O TELEMOVEL
+//
+// A primeira versao punha arvores num circulo de 800 m a volta do centro do
+// mapa. Com o ecra inclinado isso da uma FAIXA: o chao ali a frente e as
+// serras ao fundo ficam os dois fora do circulo, e nao tinham arvore nenhuma.
+// Foi o que ele apanhou, e tinha razao.
+//
+// Agora ha tres niveis, por distancia. A grelha de pontos e sempre a mesma, e
+// os niveis sao sub-grelhas dela: o nivel 0 sao os pontos de 9 em 9, o nivel 1
+// os de 3 em 3, o nivel 2 todos. Por isso o nivel 0 esta contido no 1, que
+// esta contido no 2 -- aproximar ACRESCENTA arvores, nunca troca uma por
+// outra. E o que faz a transicao nao piscar. Cada arvore traz o seu nivel e e
+// o shader que a encolhe ate desaparecer no limite do nivel dela, em vez de a
+// cortar de repente.
 // ===========================================================================
 
 function ligaArvores(map, op) {
   op = op || {};
   const ZMIN = op.zoomMin == null ? 15 : op.zoomMin;   // abaixo disto, padrao 2D
-  const RAIO = op.raio == null ? 900 : op.raio;        // m a volta do centro
-  const TECTO = op.tecto == null ? 45000 : op.tecto;   // arvores no maximo
+  // limite de cada nivel, em metros: [todos, de 3 em 3, de 9 em 9]
+  const DIST = op.dist || [600, 1500, 3000];
+  const TECTO = op.tecto == null ? 30000 : op.tecto;
+  const ORCAMENTO = op.orcamento == null ? 60 : op.orcamento;  // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
-  const FUNDO = op.fundo || [0.78, 0.80, 0.72];        // cor para onde desmaia
+  const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
 
   // --- o que cada grupo e, em arvore -------------------------------------
   // c = digito de nivel 1 da COS. 5 floresta, 4 sistemas agro-florestais.
-  // k = raio de copa / altura da arvore. Medido em povoamentos reais:
-  //   pinheiro bravo de 14 m tem copa de 5 a 6 m de diametro  -> k ~ 0.20
-  //   sobreiro de 8 m tem copa de 10 a 14 m de diametro       -> k ~ 0.75
+  // k = raio de copa / altura da arvore, medido em povoamentos reais:
+  //   pinheiro bravo de 14 m tem copa de 5 a 6 m de diametro  -> k ~ 0.21
+  //   sobreiro de 8 m tem copa de 10 a 14 m de diametro       -> k ~ 0.70
   const ESPECIE = {
     5: { h: 14, d: 70, k: 0.21, conifera: 0.62 },  // floresta
     4: { h:  8, d: 30, k: 0.70, conifera: 0.0 },   // montado: copa larga, esparsa
@@ -746,9 +761,6 @@ function ligaArvores(map, op) {
   }
 
   // ------------------------------------------------------------------ malha
-  // Copa: torno de 6 lados, 3 aneis. Tronco: dois quadrados cruzados.
-  // O perfil do raio e calculado no vertex shader, por isso a mesma malha da
-  // cone (conifera) ou bola (folhosa) conforme o valor de instancia aForma.
   function malha() {
     const SEG = 7, T = [0.0, 0.30, 0.62, 1.0], V = [];
     // Bossa por (lado, anel): e o que da a copa aos bocados do desenho de
@@ -786,11 +798,12 @@ function ligaArvores(map, op) {
     attribute vec3 aPos;      // mercator x, y, e cota absoluta em metros
     attribute vec4 aArv;      // altura(m), raio(m), forma(0 cone..1 bola), rodar
     attribute vec3 aTom;      // cor da copa
+    attribute float aNiv;     // 0 = ve-se ao longe, 2 = so ao perto
     uniform mat4 uM;
     uniform float uEsc;       // metros -> unidades mercator
     uniform float uRef;       // cota do centro do mapa, em metros (referencial)
-    uniform vec2 uCentro;     // mercator, para o desmaio de distancia
-    uniform vec2 uFade;       // inicio e fim do desmaio, em metros
+    uniform vec2 uCentro;     // mercator
+    uniform vec3 uDist;       // limite de cada nivel, em metros
     varying vec3 vCor;
     varying float vLuz;
     varying float vFade;
@@ -815,6 +828,15 @@ function ligaArvores(map, op) {
       float s = sin(rot), c = cos(rot);
       p.xy = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
       nrm.xy = vec2(nrm.x * c - nrm.y * s, nrm.x * s + nrm.y * c);
+
+      // Distancia ao centro, em metros. Cada nivel tem o seu alcance e a
+      // arvore MURCHA ate ao chao no fim do dela, em vez de desaparecer de
+      // repente: uma arvore que encolhe nao se ve a sair, uma que se apaga ve-se.
+      float dm = length(aPos.xy - uCentro) / uEsc;
+      float lim = aNiv < 0.5 ? uDist.z : (aNiv < 1.5 ? uDist.y : uDist.x);
+      float murcha = 1.0 - smoothstep(lim * 0.86, lim, dm);
+      p *= murcha;
+
       // sol de noroeste a 45 graus. Em mercator o norte e -y.
       vec3 sol = normalize(vec3(-0.55, -0.45, 0.70));
       float lam = max(0.0, dot(normalize(nrm), sol));
@@ -823,10 +845,8 @@ function ligaArvores(map, op) {
       float ceu = 0.5 + 0.5 * normalize(nrm).z;
       vLuz = 0.46 + 0.42 * lam + 0.18 * ceu;
       vCor = aV.w < 0.5 ? aTom : vec3(0.46, 0.36, 0.26);
-      vec3 mund = vec3(aPos.xy, (aPos.z - uRef) * uEsc) + p * uEsc;
-      float dm = length(mund.xy - uCentro) / uEsc;
-      vFade = clamp((dm - uFade.x) / max(1.0, uFade.y - uFade.x), 0.0, 1.0);
-      gl_Position = uM * vec4(mund, 1.0);
+      vFade = clamp((dm - uDist.x * 0.6) / max(1.0, uDist.z - uDist.x * 0.6), 0.0, 1.0);
+      gl_Position = uM * vec4(vec3(aPos.xy, (aPos.z - uRef) * uEsc) + p * uEsc, 1.0);
     }`;
 
   const FS = `
@@ -835,11 +855,11 @@ function ligaArvores(map, op) {
     varying vec3 vCor; varying float vLuz; varying float vFade;
     void main() {
       vec3 c = vCor * vLuz;
-      gl_FragColor = vec4(mix(c, uFundo, vFade * 0.92), 1.0);
+      gl_FragColor = vec4(mix(c, uFundo, vFade * 0.80), 1.0);
     }`;
 
   // -------------------------------------------------------------- geometria
-  const R3857 = 20037508.342789244, CIRC = 40075016.685578488;
+  const CIRC = 40075016.685578488;
   const escala = (lat) => 1 / (CIRC * Math.cos(lat * Math.PI / 180));
   const merc = (lon, lat) => [
     (180 + lon) / 360,
@@ -868,12 +888,132 @@ function ligaArvores(map, op) {
     return true;   // buracos contam: uma clareira nao leva arvores
   }
 
-  // ------------------------------------------------------------- semear
-  let INST = null, nInst = 0, assinatura = '';
+  // ------------------------------------------------------------- as celulas
+  // As arvores nascem em CELULAS FIXAS NO MUNDO (azulejos z17, ~234 m), nao
+  // numa caixa a volta do centro do ecra. A celula nao se mexe quando o mapa
+  // se mexe, por isso as arvores dela tambem nao; e cada uma calcula-se uma
+  // vez e fica guardada, por isso andar para o lado so paga as celulas novas.
+  const CELZ = 17, P2 = Math.pow(2, CELZ);
+  const celulas = new Map();      // "x/y/salto" -> Float32Array, 11 por arvore
+  let INST = null, nInst = 0, assinatura = '', semTerreno = false, incompleto = false;
 
+  const tileLon = (x) => x / P2 * 360 - 180;
+  const tileLat = (y) => {
+    const n = Math.PI - 2 * Math.PI * y / P2;
+    return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  };
+  const lonTile = (lo) => Math.floor((lo + 180) / 360 * P2);
+  const latTile = (la) => {
+    const r = la * Math.PI / 180;
+    return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * P2);
+  };
+
+  // A cota nao se pergunta arvore a arvore: a grelha e de 9x9 por celula, ou
+  // seja um ponto a cada ~29 m, que e a resolucao do proprio modelo do
+  // terreno. Pedir mais fino seria inventar detalhe que o DEM nao tem, e
+  // custava 500 perguntas por celula em vez de 81.
+  function cotasDaCelula(w, s, e, n) {
+    const N = 9, g = new Float32Array(N * N);
+    let zeros = 0;
+    for (let j = 0; j < N; j++) {
+      for (let i = 0; i < N; i++) {
+        const v = chaoAbs(w + (e - w) * i / (N - 1), s + (n - s) * j / (N - 1));
+        g[j * N + i] = v;
+        if (v === 0) zeros++;
+      }
+    }
+    return { g, N, todasZero: zeros === N * N };
+  }
+  function cotaEm(C, w, s, e, n, lo, la) {
+    const fx = Math.min(C.N - 1.001, Math.max(0, (lo - w) / (e - w) * (C.N - 1)));
+    const fy = Math.min(C.N - 1.001, Math.max(0, (la - s) / (n - s) * (C.N - 1)));
+    const i0 = Math.floor(fx), j0 = Math.floor(fy), tx = fx - i0, ty = fy - j0;
+    const a = C.g[j0 * C.N + i0], b = C.g[j0 * C.N + i0 + 1];
+    const c = C.g[(j0 + 1) * C.N + i0], d = C.g[(j0 + 1) * C.N + i0 + 1];
+    return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+  }
+
+  // salto = 1, 3 ou 9: de quantos em quantos pontos da grelha se olha. Como as
+  // grelhas grossas sao sub-conjuntos da fina, aproximar so ACRESCENTA arvores.
+  const nivelDe = (i, j) => (i % 9 === 0 && j % 9 === 0) ? 0 : ((i % 3 === 0 && j % 3 === 0) ? 1 : 2);
+
+  function fazCelula(tx, ty, salto, feats) {
+    const w = tileLon(tx), e = tileLon(tx + 1);
+    const n = tileLat(ty), s = tileLat(ty + 1);
+    const dLat = GRELHA / 110540;
+    const dLon = GRELHA / (111320 * Math.cos((n + s) / 2 * Math.PI / 180));
+    const feitas = new Set(), saida = [];
+
+    for (const f of feats) {
+      const cod = f.properties.c != null ? +f.properties.c
+        : ({ rocha: 5, matos: 4 })[f.properties.g] || 0;   // azulejos antigos
+      const E = ESPECIE[cod]; if (!E) continue;
+      const alt = +f.properties.h || E.h;
+      // op.densidade so existe para ensaio: forca a mesma cobertura em tudo.
+      const cob = Math.min(92, op.densidade || +f.properties.d || E.d);
+      const raio = Math.max(0.8, alt * E.k);
+      const lam = -Math.log(1 - cob / 100) / (Math.PI * raio * raio);   // arvores/m2
+      const manter = Math.min(1, lam * GRELHA * GRELHA);
+      const gs = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+
+      for (const pol of gs) {
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        for (const q of pol[0]) {
+          if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0];
+          if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1];
+        }
+        const cw = Math.max(x0, w), ce = Math.min(x1, e);
+        const cs = Math.max(y0, s), cn = Math.min(y1, n);
+        if (ce <= cw || cn <= cs) continue;
+        // intervalos meio-abertos: cada ponto da grelha pertence a uma celula so
+        let i0 = Math.ceil(cw / dLon), i1 = Math.ceil(ce / dLon) - 1;
+        let j0 = Math.ceil(cs / dLat), j1 = Math.ceil(cn / dLat) - 1;
+        i0 = Math.ceil(i0 / salto) * salto; j0 = Math.ceil(j0 / salto) * salto;
+        for (let j = j0; j <= j1; j += salto) {
+          for (let i = i0; i <= i1; i += salto) {
+            const k = i * 8388608 + j;
+            if (feitas.has(k)) continue;          // a mancha vem repartida
+            const lo = (i + (baralha(i, j, 1) - 0.5) * 0.9) * dLon;
+            const la = (j + (baralha(i, j, 2) - 0.5) * 0.9) * dLat;
+            if (lo < w || lo >= e || la < s || la >= n) continue;
+            if (!dentroPol(pol, lo, la)) continue;
+            feitas.add(k);                        // dentro conta, guarde-se ou nao
+            if (baralha(i, j, 3) > manter) continue;
+            const hh = alt * (0.72 + 0.56 * baralha(i, j, 4));
+            saida.push([lo, la, hh,
+              Math.max(0.6, hh * E.k * (0.85 + 0.3 * baralha(i, j, 5))),
+              baralha(i, j, 6) < E.conifera ? 0 : 1,
+              baralha(i, j, 7), baralha(i, j, 8), nivelDe(i, j)]);
+          }
+        }
+      }
+    }
+    if (!saida.length) return new Float32Array(0);
+
+    const C = cotasDaCelula(w, s, e, n);
+    // Se ha relevo mas o modelo do terreno ainda nao chegou a esta celula, nao
+    // se guarda nada: guardar punha estas arvores ao nivel do centro do mapa
+    // para sempre, porque a celula ja nao voltava a ser calculada.
+    if (C.todasZero && map.getTerrain && map.getTerrain()) return null;
+
+    const buf = new Float32Array(saida.length * 11);
+    for (let t = 0; t < saida.length; t++) {
+      const a = saida[t], mm = merc(a[0], a[1]), o = t * 11, tom = a[5];
+      buf[o] = mm[0]; buf[o + 1] = mm[1];
+      buf[o + 2] = cotaEm(C, w, s, e, n, a[0], a[1]);
+      buf[o + 3] = a[2]; buf[o + 4] = a[3]; buf[o + 5] = a[4];
+      buf[o + 6] = a[6] * 6.283;
+      buf[o + 7] = 0.24 + 0.22 * tom;              // tom: verde-escuro a claro
+      buf[o + 8] = 0.44 + 0.26 * tom;
+      buf[o + 9] = 0.25 + 0.18 * tom;
+      buf[o + 10] = a[7];                          // nivel
+    }
+    return buf;
+  }
+
+  // ------------------------------------------------------------- semear
   function semeia() {
-    const z = map.getZoom();
-    if (z < ZMIN) { nInst = 0; return; }
+    if (map.getZoom() < ZMIN) { nInst = 0; incompleto = false; return; }
     const ct = map.getCenter();
     const feats = map.querySourceFeatures('topo', {
       sourceLayer: 'solo',
@@ -882,97 +1022,62 @@ function ligaArvores(map, op) {
     });
     if (!feats.length) { nInst = 0; return; }
 
+    const RMAX = DIST[2];
+    const comRelevo = !!(map.getTerrain && map.getTerrain());
     const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(ct.lat * Math.PI / 180));
-    const dLat = GRELHA * mLat, dLon = GRELHA * mLon;
-    const L = { w: ct.lng - RAIO * mLon, e: ct.lng + RAIO * mLon,
-                s: ct.lat - RAIO * mLat, n: ct.lat + RAIO * mLat };
+    const tx0 = lonTile(ct.lng - RMAX * mLon), tx1 = lonTile(ct.lng + RMAX * mLon);
+    const ty0 = latTile(ct.lat + RMAX * mLat), ty1 = latTile(ct.lat - RMAX * mLat);
 
-    const feitas = new Set();
-    const px = [], py = [], ph = [], pr = [], pf = [], pt = [];
-    let cheio = false;
-
-    for (const f of feats) {
-      if (cheio) break;
-      const cod = f.properties.c != null ? +f.properties.c
-        : ({ rocha: 5, matos: 4 })[f.properties.g] || 0;   // azulejos antigos
-      const E = ESPECIE[cod]; if (!E) continue;
-      const alt = +f.properties.h || E.h;
-      // op.densidade so existe para ensaio: forca a mesma cobertura em tudo,
-      // para se ver lado a lado o que a densidade muda. A serio, vem do dado.
-      const cob = Math.min(92, op.densidade || +f.properties.d || E.d);
-      const raio = Math.max(0.8, alt * E.k);
-      const lam = -Math.log(1 - cob / 100) / (Math.PI * raio * raio);  // arvores/m2
-      const manter = Math.min(1, lam * GRELHA * GRELHA);
-      const gs = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
-
-      for (const pol of gs) {
-        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-        for (const p of pol[0]) {
-          if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
-          if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+    const partes = []; let total = 0, novas = 0;
+    let faltouDEM = false, faltouTempo = false;
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        // distancia do centro da celula ao centro do mapa
+        const clo = (tileLon(tx) + tileLon(tx + 1)) / 2;
+        const cla = (tileLat(ty) + tileLat(ty + 1)) / 2;
+        const dx = (clo - ct.lng) / mLon, dy = (cla - ct.lat) / mLat;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d > RMAX + 200) continue;
+        const salto = d < DIST[0] ? 1 : (d < DIST[1] ? 3 : 9);
+        // A chave leva o estado do relevo: sem relevo as cotas sao todas zero
+        // (e certo, o mapa e plano), e essa celula nao serve quando o relevo
+        // liga. Sem isto, ligar o 3D deixava as arvores enterradas.
+        const ch = tx + '/' + ty + '/' + salto + (comRelevo ? 't' : 'p');
+        let c = celulas.get(ch);
+        if (c === undefined) {
+          // orcamento por passagem: encher tudo de uma vez trancava o ecra.
+          // O que faltar fica para a passagem seguinte, marcada aqui.
+          if (novas >= ORCAMENTO) { faltouTempo = true; continue; }
+          c = fazCelula(tx, ty, salto, feats); novas++;
+          if (c === null) { faltouDEM = true; continue; }
+          celulas.set(ch, c);
+          if (celulas.size > 1500) celulas.delete(celulas.keys().next().value);
         }
-        x0 = Math.max(x0, L.w); x1 = Math.min(x1, L.e);
-        y0 = Math.max(y0, L.s); y1 = Math.min(y1, L.n);
-        if (x1 <= x0 || y1 <= y0) continue;
-
-        const i0 = Math.floor(x0 / dLon), i1 = Math.ceil(x1 / dLon);
-        const j0 = Math.floor(y0 / dLat), j1 = Math.ceil(y1 / dLat);
-        for (let j = j0; j <= j1 && !cheio; j++) {
-          for (let i = i0; i <= i1; i++) {
-            const k = i * 8388608 + j;
-            if (feitas.has(k)) continue;              // a mancha vem repartida
-            const lon = (i + 0.5 + (baralha(i, j, 1) - 0.5) * 0.9) * dLon;
-            const lat = (j + 0.5 + (baralha(i, j, 2) - 0.5) * 0.9) * dLat;
-            if (lon < L.w || lon > L.e || lat < L.s || lat > L.n) continue;
-            if (!dentroPol(pol, lon, lat)) continue;
-            feitas.add(k);                            // dentro conta, guarde-se ou nao
-            if (baralha(i, j, 3) > manter) continue;
-            const hh = alt * (0.72 + 0.56 * baralha(i, j, 4));
-            px.push(lon); py.push(lat); ph.push(hh);
-            pr.push(Math.max(0.6, hh * E.k * (0.85 + 0.3 * baralha(i, j, 5))));
-            pf.push(baralha(i, j, 6) < E.conifera ? 0.0 : 1.0);
-            pt.push(baralha(i, j, 7));
-            if (px.length >= TECTO) { cheio = true; break; }
-          }
-        }
+        if (c.length) { partes.push(c); total += c.length / 11; }
       }
     }
+    semTerreno = faltouDEM;
+    incompleto = faltouTempo;
 
-    const n = px.length;
-    const buf = new Float32Array(n * 10);
-    let planas = 0;
-    for (let i = 0; i < n; i++) {
-      const [mx, my] = merc(px[i], py[i]);
-      const cota = chaoAbs(px[i], py[i]);
-      if (cota === 0) planas++;
-      const o = i * 10;
-      buf[o] = mx; buf[o + 1] = my; buf[o + 2] = cota;
-      buf[o + 3] = ph[i]; buf[o + 4] = pr[i]; buf[o + 5] = pf[i];
-      buf[o + 6] = baralha(i, 0, 8) * 6.283;
-      const v = pt[i];                                 // tom: verde-escuro a verde-claro
-      buf[o + 7] = 0.24 + 0.22 * v;
-      buf[o + 8] = 0.44 + 0.26 * v;
-      buf[o + 9] = 0.25 + 0.18 * v;
+    const buf = new Float32Array(Math.min(total, TECTO) * 11);
+    let k = 0;
+    for (const c of partes) {
+      const n = Math.min(c.length, (TECTO - k) * 11);
+      if (n <= 0) break;
+      buf.set(c.subarray(0, n), k * 11);
+      k += n / 11;
     }
-    INST = buf; nInst = n;
-    // Se ha relevo mas nenhuma arvore apanhou cota, os azulejos do DEM ainda
-    // nao chegaram. Marca-se para voltar a semear quando o mapa assentar --
-    // sem isto as arvores ficavam todas ao nivel do centro.
-    semTerreno = !!(map.getTerrain && map.getTerrain()) && n > 0 && planas === n;
-    if (op.aoContar) op.aoContar(n, cheio);
+    INST = buf; nInst = k;
+    if (op.aoContar) op.aoContar(k, k >= TECTO, incompleto);
   }
 
   // -------------------------------------------------------------- a camada
   let prog, locs, bufV, bufI, inst2, cap = 0;
   // Ritmo de desenho medido no proprio sitio onde custa: entre chamadas ao
-  // render desta camada. Serve para a pagina baixar o tecto sozinha se o
-  // telemovel nao acompanhar -- que e uma coisa que nao se adivinha de fora.
-  // So contam os fotogramas desenhados enquanto o mapa se mexe: ai o MapLibre
-  // repinta sem parar e a diferenca entre dois renders E o custo do fotograma.
-  // Com o mapa parado nao ha repintura e a diferenca e tempo de espera, que
-  // nao quer dizer nada. Filtrar por "salto menor que meio segundo" era o erro
-  // obvio e ao contrario: quanto mais lento o telemovel, menos media -- e era
-  // justamente o telemovel lento que isto tinha de apanhar.
+  // render desta camada. So contam os fotogramas desenhados enquanto o mapa se
+  // mexe -- ai o MapLibre repinta sem parar e a diferenca entre dois renders E
+  // o custo do fotograma. Com o mapa parado nao ha repintura e a diferenca e
+  // tempo de espera, que nao quer dizer nada.
   let tAnterior = 0, mexiaAntes = false; const ritmos = [];
 
   const camada = {
@@ -1007,11 +1112,12 @@ function ligaArvores(map, op) {
         aPos: gl.getAttribLocation(prog, 'aPos'),
         aArv: gl.getAttribLocation(prog, 'aArv'),
         aTom: gl.getAttribLocation(prog, 'aTom'),
+        aNiv: gl.getAttribLocation(prog, 'aNiv'),
         uM: gl.getUniformLocation(prog, 'uM'),
         uEsc: gl.getUniformLocation(prog, 'uEsc'),
         uRef: gl.getUniformLocation(prog, 'uRef'),
         uCentro: gl.getUniformLocation(prog, 'uCentro'),
-        uFade: gl.getUniformLocation(prog, 'uFade'),
+        uDist: gl.getUniformLocation(prog, 'uDist'),
         uFundo: gl.getUniformLocation(prog, 'uFundo'),
       };
       bufV = gl.createBuffer();
@@ -1045,21 +1151,24 @@ function ligaArvores(map, op) {
       gl.bindBuffer(gl.ARRAY_BUFFER, bufI);
       if (cap < nInst) { gl.bufferData(gl.ARRAY_BUFFER, INST, gl.DYNAMIC_DRAW); cap = nInst; }
       else gl.bufferSubData(gl.ARRAY_BUFFER, 0, INST);
-      const S = 40;
+      const S = 44;
       gl.enableVertexAttribArray(locs.aPos);
       gl.vertexAttribPointer(locs.aPos, 3, gl.FLOAT, false, S, 0); inst2.div(locs.aPos, 1);
       gl.enableVertexAttribArray(locs.aArv);
       gl.vertexAttribPointer(locs.aArv, 4, gl.FLOAT, false, S, 12); inst2.div(locs.aArv, 1);
       gl.enableVertexAttribArray(locs.aTom);
       gl.vertexAttribPointer(locs.aTom, 3, gl.FLOAT, false, S, 28); inst2.div(locs.aTom, 1);
+      gl.enableVertexAttribArray(locs.aNiv);
+      gl.vertexAttribPointer(locs.aNiv, 1, gl.FLOAT, false, S, 40); inst2.div(locs.aNiv, 1);
 
       const ct = map.getCenter(), esc = escala(ct.lat), c = merc(ct.lng, ct.lat);
       gl.uniformMatrix4fv(locs.uM, false, matriz);
       gl.uniform1f(locs.uEsc, esc);
       gl.uniform1f(locs.uRef, refMapa());
       gl.uniform2f(locs.uCentro, c[0], c[1]);
-      gl.uniform2f(locs.uFade, RAIO * 0.45, RAIO);
+      gl.uniform3f(locs.uDist, DIST[0], DIST[1], DIST[2]);
       gl.uniform3f(locs.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
+
       const agora = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const mexe = typeof map.isMoving === 'function' ? map.isMoving() : true;
       if (tAnterior && mexe && mexiaAntes) {
@@ -1070,59 +1179,75 @@ function ligaArvores(map, op) {
       inst2.draw(NVERT, nInst);
 
       // devolver o divisor a zero: o MapLibre reutiliza estes indices
-      inst2.div(locs.aPos, 0); inst2.div(locs.aArv, 0); inst2.div(locs.aTom, 0);
+      inst2.div(locs.aPos, 0); inst2.div(locs.aArv, 0);
+      inst2.div(locs.aTom, 0); inst2.div(locs.aNiv, 0);
     },
   };
 
   // ------------------------------------------------------ quando re-semear
-  let pendente = null, semTerreno = false;
-  function talvezSemeia() {
+  let pendente = null;
+  function talvezSemeia(forca) {
     const ct = map.getCenter();
     const a = [Math.round(map.getZoom() * 2), ct.lng.toFixed(3), ct.lat.toFixed(3)].join('|');
-    if (a === assinatura) return;
+    if (a === assinatura && !forca) return;
     assinatura = a;
     clearTimeout(pendente);
-    pendente = setTimeout(() => { semeia(); map.triggerRepaint(); }, 120);
+    pendente = setTimeout(() => {
+      semeia();
+      map.triggerRepaint();
+      // ficou por encher: continua na proxima volta, sem trancar esta
+      if (incompleto) { pendente = setTimeout(() => talvezSemeia(true), 40); }
+    }, 90);
   }
 
-  map.on('moveend', talvezSemeia);
-  map.on('idle', () => { if (semTerreno) { assinatura = ''; talvezSemeia(); } });
-  map.on('sourcedata', (e) => { if (e.sourceId === 'topo' && e.isSourceLoaded) { assinatura = ''; talvezSemeia(); } });
+  map.on('moveend', () => talvezSemeia(false));
+  map.on('sourcedata', (e) => {
+    if (e.sourceId !== 'topo' || !e.isSourceLoaded) return;
+    // celulas vazias podem te-lo ficado por os azulejos ainda nao terem
+    // chegado; as que tem arvores estao boas e ficam.
+    for (const [k, v] of celulas) if (!v.length) celulas.delete(k);
+    assinatura = ''; talvezSemeia(true);
+  });
+  map.on('idle', () => { if (semTerreno || incompleto) { assinatura = ''; talvezSemeia(true); } });
 
   return {
     camada,
-    semeia: () => { assinatura = ''; talvezSemeia(); },
+    semeia: () => { assinatura = ''; talvezSemeia(true); },
     quantas: () => nInst,
+    esquece() { celulas.clear(); assinatura = ''; talvezSemeia(true); },
     // mediana de ms entre fotogramas desta camada, ou null se ainda nao ha
-    // amostra que chegue para dizer alguma coisa
+    // amostra que chegue para dizer alguma coisa. Seis chegam: um telemovel
+    // que esteja mesmo a sofrer desenha poucos fotogramas, e exigir vinte
+    // amostras era nunca apanhar justamente esse.
     ritmo() {
-      // seis chegam: um telemovel que esteja mesmo a sofrer desenha poucos
-      // fotogramas, e exigir vinte amostras era nunca apanhar justamente esse.
       if (ritmos.length < 6) return null;
       const o = ritmos.slice().sort((a, b) => a - b);
       return +o[o.length >> 1].toFixed(1);
     },
-    // Para diagnostico: cada arvore assenta na cota do SEU ponto (chaoAbs e
-    // chamado por arvore, nao por mancha) e tem a SUA altura. Se o intervalo
-    // de cotas for zero numa encosta, ha alguma coisa errada -- e isto diz-o.
+    // Para diagnostico: cada arvore assenta na cota do SEU ponto e tem a SUA
+    // altura. Se o intervalo de cotas for zero numa encosta, ha algo errado.
     resumo() {
       if (!nInst || !INST) return { n: 0 };
       let c0 = 1e9, c1 = -1e9, a0 = 1e9, a1 = -1e9, sa = 0;
+      const niv = [0, 0, 0];
       for (let i = 0; i < nInst; i++) {
-        const c = INST[i * 10 + 2], h = INST[i * 10 + 3];
+        const c = INST[i * 11 + 2], h = INST[i * 11 + 3];
         if (c < c0) c0 = c; if (c > c1) c1 = c;
         if (h < a0) a0 = h; if (h > a1) a1 = h; sa += h;
+        niv[INST[i * 11 + 10]]++;
       }
-      return { n: nInst, cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
+      return { n: nInst, celulas: celulas.size, niveis: niv, incompleto,
+               cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
                alturaMedia: +(sa / nInst).toFixed(1) };
     },
-    desliga() { map.off('moveend', talvezSemeia); if (map.getLayer(camada.id)) map.removeLayer(camada.id); },
+    desliga() {
+      clearTimeout(pendente);
+      if (map.getLayer(camada.id)) map.removeLayer(camada.id);
+    },
   };
 }
 
-// Arvores no mapa topografico: so com o relevo 3D ligado. Sem relevo ficariam
-// espetadas num plano, que e pior do que nao as ter.
 // Tecto de arvores que se baixa sozinho. Nao ha maneira de eu medir daqui o
 // telemovel dele -- entao a pagina mede-se a si propria: se os fotogramas com
 // as arvores ligadas passarem de 55 ms (menos de 18 por segundo), corta o
@@ -1136,8 +1261,8 @@ function arvTecto() {
 }
 function vigiaArvores() {
   if (!mapT) return;
-  const olha = () => {
-    if (!ARV || !topoRelevo) return;
+  mapT.on('moveend', () => {
+    if (!ARV || !arvQuer) return;
     const r = ARV.ritmo(), tec = arvTecto();
     if (r == null) return;
     if (r > 55 && tec > 4000) {
@@ -1146,24 +1271,38 @@ function vigiaArvores() {
       arvoresTopo(false); arvoresTopo(true);
       toast('Menos árvores: o telemóvel não estava a acompanhar.');
     }
-  };
-  mapT.on('moveend', olha);
+  });
 }
-let ARV = null, avisoArv = false;
+// As arvores nao dependem do botao do relevo: vistas de cima sao a mesma
+// floresta, e a altitude continua a ler-se pelo sombreado e pelas curvas de
+// nivel, que nao se mexem daqui. O botao do relevo so muda se o terreno se
+// levanta -- e ai as cotas guardadas por celula deixam de servir.
+let ARV = null, avisoArv = false, arvQuer = false;
 function arvoresTopo(liga) {
+  arvQuer = !!liga;
   if (!mapT) return;
   if (!liga) { if (ARV) { try { ARV.desliga(); } catch (e) {} ARV = null; } return; }
   if (ARV) return;
   // Nem 'idle' nem isStyleLoaded(): medido neste mapa, com o relevo ligado o
   // isStyleLoaded() fica em false para sempre e o 'idle' pode nunca chegar --
   // e no entanto o addLayer funciona. Entao tenta-se mesmo, e so se ele
-  // recusar e que se espera. A guarda do topoRelevo para isto se ele desligar
-  // o 3D entretanto.
+  // recusar e que se espera.
   let tentativas = 0;
   const por = () => {
-    if (ARV || !mapT || !topoRelevo) return;
+    if (ARV || !mapT || !arvQuer) return;
     try {
-      ARV = ligaArvores(mapT, { zoomMin: 15, raio: 800, tecto: arvTecto(), fundo: [0.87, 0.86, 0.80] });
+      ARV = ligaArvores(mapT, {
+        zoomMin: 15, dist: [600, 1500, 3000], tecto: arvTecto(),
+        fundo: [0.87, 0.86, 0.80],
+        aoContar: (n) => {
+          // dito uma vez, e dito como e: a altura das arvores e modelada da
+          // classe da carta, nao medida. Modelado nao passa por medido.
+          if (n > 0 && !avisoArv) {
+            avisoArv = true;
+            toast('Árvores onde a carta diz floresta. A altura é modelada, não medida.');
+          }
+        },
+      });
       mapT.addLayer(ARV.camada);
       ARV.semeia();
       vigiaArvores();
@@ -1305,6 +1444,18 @@ async function abreTopo() {
     // nitidez em grande zoom e leve": 91 MB para a serra toda, contra 1,4 GB
     // de fotografia para 321 km2.
     ligaPadroes(mapT);
+    // O canvas do MapLibre nao se redimensiona sozinho, e nem todas as
+    // mudancas de tamanho disparam 'resize' ou 'fullscreenchange': no
+    // telemovel as barras do browser aparecem e desaparecem sem disparar
+    // nenhum dos dois, e o mapa fica desenhado num quadrado no meio do ecra
+    // com rastos a volta. Estes dois apanham a mudanca venha ela de onde vier.
+    {
+      let rq = null;
+      const reajusta = () => { clearTimeout(rq); rq = setTimeout(() => {
+        if (mapT && topoAberto) { ajustaTopo(); mapT.resize(); } }, 80); };
+      if (window.visualViewport) visualViewport.addEventListener('resize', reajusta);
+      if (typeof ResizeObserver === 'function') new ResizeObserver(reajusta).observe(document.body);
+    }
     mapT.on('click', (e) => topoClique(e));
     mapT.on('error', (e) => { if (e && e.error && /pmtiles|topo/i.test(String(e.error.message || ''))) toast('Mapa topográfico indisponível.'); });
   } else { mapT.jumpTo({ center: [c.lng, c.lat], zoom: z }); }
@@ -1314,6 +1465,7 @@ async function abreTopo() {
   topoAberto = true;
   document.getElementById('btn-topo').setAttribute('aria-pressed', 'true');
   document.getElementById('btn-relevo').hidden = false;
+  arvoresTopo(true);
   if (meLast) meTopo(meLast);
 }
 function fechaTopo() {
@@ -1324,6 +1476,7 @@ function fechaTopo() {
   topoAberto = false;
   document.getElementById('btn-topo').setAttribute('aria-pressed', 'false');
   document.getElementById('btn-relevo').hidden = true;
+  arvoresTopo(false);
 }
 function topoClique(e) {
   if (!mapT) return;
@@ -1639,18 +1792,9 @@ document.getElementById('btn-relevo').onclick = () => {
   if (!mapT) return;
   topoRelevo = !topoRelevo;
   document.getElementById('btn-relevo').setAttribute('aria-pressed', topoRelevo);
-  if (topoRelevo) {
-    mapT.setTerrain({ source: 'dem', exaggeration: 1.25 });
-    mapT.easeTo({ pitch: 58, duration: 600 });
-    arvoresTopo(true);
-    // dito uma vez, e dito como e: a altura das arvores e modelada da classe
-    // da carta, nao medida. O projecto nao deixa passar modelado por medido.
-    if (!avisoArv) { avisoArv = true; toast('Árvores onde a carta diz floresta. A altura é modelada, não medida.'); }
-  } else {
-    mapT.setTerrain(null);
-    mapT.easeTo({ pitch: 0, bearing: 0, duration: 600 });
-    arvoresTopo(false);
-  }
+  if (topoRelevo) { mapT.setTerrain({ source: 'dem', exaggeration: 1.25 }); mapT.easeTo({ pitch: 58, duration: 600 }); }
+  else { mapT.setTerrain(null); mapT.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+  if (ARV) ARV.esquece();
 };
 
 const layers = new Map();

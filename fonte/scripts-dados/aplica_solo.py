@@ -57,8 +57,6 @@ function ligaPadroes(m) {
   });
 }
 __ARVORES__
-// Arvores no mapa topografico: so com o relevo 3D ligado. Sem relevo ficariam
-// espetadas num plano, que e pior do que nao as ter.
 // Tecto de arvores que se baixa sozinho. Nao ha maneira de eu medir daqui o
 // telemovel dele -- entao a pagina mede-se a si propria: se os fotogramas com
 // as arvores ligadas passarem de 55 ms (menos de 18 por segundo), corta o
@@ -72,8 +70,8 @@ function arvTecto() {
 }
 function vigiaArvores() {
   if (!mapT) return;
-  const olha = () => {
-    if (!ARV || !topoRelevo) return;
+  mapT.on('moveend', () => {
+    if (!ARV || !arvQuer) return;
     const r = ARV.ritmo(), tec = arvTecto();
     if (r == null) return;
     if (r > 55 && tec > 4000) {
@@ -82,24 +80,38 @@ function vigiaArvores() {
       arvoresTopo(false); arvoresTopo(true);
       toast('Menos árvores: o telemóvel não estava a acompanhar.');
     }
-  };
-  mapT.on('moveend', olha);
+  });
 }
-let ARV = null, avisoArv = false;
+// As arvores nao dependem do botao do relevo: vistas de cima sao a mesma
+// floresta, e a altitude continua a ler-se pelo sombreado e pelas curvas de
+// nivel, que nao se mexem daqui. O botao do relevo so muda se o terreno se
+// levanta -- e ai as cotas guardadas por celula deixam de servir.
+let ARV = null, avisoArv = false, arvQuer = false;
 function arvoresTopo(liga) {
+  arvQuer = !!liga;
   if (!mapT) return;
   if (!liga) { if (ARV) { try { ARV.desliga(); } catch (e) {} ARV = null; } return; }
   if (ARV) return;
   // Nem 'idle' nem isStyleLoaded(): medido neste mapa, com o relevo ligado o
   // isStyleLoaded() fica em false para sempre e o 'idle' pode nunca chegar --
   // e no entanto o addLayer funciona. Entao tenta-se mesmo, e so se ele
-  // recusar e que se espera. A guarda do topoRelevo para isto se ele desligar
-  // o 3D entretanto.
+  // recusar e que se espera.
   let tentativas = 0;
   const por = () => {
-    if (ARV || !mapT || !topoRelevo) return;
+    if (ARV || !mapT || !arvQuer) return;
     try {
-      ARV = ligaArvores(mapT, { zoomMin: 15, raio: 800, tecto: arvTecto(), fundo: [0.87, 0.86, 0.80] });
+      ARV = ligaArvores(mapT, {
+        zoomMin: 15, dist: [600, 1500, 3000], tecto: arvTecto(),
+        fundo: [0.87, 0.86, 0.80],
+        aoContar: (n) => {
+          // dito uma vez, e dito como e: a altura das arvores e modelada da
+          // classe da carta, nao medida. Modelado nao passa por medido.
+          if (n > 0 && !avisoArv) {
+            avisoArv = true;
+            toast('Árvores onde a carta diz floresta. A altura é modelada, não medida.');
+          }
+        },
+      });
       mapT.addLayer(ARV.camada);
       ARV.semeia();
       vigiaArvores();
@@ -125,25 +137,37 @@ TROCAS = [
         paint: { 'fill-color': corSolo(), 'fill-opacity': 0.92 } },
       ...camadasPadrao(),"""),
 
- # 3. carregar os padroes quando o estilo os pedir
+ # 3. carregar os padroes quando o estilo os pedir, e apanhar as mudancas de
+ #    tamanho que nao passam por 'resize' nem por 'fullscreenchange'
  ("    mapT.on('click', (e) => topoClique(e));",
-  "    ligaPadroes(mapT);\n    mapT.on('click', (e) => topoClique(e));"),
+  """    ligaPadroes(mapT);
+    // O canvas do MapLibre nao se redimensiona sozinho, e nem todas as
+    // mudancas de tamanho disparam 'resize' ou 'fullscreenchange': no
+    // telemovel as barras do browser aparecem e desaparecem sem disparar
+    // nenhum dos dois, e o mapa fica desenhado num quadrado no meio do ecra
+    // com rastos a volta. Estes dois apanham a mudanca venha ela de onde vier.
+    {
+      let rq = null;
+      const reajusta = () => { clearTimeout(rq); rq = setTimeout(() => {
+        if (mapT && topoAberto) { ajustaTopo(); mapT.resize(); } }, 80); };
+      if (window.visualViewport) visualViewport.addEventListener('resize', reajusta);
+      if (typeof ResizeObserver === 'function') new ResizeObserver(reajusta).observe(document.body);
+    }
+    mapT.on('click', (e) => topoClique(e));"""),
 
- # 4. o botao do relevo passa a ligar e desligar as arvores
+ # 4. arvores enquanto o mapa topografico estiver aberto, com ou sem 3D
+ ("  document.getElementById('btn-relevo').hidden = false;",
+  "  document.getElementById('btn-relevo').hidden = false;\n  arvoresTopo(true);"),
+ ("  document.getElementById('btn-relevo').hidden = true;",
+  "  document.getElementById('btn-relevo').hidden = true;\n  arvoresTopo(false);"),
+
+ # 5. o botao do relevo continua a mandar no terreno -- e as cotas guardadas
+ #    por celula valem para um estado do relevo, nao para os dois
  ("""  if (topoRelevo) { mapT.setTerrain({ source: 'dem', exaggeration: 1.25 }); mapT.easeTo({ pitch: 58, duration: 600 }); }
   else { mapT.setTerrain(null); mapT.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }""",
-  """  if (topoRelevo) {
-    mapT.setTerrain({ source: 'dem', exaggeration: 1.25 });
-    mapT.easeTo({ pitch: 58, duration: 600 });
-    arvoresTopo(true);
-    // dito uma vez, e dito como e: a altura das arvores e modelada da classe
-    // da carta, nao medida. O projecto nao deixa passar modelado por medido.
-    if (!avisoArv) { avisoArv = true; toast('Árvores onde a carta diz floresta. A altura é modelada, não medida.'); }
-  } else {
-    mapT.setTerrain(null);
-    mapT.easeTo({ pitch: 0, bearing: 0, duration: 600 });
-    arvoresTopo(false);
-  }"""),
+  """  if (topoRelevo) { mapT.setTerrain({ source: 'dem', exaggeration: 1.25 }); mapT.easeTo({ pitch: 58, duration: 600 }); }
+  else { mapT.setTerrain(null); mapT.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+  if (ARV) ARV.esquece();"""),
 ]
 
 
