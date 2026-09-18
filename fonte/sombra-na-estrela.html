@@ -428,7 +428,12 @@ const PX_DGT = 2048;
 // dados/det. Pede-se agora o que o ECRA mostra, com dois tectos: o detalhe da
 // fonte (25 cm -- abaixo disso a DGT interpola e nao ha nada a ganhar) e o
 // que o servidor aceita por pedido.
-const PX_MAX = 4096, M_FONTE = 0.25;
+// TECTO A 2048 ATE HAVER MEDICAO. Subi-o para 4096 a 18/09 e o download
+// parou em "0 de 3" no telemovel dele: ou a DGT recusa esse tamanho, ou
+// demora mais do que os 30 s de limite por pedido. Nao se advinha - mede-se
+// primeiro (ver as duas ligacoes de prova na conversa de 18/09) e so depois
+// se sobe. O resto do mecanismo fica como esta: mudar este numero chega.
+const PX_MAX = 2048, M_FONTE = 0.25;
 function pxDGT(z, lat) {
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   const ladoM = 2 * R38 / 2 ** z * Math.cos((lat || 40.3) * Math.PI / 180);
