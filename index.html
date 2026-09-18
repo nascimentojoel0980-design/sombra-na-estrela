@@ -484,7 +484,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 11:07';
+const VERSAO = '18/09 11:43';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 // a caixa de informacao do satelite desaparece sozinha; toca no botao do satelite para a ver outra vez
@@ -507,7 +507,9 @@ function ligaSat(modo) {
   if (camEsri) camEsri.remove();
   if (satModo === 1) {
     if (!camDGT) {
-      camDGT = new CamadaDGT({ pane: 'onlineP', tileSize: PX_DGT, zoomOffset: -3, maxZoom: 20, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
+      // ATENCAO: L.TileLayer recebe (url, opcoes). Sem a string vazia a frente, as
+      // opcoes iam parar ao lugar do url e NENHUMA era aplicada — foi assim durante horas.
+      camDGT = new CamadaDGT('', { pane: 'onlineP', tileSize: PX_DGT, zoomOffset: -3, maxZoom: 21, maxNativeZoom: 19, attribution: 'Ortofotos DGT 2025' });
       camDGT.__ok = 0; camDGT.__erro = 0;
       const marca = () => {
         const n = document.getElementById('sat-diag');
@@ -528,7 +530,7 @@ function ligaSat(modo) {
     }
     camDGT.addTo(map);
   } else if (satModo === 2) {
-    if (!camEsri) camEsri = L.tileLayer(SAT_URL, { pane: 'onlineP', maxZoom: 19, maxNativeZoom: 19, crossOrigin: true, attribution: 'Esri, Maxar, Earthstar Geographics' });
+    if (!camEsri) camEsri = L.tileLayer(SAT_URL, { pane: 'onlineP', maxZoom: 21, maxNativeZoom: 19, crossOrigin: true, attribution: 'Esri, Maxar, Earthstar Geographics' });
     camEsri.addTo(map);
   }
   const n = document.getElementById('sat-note');
