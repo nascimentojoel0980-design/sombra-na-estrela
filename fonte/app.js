@@ -926,6 +926,98 @@ function ligaPadroes(m) {
 // cortar de repente.
 // ===========================================================================
 
+// ===========================================================================
+// Arvores em 3D, instanciadas -- camada propria do MapLibre (WebGL directo)
+// ---------------------------------------------------------------------------
+// Um so modelo de arvore, 40 triangulos, desenhado N vezes numa unica chamada
+// de desenho (instancing). 30 000 arvores custam o mesmo que uma em numero de
+// chamadas; o que cresce e so o buffer de instancias.
+//
+// Nao usa three.js. Sao ~13 KB de codigo contra ~600 KB de biblioteca, e a
+// biblioteca faria exactamente isto por baixo.
+//
+// AS TRES COISAS QUE VEM DO DADO, E A QUE NAO VEM
+//
+//   onde   as arvores nascem dentro dos poligonos de floresta (COS n1=5) e de
+//          montado (n1=4). Fora deles nao ha nenhuma. Nunca uma arvore em cima
+//          de rocha, de pastagem ou de agua; os buracos do poligono contam.
+//   quantas  densidade tirada da cobertura de copa 'd' da mancha, pela relacao
+//          de Poisson  lambda = -ln(1 - d/100) / (pi * r^2).  Nao e um numero
+//          escolhido a olho: e quantas copas de raio r sao precisas para tapar
+//          d% do chao. Montado a 30% da ~45 arvores/ha, pinhal a 70% da ~430.
+//   que altura  'h' da mancha, com variacao por arvore. Cada uma tem a sua, e
+//          assenta na cota do seu proprio ponto -- a copa acompanha a encosta.
+//
+//   QUAL  a especie desenhada (copa de cone ou copa redonda) NAO vem do dado.
+//          A COS ao nivel 1 nao distingue pinhal de carvalhal. A forma e
+//          decorativa e sorteada por posicao; a altura e a densidade sao dado.
+//
+// E 'd'/'h' so sao medidos onde ha LiDAR (ver cos_extrai.py --chm). Onde nao
+// ha, sao valores por defeito da classe e a mancha traz m=0. A legenda tem de
+// dizer "modelado", como o resto do projecto ja faz com as cotas.
+//
+// COMO SE DESENHA LONGE SEM MATAR O TELEMOVEL
+//
+// A primeira versao punha arvores num circulo de 800 m a volta do centro do
+// mapa. Com o ecra inclinado isso da uma FAIXA: o chao ali a frente e as
+// serras ao fundo ficam os dois fora do circulo, e nao tinham arvore nenhuma.
+// Foi o que ele apanhou, e tinha razao.
+//
+// Agora ha tres niveis, por distancia. A grelha de pontos e sempre a mesma, e
+// os niveis sao sub-grelhas dela: o nivel 0 sao os pontos de 9 em 9, o nivel 1
+// os de 3 em 3, o nivel 2 todos. Por isso o nivel 0 esta contido no 1, que
+// esta contido no 2 -- aproximar ACRESCENTA arvores, nunca troca uma por
+// outra. E o que faz a transicao nao piscar. Cada arvore traz o seu nivel e e
+// o shader que a encolhe ate desaparecer no limite do nivel dela, em vez de a
+// cortar de repente.
+// ===========================================================================
+
+// ===========================================================================
+// Arvores em 3D, instanciadas -- camada propria do MapLibre (WebGL directo)
+// ---------------------------------------------------------------------------
+// Um so modelo de arvore, 40 triangulos, desenhado N vezes numa unica chamada
+// de desenho (instancing). 30 000 arvores custam o mesmo que uma em numero de
+// chamadas; o que cresce e so o buffer de instancias.
+//
+// Nao usa three.js. Sao ~13 KB de codigo contra ~600 KB de biblioteca, e a
+// biblioteca faria exactamente isto por baixo.
+//
+// AS TRES COISAS QUE VEM DO DADO, E A QUE NAO VEM
+//
+//   onde   as arvores nascem dentro dos poligonos de floresta (COS n1=5) e de
+//          montado (n1=4). Fora deles nao ha nenhuma. Nunca uma arvore em cima
+//          de rocha, de pastagem ou de agua; os buracos do poligono contam.
+//   quantas  densidade tirada da cobertura de copa 'd' da mancha, pela relacao
+//          de Poisson  lambda = -ln(1 - d/100) / (pi * r^2).  Nao e um numero
+//          escolhido a olho: e quantas copas de raio r sao precisas para tapar
+//          d% do chao. Montado a 30% da ~45 arvores/ha, pinhal a 70% da ~430.
+//   que altura  'h' da mancha, com variacao por arvore. Cada uma tem a sua, e
+//          assenta na cota do seu proprio ponto -- a copa acompanha a encosta.
+//
+//   QUAL  a especie desenhada (copa de cone ou copa redonda) NAO vem do dado.
+//          A COS ao nivel 1 nao distingue pinhal de carvalhal. A forma e
+//          decorativa e sorteada por posicao; a altura e a densidade sao dado.
+//
+// E 'd'/'h' so sao medidos onde ha LiDAR (ver cos_extrai.py --chm). Onde nao
+// ha, sao valores por defeito da classe e a mancha traz m=0. A legenda tem de
+// dizer "modelado", como o resto do projecto ja faz com as cotas.
+//
+// COMO SE DESENHA LONGE SEM MATAR O TELEMOVEL
+//
+// A primeira versao punha arvores num circulo de 800 m a volta do centro do
+// mapa. Com o ecra inclinado isso da uma FAIXA: o chao ali a frente e as
+// serras ao fundo ficam os dois fora do circulo, e nao tinham arvore nenhuma.
+// Foi o que ele apanhou, e tinha razao.
+//
+// Agora ha tres niveis, por distancia. A grelha de pontos e sempre a mesma, e
+// os niveis sao sub-grelhas dela: o nivel 0 sao os pontos de 9 em 9, o nivel 1
+// os de 3 em 3, o nivel 2 todos. Por isso o nivel 0 esta contido no 1, que
+// esta contido no 2 -- aproximar ACRESCENTA arvores, nunca troca uma por
+// outra. E o que faz a transicao nao piscar. Cada arvore traz o seu nivel e e
+// o shader que a encolhe ate desaparecer no limite do nivel dela, em vez de a
+// cortar de repente.
+// ===========================================================================
+
 function ligaArvores(map, op) {
   op = op || {};
   // O zoom nao e um interruptor: e uma rampa. Semeia-se a partir de ZSEM e as
@@ -1069,8 +1161,10 @@ function ligaArvores(map, op) {
       // arvore MURCHA ate ao chao no fim do dela, em vez de desaparecer de
       // repente: uma arvore que encolhe nao se ve a sair, uma que se apaga ve-se.
       float dm = length(aPos.xy - uCentro) / uEsc;
-      float lim = aNiv < 0.5 ? uDist.w : (aNiv < 1.5 ? uDist.z : (aNiv < 2.5 ? uDist.y : uDist.x));
-      float murcha = (1.0 - smoothstep(lim * 0.86, lim, dm)) * uZoom;
+      // Sem niveis: uma so densidade em toda a vista, logo um so alcance. O
+      // murchar e apenas na borda do que foi semeado, que fica para la do que
+      // se ve -- na pratica nunca se apanha nenhuma fronteira.
+      float murcha = (1.0 - smoothstep(uDist.x, uDist.y, dm)) * uZoom;
       p *= murcha;
 
       // sol de noroeste a 45 graus. Em mercator o norte e -y.
@@ -1081,7 +1175,7 @@ function ligaArvores(map, op) {
       float ceu = 0.5 + 0.5 * normalize(nrm).z;
       vLuz = 0.46 + 0.42 * lam + 0.18 * ceu;
       vCor = aV.w < 0.5 ? aTom : vec3(0.46, 0.36, 0.26);
-      vFade = clamp((dm - uDist.y) / max(1.0, uDist.w - uDist.y), 0.0, 1.0);
+      vFade = clamp((dm - uDist.z) / max(1.0, uDist.w - uDist.z), 0.0, 1.0);
       gl_Position = uM * vec4(vec3(aPos.xy, (aPos.z - uRef) * uEsc) + p * uEsc, 1.0);
     }`;
 
@@ -1136,6 +1230,7 @@ function ligaArvores(map, op) {
   // Estava ao contrario: eu encolhia o alcance todo, e o que ficava de fora
   // era justamente o que ele queria ver -- o horizonte, que quase nao custa.
   let escDens = 1;
+  let rSemeado = 3000;                 // ate onde chegou a ultima semeadura
   // Contabilidade do custo: quanto tempo se gasta a CONSTRUIR celulas (uma vez
   // cada) e quanto se gasta a JUNTAR o que ja esta construido (a cada gesto).
   // E a diferenca entre estas duas que diz se valeria a pena trazer as arvores
@@ -1321,6 +1416,50 @@ function ligaArvores(map, op) {
   const degrau = (v) => ESCADA.find((x) => x >= v) || ESCADA[ESCADA.length - 1];
   const limitesFixos = () => limites().map(degrau);
 
+  // ---- UM SO PASSO PARA TODA A VISTA -------------------------------------
+  // Os aneis de detalhe ERAM o circulo que ele via. Nao ha maneira de os
+  // esconder: sao densidades diferentes lado a lado, e o olho apanha sempre a
+  // fronteira. Entao acabam.
+  //
+  // Agora escolhe-se UM passo de grelha para tudo o que esta a vista, tal que
+  // o numero de arvores caiba no tecto. Perto e longe ficam com a MESMA
+  // densidade no chao -- que e como uma floresta e de verdade. Ao aproximar,
+  // a area a vista encolhe, o passo desce e a floresta adensa; ao afastar,
+  // alarga. Sem circulo, porque nao ha nada que mude de sitio para sitio.
+  //
+  // O passo salta por degraus e nao continuamente: senao a chave de cada
+  // celula mudava a cada dedo, e voltava o "volto atras e desbloqueia outra
+  // vez" que ele apanhou.
+  const PASSOS = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128];
+  const FLORESTA = 0.35;     // fraccao de chao com floresta, medida por aqui
+  function caixaVista() {
+    const b = map.getBounds(), ct = map.getCenter();
+    const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(ct.lat * Math.PI / 180));
+    const TOPO = 11000;      // nao faz sentido semear para la do que se ve
+    return {
+      s: Math.max(b.getSouth(), ct.lat - TOPO * mLat),
+      n: Math.min(b.getNorth(), ct.lat + TOPO * mLat),
+      w: Math.max(b.getWest(), ct.lng - TOPO * mLon),
+      e: Math.min(b.getEast(), ct.lng + TOPO * mLon),
+    };
+  }
+  // A estimativa de area diz o degrau de partida; a REALIDADE corrige-o. O
+  // 0,35 de floresta e uma media da serra, e onde ele anda ha muito mais
+  // pinhal -- ou muito menos, no planalto. Em vez de eu adivinhar melhor, a
+  // pagina conta as arvores que saem e sobe ou desce um degrau conforme sobrou
+  // ou faltou. Assim usa o tecto todo onde o chao da para isso.
+  let ajustePasso = 0;
+  function passoDaVista() {
+    const c = caixaVista(), mid = (c.s + c.n) / 2;
+    const larg = (c.e - c.w) * 111320 * Math.cos(mid * Math.PI / 180);
+    const alto = (c.n - c.s) * 110540;
+    const cheio = Math.max(1, larg * alto * FLORESTA * 0.0426);
+    const m = Math.sqrt(cheio / Math.max(1000, TECTO));
+    let i = PASSOS.findIndex((x) => x >= m);
+    if (i < 0) i = PASSOS.length - 1;
+    return PASSOS[Math.max(0, Math.min(PASSOS.length - 1, i + ajustePasso))];
+  }
+
   // O escDens so aperta os DOIS DE PERTO, que sao os que custam.
   function limites() {
     const v = vista(), A = v.A, f = v.f;
@@ -1353,16 +1492,16 @@ function ligaArvores(map, op) {
       return feats;
     };
 
-    const RMAX = limites()[3];
     const comRelevo = !!(map.getTerrain && map.getTerrain());
     // Para CONSTRUIR usam-se os limites em degraus (chaves estaveis); para
     // DESENHAR usam-se os continuos, que dao o desvanecer suave. Construir
     // sempre por cima do que o shader mostra garante que nada falta.
-    const L = limitesFixos();            // uma vez por semeadura, nao por celula
+    const passo = passoDaVista();        // um so, para tudo o que esta a vista
+    const cx = caixaVista();
     const cv2 = vista().perto;
     const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(cv2.lat * Math.PI / 180));
-    const tx0 = lonTile(cv2.lng - RMAX * mLon), tx1 = lonTile(cv2.lng + RMAX * mLon);
-    const ty0 = latTile(cv2.lat + RMAX * mLat), ty1 = latTile(cv2.lat - RMAX * mLat);
+    const tx0 = lonTile(cx.w), tx1 = lonTile(cx.e);
+    const ty0 = latTile(cx.n), ty1 = latTile(cx.s);
 
     // Lista das celulas ORDENADA pela distancia ao centro. Sem isto, o
     // enchimento por orcamento ia de noroeste para sudeste e uma passagem
@@ -1377,15 +1516,13 @@ function ligaArvores(map, op) {
         const clo = (tileLon(tx) + tileLon(tx + 1)) / 2;
         const cla = (tileLat(ty) + tileLat(ty + 1)) / 2;
         const dx = (clo - cv2.lng) / mLon, dy = (cla - cv2.lat) / mLat;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > RMAX + 200) continue;
-        lista.push([d, tx, ty]);
+        lista.push([Math.sqrt(dx * dx + dy * dy), tx, ty]);
       }
     }
     lista.sort((a, b) => a[0] - b[0]);
     msLista += agoraMs() - tL;
 
-    const partes = []; let total = 0, novas = 0;
+    const partes = []; let total = 0, novas = 0, maiorD = 0;
     let faltouDEM = false, faltouTempo = false;
     {
       for (const [d, tx, ty] of lista) {
@@ -1393,12 +1530,7 @@ function ligaArvores(map, op) {
         // por 234 m. Sem esta folga havia uma faixa onde o shader queria
         // desenhar arvores de detalhe fino que a celula nem tinha construido --
         // e essas nao ha maneira de as murchar, simplesmente faltavam.
-        const FOLGA = 250;
-        // L vem de FORA do ciclo. Estava aqui dentro, e limites() chama duas
-        // unproject() do MapLibre -- que com o relevo ligado lancam um raio
-        // contra a malha do terreno. Eram sete mil raios por gesto, e era isso
-        // (nao as arvores, nao o desenho) que fazia meio segundo de espera.
-        const salto = d < L[0] + FOLGA ? 1 : (d < L[1] + FOLGA ? 3 : (d < L[2] + FOLGA ? 9 : 27));
+        const salto = passo;
         // A chave leva o estado do relevo: sem relevo as cotas sao todas zero
         // (e certo, o mapa e plano), e essa celula nao serve quando o relevo
         // liga. Sem isto, ligar o 3D deixava as arvores enterradas.
@@ -1419,7 +1551,7 @@ function ligaArvores(map, op) {
           // isso o primeiro da lista e mesmo o MENOS usado, nao o mais antigo.
           if (celulas.size > 30000) celulas.delete(celulas.keys().next().value);
         }
-        if (c.length) { partes.push([d, c]); total += c.length / 11; }
+        if (c.length) { partes.push([d, c]); total += c.length / 11; if (d > maiorD) maiorD = d; }
       }
     }
     semTerreno = faltouDEM;
@@ -1456,6 +1588,13 @@ function ligaArvores(map, op) {
     escDens = Math.max(0.15, Math.min(1, escDens + (alvo - escDens) * 0.35));
     INST = buf; nInst = k;
     cortado = cortou;
+    rSemeado = Math.max(600, maiorD);
+    // So se corrige quando a semeadura esta completa: a meio, o total esta
+    // sempre em baixo e o ajuste ia atras de um numero que ainda nao e real.
+    if (!incompleto) {
+      if (total > TECTO) ajustePasso = Math.min(4, ajustePasso + 1);
+      else if (total < TECTO * 0.45) ajustePasso = Math.max(-4, ajustePasso - 1);
+    }
     nSemeias++;
     msJuntar += ((typeof performance !== 'undefined' ? performance : Date).now() - tSemeia)
               - (msConstruir - msAntes);
@@ -1559,9 +1698,10 @@ function ligaArvores(map, op) {
       gl.uniform1f(locs.uEsc, esc);
       gl.uniform1f(locs.uRef, refMapa());
       gl.uniform2f(locs.uCentro, c[0], c[1]);
-      // os mesmos limites que decidiram como se construiu cada celula
-      const L = limites();
-      gl.uniform4f(locs.uDist, L[0], L[1], L[2], L[3]);
+      // x,y = onde a arvore murcha (borda do semeado); z,w = onde a cor
+      // desmaia para o fundo, que da a perspectiva aerea.
+      const R = rSemeado;
+      gl.uniform4f(locs.uDist, R * 0.90, R, R * 0.25, R);
       const fz = Math.max(0, Math.min(1, (map.getZoom() - ZOOM0) / (ZOOM1 - ZOOM0)));
       gl.uniform1f(locs.uZoom, fz * fz * (3 - 2 * fz));   // suave nas duas pontas
       gl.uniform3f(locs.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
@@ -1675,7 +1815,7 @@ function ligaArvores(map, op) {
                msConstruir: Math.round(msConstruir), msJuntar: Math.round(msJuntar),
                msManchas: Math.round(msManchas), msLista: Math.round(msLista), msCopiar: Math.round(msCopiar),
                semeias: nSemeias,
-               limites: limites().map(Math.round),
+               passo: passoDaVista(), ajuste: ajustePasso, alcance: Math.round(rSemeado),
                cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
                alturaMedia: +(sa / nInst).toFixed(1) };
