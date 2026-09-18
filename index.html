@@ -535,7 +535,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 16:11';
+const VERSAO = '18/09 16:23';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 // a caixa de informacao do satelite desaparece sozinha; toca no botao do satelite para a ver outra vez
@@ -723,7 +723,7 @@ function ligaArvores(map, op) {
   // limite de cada nivel, em metros: [todos, de 3 em 3, de 9 em 9]
   const DIST = op.dist || [600, 1500, 3000];
   const TECTO = op.tecto == null ? 30000 : op.tecto;
-  const ORCAMENTO = op.orcamento == null ? 60 : op.orcamento;  // celulas novas por passagem
+  const ORCAMENTO = op.orcamento == null ? 140 : op.orcamento; // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
   const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
 
@@ -895,7 +895,7 @@ function ligaArvores(map, op) {
   // vez e fica guardada, por isso andar para o lado so paga as celulas novas.
   const CELZ = 17, P2 = Math.pow(2, CELZ);
   const celulas = new Map();      // "x/y/salto" -> Float32Array, 11 por arvore
-  let INST = null, nInst = 0, assinatura = '', semTerreno = false, incompleto = false;
+  let INST = null, nInst = 0, assinatura = '', semTerreno = false, incompleto = false, cortado = false;
 
   const tileLon = (x) => x / P2 * 360 - 180;
   const tileLat = (y) => {
@@ -936,6 +936,13 @@ function ligaArvores(map, op) {
   // salto = 1, 3 ou 9: de quantos em quantos pontos da grelha se olha. Como as
   // grelhas grossas sao sub-conjuntos da fina, aproximar so ACRESCENTA arvores.
   const nivelDe = (i, j) => (i % 9 === 0 && j % 9 === 0) ? 0 : ((i % 3 === 0 && j % 3 === 0) ? 1 : 2);
+
+  // numero proprio de cada arvore, tirado so da sua posicao: nao muda com o
+  // mapa, por isso o sorteio do tecto da sempre o mesmo conjunto.
+  function sorte(mx, my) {
+    const v = Math.sin(mx * 12.9898 + my * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  }
 
   function fazCelula(tx, ty, salto, feats) {
     const w = tileLon(tx), e = tileLon(tx + 1);
@@ -1028,16 +1035,29 @@ function ligaArvores(map, op) {
     const tx0 = lonTile(ct.lng - RMAX * mLon), tx1 = lonTile(ct.lng + RMAX * mLon);
     const ty0 = latTile(ct.lat + RMAX * mLat), ty1 = latTile(ct.lat - RMAX * mLat);
 
-    const partes = []; let total = 0, novas = 0;
-    let faltouDEM = false, faltouTempo = false;
+    // Lista das celulas ORDENADA pela distancia ao centro. Sem isto, o
+    // enchimento por orcamento ia de noroeste para sudeste e uma passagem
+    // ainda a meio deixava metade do mapa com floresta e metade sem, com uma
+    // fronteira recta a separar -- que e exactamente o que ele fotografou.
+    // Do centro para fora, uma passagem a meio le-se como "ainda a carregar",
+    // que e a verdade.
+    const lista = [];
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
-        // distancia do centro da celula ao centro do mapa
         const clo = (tileLon(tx) + tileLon(tx + 1)) / 2;
         const cla = (tileLat(ty) + tileLat(ty + 1)) / 2;
         const dx = (clo - ct.lng) / mLon, dy = (cla - ct.lat) / mLat;
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d > RMAX + 200) continue;
+        lista.push([d, tx, ty]);
+      }
+    }
+    lista.sort((a, b) => a[0] - b[0]);
+
+    const partes = []; let total = 0, novas = 0;
+    let faltouDEM = false, faltouTempo = false;
+    {
+      for (const [d, tx, ty] of lista) {
         const salto = d < DIST[0] ? 1 : (d < DIST[1] ? 3 : 9);
         // A chave leva o estado do relevo: sem relevo as cotas sao todas zero
         // (e certo, o mapa e plano), e essa celula nao serve quando o relevo
@@ -1059,16 +1079,29 @@ function ligaArvores(map, op) {
     semTerreno = faltouDEM;
     incompleto = faltouTempo;
 
+    // O tecto NAO se aplica cortando na ordem em que as celulas saem. Foi
+    // assim a primeira vez e deu um erro com forma: as celulas percorrem-se
+    // de noroeste para sudeste, as do principio gastavam o tecto todo e as do
+    // fim ficavam sem uma unica arvore -- meio mapa com floresta e meio sem,
+    // com uma fronteira recta a separar. Corta-se por um numero tirado da
+    // POSICAO da arvore, que e sempre o mesmo: o conjunto que passa e o mesmo
+    // esteja o mapa onde estiver, e esta espalhado por igual.
+    const manterG = total > TECTO ? TECTO / total : 1;
     const buf = new Float32Array(Math.min(total, TECTO) * 11);
     let k = 0;
     for (const c of partes) {
-      const n = Math.min(c.length, (TECTO - k) * 11);
-      if (n <= 0) break;
-      buf.set(c.subarray(0, n), k * 11);
-      k += n / 11;
+      const nc = c.length / 11;
+      for (let t = 0; t < nc; t++) {
+        if (k >= TECTO) break;
+        const o = t * 11;
+        if (manterG < 1 && sorte(c[o], c[o + 1]) > manterG) continue;
+        buf.set(c.subarray(o, o + 11), k * 11); k++;
+      }
+      if (k >= TECTO) break;
     }
     INST = buf; nInst = k;
-    if (op.aoContar) op.aoContar(k, k >= TECTO, incompleto);
+    cortado = manterG < 1;
+    if (op.aoContar) op.aoContar(k, cortado, incompleto);
   }
 
   // -------------------------------------------------------------- a camada
@@ -1236,7 +1269,7 @@ function ligaArvores(map, op) {
         if (h < a0) a0 = h; if (h > a1) a1 = h; sa += h;
         niv[INST[i * 11 + 10]]++;
       }
-      return { n: nInst, celulas: celulas.size, niveis: niv, incompleto,
+      return { n: nInst, celulas: celulas.size, niveis: niv, incompleto, cortado,
                cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
                alturaMedia: +(sa / nInst).toFixed(1) };
