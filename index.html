@@ -482,7 +482,7 @@ function notaLimite() {
   if (satModo === 1 && map.getZoom() > 19) n.innerHTML = '<br><strong>Estás acima do detalhe da foto.</strong> A 25 cm não há mais nada para ver — isto é ampliação, não nitidez.';
   else n.innerHTML = '';
 }
-const VERSAO = '18/09 07:05';
+const VERSAO = '18/09 07:25';
 let camDGT = null, camEsri = null, satModo = 0;   // 0 = nossas, 1 = DGT 25 cm, 2 = Esri
 const SAT_NOME = ['Ortofotos guardadas (63 cm, sem rede)', 'DGT 2025 em directo — 25 cm, o máximo que existe', 'Esri/Maxar — melhor nas vilas, pior na serra'];
 function camadaAtiva() { return satModo === 1 ? camDGT : satModo === 2 ? camEsri : null; }
@@ -717,7 +717,7 @@ let SW = null, offEstado = { topo: false, topoMB: 0, uso: 0, quota: 0 };
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then((reg) => {
     SW = reg.active || reg.waiting || reg.installing;
-    navigator.serviceWorker.ready.then((r) => { SW = r.active; pedeEstado(); retomaFundo(); });
+    navigator.serviceWorker.ready.then((r) => { SW = r.active; pedeEstado(); retomaFundo(); protegeArmazenamento(); });
   }).catch(() => {});
   navigator.serviceWorker.addEventListener('message', (e) => {
     const d = e.data || {};
@@ -808,6 +808,11 @@ function blocoOffline() {
     <p class="est">Guardado: ${MB(e.uso || 0)}${e.quota ? ' de ' + MB(e.quota) + ' disponíveis' : ''}.
       ${e.topo ? 'Com o topográfico guardado tens curvas de nível, caminhos, água e os percursos todos sem rede.' : ''}</p>
     <div class="lin"><button class="bt" id="off-apagar">Apagar o que está guardado</button></div>
+    <p class="est" style="font-size:12.5px">${persistente === true
+      ? '🔒 O Android está proibido de apagar isto.'
+      : persistente === false
+        ? '⚠️ <strong>O Android pode apagar isto sozinho</strong> quando faltar espaço — foi o que aconteceu. Para travar de vez: menu do browser → <strong>Adicionar ao ecrã principal</strong>. Depois abre pelo ícone.'
+        : ''}</p>
     <p class="est" style="opacity:.55;font-size:12px">Versão ${VERSAO}</p>
   </div>`;
 }
@@ -939,6 +944,16 @@ function retomaFundo() {
     if (!r.backgroundFetch) return;
     r.backgroundFetch.get('fotos').then((bf) => { if (bf) segueFundo(bf); }).catch(() => {});
   }).catch(() => {});
+}
+// ---- pedir ao Android para nao apagar o que esta guardado ----
+let persistente = null;
+async function protegeArmazenamento() {
+  try {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    persistente = await navigator.storage.persisted();
+    if (!persistente) persistente = await navigator.storage.persist();
+    if (typeof pintaOffline === 'function' && document.querySelector('#sheet .off')) pintaOffline();
+  } catch (err) {}
 }
 function pintaOffline() {
   const alvo = document.querySelector('#sheet .off');
