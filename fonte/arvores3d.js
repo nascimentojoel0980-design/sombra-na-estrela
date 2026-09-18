@@ -53,18 +53,27 @@ function ligaArvores(map, op) {
   const ZOOM0 = op.zoom0 == null ? 14.0 : op.zoom0;
   const ZOOM1 = op.zoom1 == null ? 15.4 : op.zoom1;
   // limite de cada nivel, em metros: [todos, de 3 em 3, de 9 em 9]
-  // Contas, nao palpite. Pinhal cerrado sao ~430 arvores/ha e a serra tem uns
-  // 30% de floresta. Com detalhe fino ate 600 m isso da 57 000 arvores so no
-  // circulo de perto -- quatro vezes o tecto. Resultado: o perto comia tudo e
-  // o longe nunca entrava, que era a queixa dele das "longinquas nem
-  // aparecem". Com 300 m de detalhe fino, 1000 m a um terco e 3000 m a um
-  // nono, da ~10 000: cabe no tecto E chega aos tres quilometros.
-  const DIST = op.dist || [300, 1000, 3000];
-  // 30 000 era de mais: o telemovel dele baixou o tecto sozinho e disse-o no
-  // ecra. Comeca-se mais abaixo e o vigia sobe... nao, o vigia so desce, mas
-  // 14 000 ja da floresta cheia a vista e cabe num telefone.
-  let TECTO = op.tecto == null ? 14000 : op.tecto;
-  const ORCAMENTO = op.orcamento == null ? 140 : op.orcamento; // celulas novas por passagem
+  // Quatro aneis, e as contas feitas antes de escrever. Pinhal cerrado sao
+  // ~430 arvores/ha e a serra tem uns 30% de floresta:
+  //
+  //      0- 300 m   todos os pontos       3 613 arvores
+  //    300- 900 m   de 3 em 3 (1/9)       3 212
+  //    900-2500 m   de 9 em 9 (1/81)      2 696
+  //   2500-7000 m   de 27 em 27 (1/729)   2 354
+  //                                 TOTAL 11 876, tecto 14 000
+  //
+  // Chegar aos SETE quilometros custa praticamente o mesmo que chegar a tres:
+  // as arvores ao longe sao poucas porque a grelha delas e grossa. O que custa
+  // e o anel de perto -- e era esse que estava a comer o tecto todo, deixando
+  // uma faixa de arvores a meio do ecra e nada para la dela.
+  const DIST = op.dist || [300, 900, 2500, 7000];   // so historico: ver limites()
+  // O tecto de 14 000 vinha de quando semear custava caro e corria a cada
+  // fotograma. Isso acabou: as celulas estao guardadas e durante o arrasto nao
+  // se constroi nada. O que sobra e desenho, e 40 000 arvores sao 1,8 milhoes
+  // de triangulos numa so chamada -- coisa que qualquer telemovel destes faz
+  // sem dar por ela. O vigia continua la para o caso de eu estar enganado.
+  let TECTO = op.tecto == null ? 40000 : op.tecto;
+  const ORCAMENTO = op.orcamento == null ? 400 : op.orcamento; // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
   const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
 
@@ -144,7 +153,7 @@ function ligaArvores(map, op) {
     uniform float uEsc;       // metros -> unidades mercator
     uniform float uRef;       // cota do centro do mapa, em metros (referencial)
     uniform vec2 uCentro;     // mercator
-    uniform vec3 uDist;       // limite de cada nivel, em metros
+    uniform vec4 uDist;       // alcance de cada nivel, em metros
     uniform float uZoom;      // 0 = ainda nao se ve, 1 = tamanho inteiro
     varying vec3 vCor;
     varying float vLuz;
@@ -175,7 +184,7 @@ function ligaArvores(map, op) {
       // arvore MURCHA ate ao chao no fim do dela, em vez de desaparecer de
       // repente: uma arvore que encolhe nao se ve a sair, uma que se apaga ve-se.
       float dm = length(aPos.xy - uCentro) / uEsc;
-      float lim = aNiv < 0.5 ? uDist.z : (aNiv < 1.5 ? uDist.y : uDist.x);
+      float lim = aNiv < 0.5 ? uDist.w : (aNiv < 1.5 ? uDist.z : (aNiv < 2.5 ? uDist.y : uDist.x));
       float murcha = (1.0 - smoothstep(lim * 0.86, lim, dm)) * uZoom;
       p *= murcha;
 
@@ -187,7 +196,7 @@ function ligaArvores(map, op) {
       float ceu = 0.5 + 0.5 * normalize(nrm).z;
       vLuz = 0.46 + 0.42 * lam + 0.18 * ceu;
       vCor = aV.w < 0.5 ? aTom : vec3(0.46, 0.36, 0.26);
-      vFade = clamp((dm - uDist.x * 0.6) / max(1.0, uDist.z - uDist.x * 0.6), 0.0, 1.0);
+      vFade = clamp((dm - uDist.y) / max(1.0, uDist.w - uDist.y), 0.0, 1.0);
       gl_Position = uM * vec4(vec3(aPos.xy, (aPos.z - uRef) * uEsc) + p * uEsc, 1.0);
     }`;
 
@@ -238,7 +247,10 @@ function ligaArvores(map, op) {
   const CELZ = 17, P2 = Math.pow(2, CELZ);
   const celulas = new Map();      // "x/y/salto" -> Float32Array, 11 por arvore
   let INST = null, nInst = 0, assinatura = '', semTerreno = false, incompleto = false, cortado = false;
-  let rFar = DIST[2];    // alcance actual das arvores, em metros; move-se devagar
+  // Quando nao cabe no tecto, encolhe-se a DENSIDADE DE PERTO, nao o alcance.
+  // Estava ao contrario: eu encolhia o alcance todo, e o que ficava de fora
+  // era justamente o que ele queria ver -- o horizonte, que quase nao custa.
+  let escDens = 1;
 
   const tileLon = (x) => x / P2 * 360 - 180;
   const tileLat = (y) => {
@@ -257,15 +269,20 @@ function ligaArvores(map, op) {
   // custava 500 perguntas por celula em vez de 81.
   function cotasDaCelula(w, s, e, n) {
     const N = 9, g = new Float32Array(N * N);
-    let zeros = 0;
+    let faltam = 0;
     for (let j = 0; j < N; j++) {
       for (let i = 0; i < N; i++) {
         const v = chaoAbs(w + (e - w) * i / (N - 1), s + (n - s) * j / (N - 1));
         g[j * N + i] = v;
-        if (v === 0) zeros++;
+        // O ponto mais baixo de todo o modelo do terreno desta zona sao 118 m.
+        // Um valor abaixo de 50 nao e uma cota baixa: e o azulejo do relevo que
+        // ainda nao chegou. So contar os ZEROS deixava passar celulas
+        // meio-carregadas, e daí saíam arvores ao nivel do mar -- o resumo dava
+        // cotaMin 1 numa serra que comeca aos 118.
+        if (v < 50) faltam++;
       }
     }
-    return { g, N, todasZero: zeros === N * N };
+    return { g, N, todasZero: faltam > 0 };
   }
   function cotaEm(C, w, s, e, n, lo, la) {
     const fx = Math.min(C.N - 1.001, Math.max(0, (lo - w) / (e - w) * (C.N - 1)));
@@ -278,7 +295,13 @@ function ligaArvores(map, op) {
 
   // salto = 1, 3 ou 9: de quantos em quantos pontos da grelha se olha. Como as
   // grelhas grossas sao sub-conjuntos da fina, aproximar so ACRESCENTA arvores.
-  const nivelDe = (i, j) => (i % 9 === 0 && j % 9 === 0) ? 0 : ((i % 3 === 0 && j % 3 === 0) ? 1 : 2);
+  // Cada nivel e uma sub-grelha do seguinte: os pontos de 27 em 27 estao
+  // dentro dos de 9 em 9, que estao dentro dos de 3 em 3. Por isso aproximar
+  // so ACRESCENTA arvores -- nunca troca uma por outra.
+  const nivelDe = (i, j) =>
+    (i % 27 === 0 && j % 27 === 0) ? 0 :
+    (i % 9 === 0 && j % 9 === 0) ? 1 :
+    (i % 3 === 0 && j % 3 === 0) ? 2 : 3;
 
 
   function fazCelula(tx, ty, salto, feats) {
@@ -359,6 +382,51 @@ function ligaArvores(map, op) {
   // soReusar: durante o arrasto nao se constroi celula nenhuma -- junta-se o
   // que ja esta guardado e pronto. Construir a meio de um movimento e o que o
   // tornava pesado e pouco responsivo; o que faltar entra quando ele larga.
+  // Ate aqui os aneis estavam em METROS FIXOS, e isso estava errado de raiz.
+  // Com o ecra a pique e muito aproximado ve-se 300 m de chao; deitado e
+  // afastado ve-se sete quilometros. Um anel denso de 300 m e tudo no primeiro
+  // caso e uma nesga invisivel no segundo -- que foi o que ele viu: arvores so
+  // numa faixa, ou primeiro plano vazio.
+  //
+  // Os aneis passam a ser FRACCOES DO QUE SE VE. Primeiro estima-se a que
+  // distancia esta o chao no cimo do ecra, a partir da escala e da inclinacao,
+  // e depois reparte-se: 8% a cheio, 25% a um nono, 60% a um oitenta-e-um, e
+  // 130% (para la do horizonte visivel) a um setecentos-e-vinte-e-nove.
+  // E os aneis tambem nao se centram no centro do mapa. Com o ecra deitado, o
+  // chao ali a frente esta LONGE do centro -- por isso o primeiro plano ficava
+  // vazio enquanto o meio do ecra tinha floresta. O centro dos aneis desliza
+  // do meio do ecra (a pique) para junto do fundo (deitado), que e onde ele
+  // esta a olhar de perto. As fraccoes tambem mudam: a pique quer-se densidade
+  // cheia em todo o ecra, deitado quer-se um degrade ate ao horizonte.
+  const metros = (a, b) => {
+    const k = Math.cos((a.lat + b.lat) / 2 * Math.PI / 180);
+    const dy = (a.lat - b.lat) * 110540, dx = (a.lng - b.lng) * 111320 * k;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  function vista() {
+    const cv = map.getCanvas();
+    const w = (cv && cv.clientWidth) || 400, h = (cv && cv.clientHeight) || 700;
+    const f = Math.min(1, (map.getPitch() || 0) / 70);
+    let perto, longe;
+    try {
+      perto = map.unproject([w / 2, h * (0.5 + 0.45 * f)]);
+      longe = map.unproject([w / 2, h * 0.15]);
+    } catch (e) { perto = longe = map.getCenter(); }
+    let A = metros(perto, longe);
+    if (!isFinite(A) || A < 120) A = 120;
+    return { perto, A: Math.min(9000, A), f };
+  }
+  // O escDens so aperta os DOIS DE PERTO, que sao os que custam.
+  function limites() {
+    const v = vista(), A = v.A, f = v.f;
+    return [
+      Math.max(60, A * (1.30 - 1.22 * f) * escDens),
+      Math.max(150, A * (1.60 - 1.35 * f) * escDens),
+      A * (2.20 - 1.60 * f),
+      Math.min(7000, A * (3.00 - 1.70 * f)),
+    ];
+  }
+
   function semeia(soReusar) {
     if (map.getZoom() < ZSEM) { nInst = 0; incompleto = false; return; }
     const ct = map.getCenter();
@@ -376,11 +444,12 @@ function ligaArvores(map, op) {
       return feats;
     };
 
-    const RMAX = DIST[2];
+    const RMAX = limites()[3];
     const comRelevo = !!(map.getTerrain && map.getTerrain());
-    const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(ct.lat * Math.PI / 180));
-    const tx0 = lonTile(ct.lng - RMAX * mLon), tx1 = lonTile(ct.lng + RMAX * mLon);
-    const ty0 = latTile(ct.lat + RMAX * mLat), ty1 = latTile(ct.lat - RMAX * mLat);
+    const cv2 = vista().perto;
+    const mLat = 1 / 110540, mLon = 1 / (111320 * Math.cos(cv2.lat * Math.PI / 180));
+    const tx0 = lonTile(cv2.lng - RMAX * mLon), tx1 = lonTile(cv2.lng + RMAX * mLon);
+    const ty0 = latTile(cv2.lat + RMAX * mLat), ty1 = latTile(cv2.lat - RMAX * mLat);
 
     // Lista das celulas ORDENADA pela distancia ao centro. Sem isto, o
     // enchimento por orcamento ia de noroeste para sudeste e uma passagem
@@ -393,9 +462,9 @@ function ligaArvores(map, op) {
       for (let tx = tx0; tx <= tx1; tx++) {
         const clo = (tileLon(tx) + tileLon(tx + 1)) / 2;
         const cla = (tileLat(ty) + tileLat(ty + 1)) / 2;
-        const dx = (clo - ct.lng) / mLon, dy = (cla - ct.lat) / mLat;
+        const dx = (clo - cv2.lng) / mLon, dy = (cla - cv2.lat) / mLat;
         const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > Math.min(RMAX, rFar * 1.3) + 200) continue;
+        if (d > RMAX + 200) continue;
         lista.push([d, tx, ty]);
       }
     }
@@ -410,7 +479,8 @@ function ligaArvores(map, op) {
         // desenhar arvores de detalhe fino que a celula nem tinha construido --
         // e essas nao ha maneira de as murchar, simplesmente faltavam.
         const FOLGA = 250;
-        const salto = d < DIST[0] + FOLGA ? 1 : (d < DIST[1] + FOLGA ? 3 : 9);
+        const L = limites();
+        const salto = d < L[0] + FOLGA ? 1 : (d < L[1] + FOLGA ? 3 : (d < L[2] + FOLGA ? 9 : 27));
         // A chave leva o estado do relevo: sem relevo as cotas sao todas zero
         // (e certo, o mapa e plano), e essa celula nao serve quando o relevo
         // liga. Sem isto, ligar o 3D deixava as arvores enterradas.
@@ -424,7 +494,7 @@ function ligaArvores(map, op) {
           c = fazCelula(tx, ty, salto, feats); novas++;
           if (c === null) { faltouDEM = true; continue; }
           celulas.set(ch, c);
-          if (celulas.size > 1500) celulas.delete(celulas.keys().next().value);
+          if (celulas.size > 9000) celulas.delete(celulas.keys().next().value);
         }
         if (c.length) { partes.push([d, c]); total += c.length / 11; }
       }
@@ -448,16 +518,19 @@ function ligaArvores(map, op) {
     // O alcance move-se devagar (um quarto do caminho de cada vez) para nao
     // saltar de um fotograma para o outro.
     const buf = new Float32Array(Math.min(total, TECTO) * 11);
-    let k = 0, dCorte = 0;
+    let k = 0, cortou = false;
     for (const [d, c] of partes) {
       const nc = c.length / 11;
-      if (k + nc > TECTO) { dCorte = d; break; }
+      if (k + nc > TECTO) { cortou = true; break; }
       buf.set(c, k * 11); k += nc;
     }
-    const alvo = Math.max(500, Math.min(RMAX, dCorte || rFar * 1.25));
-    rFar += (alvo - rFar) * 0.25;
+    // Ajuste da densidade de perto: aperta quando nao cabe, alarga quando
+    // sobra folga. Um terco do caminho de cada vez, para nao saltar.
+    const alvo = total > TECTO ? escDens * 0.78
+      : (total < TECTO * 0.65 ? escDens * 1.15 : escDens);
+    escDens = Math.max(0.15, Math.min(1, escDens + (alvo - escDens) * 0.35));
     INST = buf; nInst = k;
-    cortado = !!dCorte;
+    cortado = cortou;
     if (op.aoContar) op.aoContar(k, cortado, incompleto);
   }
 
@@ -552,13 +625,15 @@ function ligaArvores(map, op) {
       gl.enableVertexAttribArray(locs.aNiv);
       gl.vertexAttribPointer(locs.aNiv, 1, gl.FLOAT, false, S, 40); inst2.div(locs.aNiv, 1);
 
-      const ct = map.getCenter(), esc = escala(ct.lat), c = merc(ct.lng, ct.lat);
+      const ct = map.getCenter(), esc = escala(ct.lat);
+      const vp = vista().perto, c = merc(vp.lng, vp.lat);
       gl.uniformMatrix4fv(locs.uM, false, matriz);
       gl.uniform1f(locs.uEsc, esc);
       gl.uniform1f(locs.uRef, refMapa());
       gl.uniform2f(locs.uCentro, c[0], c[1]);
-      // o alcance que o shader usa para murchar e o MESMO onde o tecto cortou
-      gl.uniform3f(locs.uDist, Math.min(DIST[0], rFar), Math.min(DIST[1], rFar), rFar);
+      // os mesmos limites que decidiram como se construiu cada celula
+      const L = limites();
+      gl.uniform4f(locs.uDist, L[0], L[1], L[2], L[3]);
       const fz = Math.max(0, Math.min(1, (map.getZoom() - ZOOM0) / (ZOOM1 - ZOOM0)));
       gl.uniform1f(locs.uZoom, fz * fz * (3 - 2 * fz));   // suave nas duas pontas
       gl.uniform3f(locs.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
@@ -591,7 +666,8 @@ function ligaArvores(map, op) {
   let pendente = null;
   function talvezSemeia(forca) {
     const ct = map.getCenter();
-    const a = [Math.round(map.getZoom() * 2), ct.lng.toFixed(3), ct.lat.toFixed(3)].join('|');
+    const a = [Math.round(map.getZoom() * 2), Math.round((map.getPitch() || 0) / 6),
+               ct.lng.toFixed(3), ct.lat.toFixed(3)].join('|');
     if (a === assinatura && !forca) return;
     assinatura = a;
     clearTimeout(pendente);
@@ -660,7 +736,7 @@ function ligaArvores(map, op) {
     resumo() {
       if (!nInst || !INST) return { n: 0 };
       let c0 = 1e9, c1 = -1e9, a0 = 1e9, a1 = -1e9, sa = 0;
-      const niv = [0, 0, 0];
+      const niv = [0, 0, 0, 0];
       for (let i = 0; i < nInst; i++) {
         const c = INST[i * 11 + 2], h = INST[i * 11 + 3];
         if (c < c0) c0 = c; if (c > c1) c1 = c;
@@ -668,7 +744,7 @@ function ligaArvores(map, op) {
         niv[INST[i * 11 + 10]]++;
       }
       return { n: nInst, celulas: celulas.size, niveis: niv, incompleto, cortado,
-               alcance: Math.round(rFar),
+               limites: limites().map(Math.round),
                cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
                alturaMedia: +(sa / nInst).toFixed(1) };
