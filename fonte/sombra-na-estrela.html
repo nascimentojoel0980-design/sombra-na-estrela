@@ -248,7 +248,7 @@ const fmt = (v, d = 0) => v == null || isNaN(v) ? '—' : Number(v).toLocaleStri
 const score = (r) => r.lidar ? r.lidar.sombra : (r.arv ?? -1);
 const BOUNDS = [[40.0, -8.10], [40.70, -7.15]];
 
-const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 20, preferCanvas: false, tap: false });
+const map = L.map('map', { zoomControl: false, attributionControl: false, maxBounds: [[39.55, -8.85], [41.15, -6.45]], maxBoundsViscosity: 0.8, minZoom: 9, maxZoom: 20, preferCanvas: true, tap: false });
 L.control.zoom({ position: 'topright' }).addTo(map);
 [['satP', 380], ['ortoP', 390], ['detP', 395], ['onlineP', 397]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; map.getPane(n).style.pointerEvents = 'none'; });
 const base = L.imageOverlay('dados/relevo.jpg', BOUNDS, { interactive: false, pane: 'satP' }).addTo(map);
@@ -1958,15 +1958,56 @@ function styleFor(r, hi) {
 D.routes.forEach((r) => {
   const g = L.layerGroup();
   if (r.lidar && r.segs) {
-    r.segs.forEach((s) => L.polyline(segPts(s), { color: '#0B120D', weight: 5, opacity: .5, interactive: false, casing: true }).addTo(g));
-    r.segs.forEach((s) => L.polyline(segPts(s), { color: shadeCol(s[0]), weight: 2.8, opacity: 1, interactive: false }).addTo(g));
+    // Uma forma por troco dava 22 mil formas para 133 percursos. Mas o
+    // shadeCol so devolve TRES cores, e o contorno e todo da mesma: entao os
+    // trocos juntam-se por cor numa polilinha de varias partes. Quatro formas
+    // por percurso em vez de cento e setenta, com exactamente o mesmo desenho.
+    const porCor = new Map(), todos = [];
+    r.segs.forEach((s) => {
+      const pts = segPts(s); todos.push(pts);
+      const c = shadeCol(s[0]);
+      if (!porCor.has(c)) porCor.set(c, []);
+      porCor.get(c).push(pts);
+    });
+    L.polyline(todos, { color: '#0B120D', weight: 5, opacity: .5, interactive: false, casing: true }).addTo(g);
+    porCor.forEach((linhas, c) => L.polyline(linhas, { color: c, weight: 2.8, opacity: 1, interactive: false }).addTo(g));
   } else {
     L.polyline(geo(r), Object.assign({ interactive: false }, styleFor(r))).addTo(g);
     L.polyline(geo(r), { color: '#0B120D', weight: r.fonte === 'oficial' ? 4 : 3.4, opacity: .35, interactive: false }).addTo(g).bringToBack();
   }
   g.addTo(map); layers.set(r.id, g);
 });
-layers.forEach((g, id) => { const r = D.routes.find((x) => x.id === id); if (r.lidar) g.eachLayer((l) => l.bringToFront && l.bringToFront()); });
+  layers.forEach((g, id) => { const r = D.routes.find((x) => x.id === id); if (r.lidar) g.eachLayer((l) => l.bringToFront && l.bringToFront()); });
+
+// ---- so se desenha o que esta a vista -------------------------------------
+// Com 133 percursos no mapa, arrastar obrigava a percorrer a geometria de
+// todos a cada fotograma -- incluindo os que estao a cinquenta quilometros de
+// distancia. A caixa de cada percurso calcula-se uma vez; depois, a cada
+// movimento, quem nao toca na vista sai do mapa e quem entra volta.
+// Com um percurso escolhido isto nao manda: ai quem decide e a seleccao.
+const caixaRota = new Map();
+layers.forEach((g, id) => {
+  let c = null;
+  g.eachLayer((l) => {
+    if (!l.getBounds) return;
+    const b = l.getBounds();
+    c = c ? c.extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast());
+  });
+  if (c) caixaRota.set(id, c);
+});
+function soAVista() {
+  if (selected) return;
+  const vb = map.getBounds().pad(0.3);
+  layers.forEach((g, id) => {
+    const c = caixaRota.get(id);
+    const devia = !c || vb.intersects(c);
+    const tem = map.hasLayer(g);
+    if (devia && !tem) g.addTo(map);
+    else if (!devia && tem) g.remove();
+  });
+}
+map.on('moveend zoomend', soAVista);
+soAVista();
 
 function prBadge(r) {
   const code = (r.ref || '').toUpperCase();
