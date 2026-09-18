@@ -214,7 +214,19 @@ self.addEventListener('fetch', (e) => {
 
   if (u.pathname.endsWith('topo.pmtiles')) { e.respondWith(serveTopo(req)); return; }
 
-  if (/\/(dados|orto|sat|lib|glifos|icons)\//.test(u.pathname) || u.pathname.endsWith('/') || u.pathname.endsWith('index.html') || u.pathname.endsWith('manifest.json')) {
+  // a pagina e os dados que mudam: rede primeiro, cache so se nao houver rede.
+  // (antes era cache primeiro, e por isso as versoes novas nunca chegavam ao telemovel)
+  const semprePelaRede = u.pathname.endsWith('/') || u.pathname.endsWith('index.html')
+    || u.pathname.endsWith('manifest.json') || u.pathname.endsWith('sw.js')
+    || /\/dados\/(rede|osm)\.json$/.test(u.pathname);
+  if (semprePelaRede) {
+    e.respondWith(fetch(req, { cache: 'no-store' }).then((r) => {
+      if (r.ok && r.status === 200) { const cp = r.clone(); caches.open(V).then((c) => c.put(req, cp)); }
+      return r;
+    }).catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || Response.error())));
+    return;
+  }
+  if (/\/(dados|orto|sat|lib|glifos|icons)\//.test(u.pathname)) {
     e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((r) => {
       if (r.ok && r.status === 200) { const cp = r.clone(); caches.open(V).then((c) => c.put(req, cp)); }
       return r;
