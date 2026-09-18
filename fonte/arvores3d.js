@@ -46,7 +46,12 @@
 
 function ligaArvores(map, op) {
   op = op || {};
-  const ZMIN = op.zoomMin == null ? 15 : op.zoomMin;   // abaixo disto, padrao 2D
+  // O zoom nao e um interruptor: e uma rampa. Semeia-se a partir de ZSEM e as
+  // arvores CRESCEM do chao entre ZOOM0 e ZOOM1, em vez de aparecerem todas de
+  // uma vez ao passar uma linha. Era o que se via: "so aparecem ao fazer zoom".
+  const ZSEM = op.zoomSemeia == null ? 13.8 : op.zoomSemeia;
+  const ZOOM0 = op.zoom0 == null ? 14.0 : op.zoom0;
+  const ZOOM1 = op.zoom1 == null ? 15.4 : op.zoom1;
   // limite de cada nivel, em metros: [todos, de 3 em 3, de 9 em 9]
   const DIST = op.dist || [600, 1500, 3000];
   const TECTO = op.tecto == null ? 30000 : op.tecto;
@@ -131,6 +136,7 @@ function ligaArvores(map, op) {
     uniform float uRef;       // cota do centro do mapa, em metros (referencial)
     uniform vec2 uCentro;     // mercator
     uniform vec3 uDist;       // limite de cada nivel, em metros
+    uniform float uZoom;      // 0 = ainda nao se ve, 1 = tamanho inteiro
     varying vec3 vCor;
     varying float vLuz;
     varying float vFade;
@@ -161,7 +167,7 @@ function ligaArvores(map, op) {
       // repente: uma arvore que encolhe nao se ve a sair, uma que se apaga ve-se.
       float dm = length(aPos.xy - uCentro) / uEsc;
       float lim = aNiv < 0.5 ? uDist.z : (aNiv < 1.5 ? uDist.y : uDist.x);
-      float murcha = 1.0 - smoothstep(lim * 0.86, lim, dm);
+      float murcha = (1.0 - smoothstep(lim * 0.86, lim, dm)) * uZoom;
       p *= murcha;
 
       // sol de noroeste a 45 graus. Em mercator o norte e -y.
@@ -347,14 +353,21 @@ function ligaArvores(map, op) {
 
   // ------------------------------------------------------------- semear
   function semeia() {
-    if (map.getZoom() < ZMIN) { nInst = 0; incompleto = false; return; }
+    if (map.getZoom() < ZSEM) { nInst = 0; incompleto = false; return; }
     const ct = map.getCenter();
-    const feats = map.querySourceFeatures('topo', {
-      sourceLayer: 'solo',
-      filter: ['in', ['coalesce', ['get', 'c'],
-        ['match', ['get', 'g'], 'rocha', 5, 'matos', 4, 0]], ['literal', [4, 5]]],
-    });
-    if (!feats.length) { nInst = 0; return; }
+    // As manchas so se pedem se houver mesmo celula nova para construir: com
+    // tudo ja guardado, semear outra vez e so juntar buffers, e isso pode
+    // correr enquanto o mapa se mexe sem dar por ela.
+    let feats = null;
+    const manchas = () => {
+      if (feats) return feats;
+      feats = map.querySourceFeatures('topo', {
+        sourceLayer: 'solo',
+        filter: ['in', ['coalesce', ['get', 'c'],
+          ['match', ['get', 'g'], 'rocha', 5, 'matos', 4, 0]], ['literal', [4, 5]]],
+      });
+      return feats;
+    };
 
     const RMAX = DIST[2];
     const comRelevo = !!(map.getTerrain && map.getTerrain());
@@ -395,6 +408,7 @@ function ligaArvores(map, op) {
           // orcamento por passagem: encher tudo de uma vez trancava o ecra.
           // O que faltar fica para a passagem seguinte, marcada aqui.
           if (novas >= ORCAMENTO) { faltouTempo = true; continue; }
+          if (!manchas().length) { faltouTempo = true; continue; }
           c = fazCelula(tx, ty, salto, feats); novas++;
           if (c === null) { faltouDEM = true; continue; }
           celulas.set(ch, c);
@@ -478,6 +492,7 @@ function ligaArvores(map, op) {
         uRef: gl.getUniformLocation(prog, 'uRef'),
         uCentro: gl.getUniformLocation(prog, 'uCentro'),
         uDist: gl.getUniformLocation(prog, 'uDist'),
+        uZoom: gl.getUniformLocation(prog, 'uZoom'),
         uFundo: gl.getUniformLocation(prog, 'uFundo'),
       };
       bufV = gl.createBuffer();
@@ -527,6 +542,8 @@ function ligaArvores(map, op) {
       gl.uniform1f(locs.uRef, refMapa());
       gl.uniform2f(locs.uCentro, c[0], c[1]);
       gl.uniform3f(locs.uDist, DIST[0], DIST[1], DIST[2]);
+      const fz = Math.max(0, Math.min(1, (map.getZoom() - ZOOM0) / (ZOOM1 - ZOOM0)));
+      gl.uniform1f(locs.uZoom, fz * fz * (3 - 2 * fz));   // suave nas duas pontas
       gl.uniform3f(locs.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
 
       const agora = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -560,6 +577,16 @@ function ligaArvores(map, op) {
     }, 90);
   }
 
+  // Durante o movimento tambem: com as celulas ja guardadas, semear e so
+  // juntar buffers. Sem isto, rodar o mapa nao mudava nada ate largar e no
+  // fim entrava tudo de golpe -- que e o que ele descreveu.
+  let ultimoMov = 0;
+  map.on('move', () => {
+    const t = Date.now();
+    if (t - ultimoMov < 220) return;
+    ultimoMov = t;
+    semeia();
+  });
   map.on('moveend', () => talvezSemeia(false));
   map.on('sourcedata', (e) => {
     if (e.sourceId !== 'topo' || !e.isSourceLoaded) return;

@@ -137,7 +137,7 @@ function arvoresTopo(liga) {
     if (ARV || !mapT || !arvQuer) return;
     try {
       ARV = ligaArvores(mapT, {
-        zoomMin: 15, dist: [600, 1500, 3000], tecto: arvTecto(),
+        dist: [600, 1500, 3000], tecto: arvTecto(),
         fundo: [0.87, 0.86, 0.80],
         aoContar: (n) => {
           // dito uma vez, e dito como e: a altura das arvores e modelada da
