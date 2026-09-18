@@ -436,15 +436,17 @@ const CamadaDGT = L.TileLayer.extend({
   getTileUrl: function (c) { return dgtUrl(this._getZoomForUrl(), c.x, c.y, this.options.tileSize); },
 });
 // quadrados da DGT que cobrem a vista, para guardar no telemovel
+// guarda sempre no detalhe maximo (z19 = 30 cm por pixel), independentemente do zoom a que estas
+const Z_DGT = 19;
 function dgtTiles(vb, zAlvo) {
-  const out = [], z = Math.min(19, Math.max(14, Math.round(zAlvo == null ? map.getZoom() : zAlvo)));
+  const out = [], z = zAlvo == null ? Z_DGT : zAlvo;
   const n = 2 ** z;
   const x0 = Math.floor((vb.getWest() + 180) / 360 * n), x1 = Math.floor((vb.getEast() + 180) / 360 * n);
   const ly = (l) => { const r = l * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n); };
   const y0 = ly(vb.getNorth()), y1 = ly(vb.getSouth());
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     out.push(dgtUrl(z, x, y, 256));
-    if (out.length > 2500) return out;
+    if (out.length > 12000) return out;
   }
   return out;
 }
@@ -707,8 +709,9 @@ if ('serviceWorker' in navigator) {
       const b = document.getElementById('off-fotos');
       if (b && !/A guardar|✓/.test(b.textContent)) {
         const q = satModo === 1 ? ' a 25 cm' : '';
+        const mb = satModo === 1 ? Math.round(d.faltam * 0.026) : 0;
         b.textContent = d.faltam
-          ? 'Guardar esta zona' + q + ' (' + fmt(d.faltam) + ' novas de ' + fmt(d.total) + ')'
+          ? 'Guardar esta zona' + q + ' (' + fmt(d.faltam) + ' novas de ' + fmt(d.total) + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')'
           : 'Esta zona já está toda guardada' + q;
       }
     }
@@ -775,7 +778,8 @@ function actualizaContagem() {
   if (!b || /A guardar/i.test(b.textContent)) return;
   const u = fotosDaVista();
   if (!u.length) { b.textContent = 'Aproxima o mapa da zona a guardar'; return; }
-  b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' imagens)';
+  const mb = satModo === 1 ? Math.round(u.length * 0.026) : 0;
+  b.textContent = 'Guardar esta zona' + (satModo === 1 ? ' a 25 cm' : '') + ' (' + fmt(u.length) + ' imagens' + (mb ? ', ~' + fmt(mb) + ' MB' : '') + ')';
   if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ tipo: 'quantos', urls: u });
 }
 // ---- o que ja esta guardado, desenhado no mapa ----
@@ -813,7 +817,13 @@ function ligaOffline() {
   const a = document.getElementById('off-topo');
   if (a) a.onclick = () => { if (offEstado.topo) { toast('Já está guardado.'); return; } toast('A guardar o mapa topográfico…'); mandaSW({ tipo: 'guardar-topo' }); };
   const b = document.getElementById('off-fotos');
-  if (b) b.onclick = () => { const u = fotosDaVista(); if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; } b.textContent = 'A guardar as imagens… 0 de ' + u.length; mandaSW({ tipo: 'guardar-fotos', urls: u }); };
+  if (b) b.onclick = () => {
+    const u = fotosDaVista();
+    if (!u.length) { toast('Aproxima o mapa da zona que queres guardar.'); return; }
+    if (satModo === 1 && u.length > 6000 && !confirm('São ' + fmt(u.length) + ' imagens, cerca de ' + fmt(Math.round(u.length * 0.026)) + ' MB, e pode demorar bastante.\n\nQueres mesmo guardar esta área toda? Aproximar o mapa reduz o trabalho.')) return;
+    b.textContent = 'A guardar as imagens… 0 de ' + u.length;
+    mandaSW({ tipo: 'guardar-fotos', urls: u });
+  };
   actualizaContagem();
   const v = document.getElementById('off-ver');
   if (v) v.onclick = () => {
