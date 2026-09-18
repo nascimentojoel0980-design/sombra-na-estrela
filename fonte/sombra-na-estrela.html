@@ -103,6 +103,7 @@ main.listing .legend,main.listing .onote,main.listing .sheet{display:none!import
 .kc{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .kc i{width:16px;height:0;border-top-width:2px;border-top-style:solid;display:inline-block}
 .count{color:var(--muted);font-size:13px;margin:2px 0 8px}
+.olho{flex:0 0 auto;margin-left:8px;width:30px;height:30px;line-height:30px;text-align:center;border-radius:50%;border:1px solid var(--linha,#C9C0A8);color:#6B6250;font-size:15px;cursor:pointer;user-select:none}.olho[aria-pressed="true"]{background:#2E7D4F;border-color:#2E7D4F;color:#fff}#mostrar-todos{margin-left:10px}
 .item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer;width:100%;text-align:left}
 .item .nm{font-weight:600;line-height:1.2}
 .item .sub{font-size:12px;color:var(--muted)}
@@ -368,7 +369,17 @@ function osmRender(kind, group) {
   return true;
 }
 function osmClear(kind, group) { osmShown[kind].forEach((l) => group.removeLayer(l)); osmShown[kind].clear(); }
+// Os caminhos do OSM sao dezenas de milhares de linhas e apareciam sozinhos a
+// partir de certo zoom. Passam a depender de um botao, e comeca desligado: o
+// mapa abre limpo e ele liga quando quer ver por onde se pode ir.
+let camLigados = false;
+try { camLigados = localStorage.getItem('sne-caminhos') === '1'; } catch (e) {}
+function apagaCaminhos() {
+  OSM_KINDS.forEach((k) => { const g = osmGroups[k]; g.remove(); osmClear(k, g); });
+  const nota = document.getElementById('cam-note'); if (nota) nota.hidden = true;
+}
 function osmByZoom() {
+  if (!camLigados) { apagaCaminhos(); return; }
   const z = map.getZoom(), ZT = smallScreen() ? 12 : 11, ZE = smallScreen() ? 13 : 12;
   if (z >= ZT && !osmReady) { loadOSM(); return; }
   const min = { trilho: ZT, estradao: ZE, estrada: ZE };
@@ -401,7 +412,14 @@ function focusOn(r) {
     L.circle(c, { radius: RAIO, color: '#F6F2DA', weight: 1.5, opacity: .7, dashArray: '6 6', fill: false, interactive: false }),
   ]).addTo(map);
   loadOSM();
-  layers.forEach((g, id) => { if (id !== r.id) g.remove(); else g.addTo(map); });
+  // Escolher um percurso e mandar mostra-lo: fica na lista dos visiveis para
+  // continuar la quando ele largar a seleccao.
+  VISIVEIS.add(r.id);
+  layers.forEach((g, id) => { if (id !== r.id) g.remove(); });
+  const gr = camadaDe(r);
+  gr.addTo(map);
+  if (r.lidar) gr.eachLayer((l) => l.bringToFront && l.bringToFront());
+  pintaVistos();
   osmByZoom();
   routePoi = new Set(poisAlong(r).map((o) => o.i)); refreshPoi();
   drawAlt(r);
@@ -409,7 +427,8 @@ function focusOn(r) {
 function unfocus() {
   if (!focusGroup) return;
   focusGroup.remove(); focusGroup = null; altGroup.clearLayers();
-  layers.forEach((g) => g.addTo(map));
+  VISIVEIS.forEach((id) => { const g = layers.get(id); if (g) g.addTo(map); });
+  soAVista();
   osmByZoom();
   routePoi = new Set(); refreshPoi();
 }
@@ -609,9 +628,28 @@ function ligaSat(modo) {
   if (typeof actualizaContagem === 'function') actualizaContagem();
   try { localStorage.setItem('sne-sat', String(satModo)); } catch (e) {}
 }
-// O botao do satelite sai: nao ha satelite nenhum para ligar. O mapa
-// topografico (o botao das montanhas) e agora o unico detalhe, e e vectorial.
-{ const bs = document.getElementById('btn-sat'); if (bs) bs.hidden = true; }
+// O botao que era do satelite passa a ligar e desligar os caminhos. Nao ha
+// satelite nenhum para ligar, e o lugar ja estava feito.
+function pintaBotaoCaminhos() {
+  const b = document.getElementById('btn-sat'); if (!b) return;
+  b.setAttribute('aria-pressed', camLigados ? 'true' : 'false');
+  b.setAttribute('aria-label', camLigados ? 'Esconder os caminhos' : 'Mostrar os caminhos');
+  b.title = camLigados ? 'Caminhos: ligados' : 'Caminhos: desligados';
+}
+{
+  const b = document.getElementById('btn-sat');
+  if (b) {
+    b.onclick = () => {
+      camLigados = !camLigados;
+      try { localStorage.setItem('sne-caminhos', camLigados ? '1' : '0'); } catch (e) {}
+      pintaBotaoCaminhos();
+      if (camLigados) loadOSM();
+      osmByZoom();
+      toast(camLigados ? 'Caminhos ligados.' : 'Caminhos desligados.');
+    };
+    pintaBotaoCaminhos();
+  }
+}
 try { const m = +(localStorage.getItem('sne-sat') || 0); if (m) ligaSat(m); } catch (e) {}
 
 // ---------------- Mapa topografico (vetorial, MapLibre + PMTiles) ----------------
@@ -1955,13 +1993,17 @@ function styleFor(r, hi) {
   const base = r.fonte === 'oficial' ? { weight: 2.2, opacity: 1 } : { weight: 1.7, opacity: .85, dashArray: r.fonte === 'osm' ? null : '5 4' };
   return Object.assign({ color: hi ? css('--pr-y') : '#FFFFFF' }, base, hi ? { weight: 3.2, opacity: 1 } : {});
 }
-D.routes.forEach((r) => {
+// ---- os percursos nascem quando ele os manda mostrar ----------------------
+// Antes, os 133 percursos eram todos construidos e postos no mapa ao abrir:
+// 22 mil formas e meio segundo de bloqueio, para depois ele olhar para um.
+// Agora a camada de um percurso so se constroi da PRIMEIRA vez que ele o pede,
+// e o mapa abre sem nenhum -- e a ideia dele, e e melhor do que a minha.
+function constroiRota(r) {
   const g = L.layerGroup();
   if (r.lidar && r.segs) {
-    // Uma forma por troco dava 22 mil formas para 133 percursos. Mas o
-    // shadeCol so devolve TRES cores, e o contorno e todo da mesma: entao os
+    // O shadeCol so devolve TRES cores, e o contorno e todo da mesma: os
     // trocos juntam-se por cor numa polilinha de varias partes. Quatro formas
-    // por percurso em vez de cento e setenta, com exactamente o mesmo desenho.
+    // por percurso em vez de cento e setenta, com o mesmo desenho.
     const porCor = new Map(), todos = [];
     r.segs.forEach((s) => {
       const pts = segPts(s); todos.push(pts);
@@ -1975,30 +2017,60 @@ D.routes.forEach((r) => {
     L.polyline(geo(r), Object.assign({ interactive: false }, styleFor(r))).addTo(g);
     L.polyline(geo(r), { color: '#0B120D', weight: r.fonte === 'oficial' ? 4 : 3.4, opacity: .35, interactive: false }).addTo(g).bringToBack();
   }
-  g.addTo(map); layers.set(r.id, g);
-});
-  layers.forEach((g, id) => { const r = D.routes.find((x) => x.id === id); if (r.lidar) g.eachLayer((l) => l.bringToFront && l.bringToFront()); });
-
-// ---- so se desenha o que esta a vista -------------------------------------
-// Com 133 percursos no mapa, arrastar obrigava a percorrer a geometria de
-// todos a cada fotograma -- incluindo os que estao a cinquenta quilometros de
-// distancia. A caixa de cada percurso calcula-se uma vez; depois, a cada
-// movimento, quem nao toca na vista sai do mapa e quem entra volta.
-// Com um percurso escolhido isto nao manda: ai quem decide e a seleccao.
-const caixaRota = new Map();
-layers.forEach((g, id) => {
   let c = null;
   g.eachLayer((l) => {
     if (!l.getBounds) return;
     const b = l.getBounds();
     c = c ? c.extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast());
   });
-  if (c) caixaRota.set(id, c);
-});
+  if (c) caixaRota.set(r.id, c);
+  return g;
+}
+const caixaRota = new Map();
+function camadaDe(r) {
+  let g = layers.get(r.id);
+  if (!g) { g = constroiRota(r); layers.set(r.id, g); }
+  return g;
+}
+
+// VISIVEIS sao os que ele mandou mostrar. Comeca vazio de proposito.
+const VISIVEIS = new Set();
+function mostraRota(r, sim) {
+  const g = camadaDe(r);
+  if (sim) {
+    VISIVEIS.add(r.id);
+    if (!selected || selected.id === r.id) {
+      g.addTo(map);
+      if (r.lidar) g.eachLayer((l) => l.bringToFront && l.bringToFront());
+    }
+  } else {
+    VISIVEIS.delete(r.id);
+    g.remove();
+  }
+}
+function todasAsRotas(sim) {
+  D.routes.forEach((r) => mostraRota(r, sim));
+  pintaVistos();
+  toast(sim ? 'Todos os percursos no mapa.' : 'Percursos escondidos.');
+}
+function pintaVistos() {
+  document.querySelectorAll('.olho').forEach((b) => {
+    const on = VISIVEIS.has(+b.dataset.olho);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.textContent = on ? '◉' : '○';
+    b.title = on ? 'Tirar do mapa' : 'Mostrar no mapa';
+  });
+  const t = document.getElementById('mostrar-todos');
+  if (t) t.textContent = VISIVEIS.size >= D.routes.length ? 'Esconder todos' : 'Mostrar todos';
+}
+
+// So se desenha o que esta a vista. Com poucos percursos mostrados isto quase
+// nao tem trabalho; com "mostrar todos" ligado volta a valer a pena.
 function soAVista() {
   if (selected) return;
   const vb = map.getBounds().pad(0.3);
   layers.forEach((g, id) => {
+    if (!VISIVEIS.has(id)) return;
     const c = caixaRota.get(id);
     const devia = !c || vb.intersects(c);
     const tem = map.hasLayer(g);
@@ -2007,7 +2079,6 @@ function soAVista() {
   });
 }
 map.on('moveend zoomend', soAVista);
-soAVista();
 
 function prBadge(r) {
   const code = (r.ref || '').toUpperCase();
@@ -2022,14 +2093,14 @@ function sheetIdle() {
   setTimeout(() => { if (typeof desenhaZona === 'function') desenhaZona(); }, 30);
   const n = D.routes.length, km = D.routes.reduce((s, r) => s + (r.km || 0), 0);
   $('sheet').innerHTML = `<div class="grab"></div>
-    <p class="hint">Toca num percurso marcado ou em qualquer caminho do mapa para ver o que é. Para procurar, filtrar e ordenar, abre a <strong>Lista</strong>. Em <strong>Criar</strong> montas o teu próprio trilho.</p>
+    <p class="hint">O mapa abre limpo, de propósito. Na <strong>Lista</strong> tocas no <strong>círculo</strong> de cada percurso para o pôr no mapa — ou em <strong>Mostrar todos</strong>, se quiseres ver tudo. O botão <strong>⌾</strong> à direita liga os caminhos do OSM. Em <strong>Criar</strong> montas o teu próprio trilho.</p>
     <div class="stats">
       <div class="stat"><div class="v">${fmt(n)}</div><div class="l">percursos marcados</div></div>
       <div class="stat"><div class="v">${fmt(km)} km</div><div class="l">de traçado</div></div>
       <div class="stat"><div class="v">20 358 km</div><div class="l">de caminhos na rede</div></div>
     </div>
     <div class="kchips">${OSM_KINDS.map((k) => `<span class="kc"><i style="border-top-color:${OSM_STYLE[k].color}"></i>${OSM_NOME[k]}</span>`).join('')}</div>
-    <p class="note">Os caminhos aparecem a partir do zoom médio. A cor dos percursos marcados mostra a sombra medida por LiDAR, onde existe.</p>
+    <p class="note">Nada disto é desenhado sem tu mandares: são 133 percursos e 20 mil quilómetros de caminhos, e desenhá-los todos ao abrir era o que tornava a aplicação pesada. A cor dos percursos marcados mostra a sombra medida por LiDAR, onde existe.</p>
     ${blocoOffline()}`;
   ligaOffline(); pedeEstado(); pedeCobertura();
 }
@@ -2910,7 +2981,7 @@ function setMe(p, center) {
   if (map3 && !document.getElementById('v3d').hidden) me3D(ll);
 }
 function restyle(r, hi) {
-  const g = layers.get(r.id);
+  const g = camadaDe(r);
   if (r.lidar) { g.eachLayer((l) => { if (l.options.casing) l.setStyle({ color: hi ? css('--pr-y') : '#0B120D', opacity: hi ? 1 : .5, weight: hi ? 7 : 5 }); }); return; }
   const layersArr = g.getLayers(); layersArr[0].setStyle(styleFor(r, hi)); if (hi) layersArr[0].bringToFront();
 }
@@ -2956,11 +3027,35 @@ function renderList() {
       r.a25 > 0 ? `ardido 2025 ${fmt(r.a25)}%` : null,
       r.fonte !== 'oficial' ? (r.fonte === 'osm' ? 'OSM' : 'gravação') : 'oficial'].filter(Boolean).join(' · ');
     const nome = (r.nome && r.nome.trim()) ? esc(r.nome) : '<em>Caminho sem nome</em>';
-    return `<button class="item" data-id="${r.id}">${prBadge(r)}<span><span class="nm">${esc(r.ref ? r.ref + ' · ' : '')}${nome}</span><br><span class="sub">${sub}</span></span>${v}</button>`;
+    return `<button class="item" data-id="${r.id}">${prBadge(r)}<span><span class="nm">${esc(r.ref ? r.ref + ' · ' : '')}${nome}</span><br><span class="sub">${sub}</span></span>${v}<span class="olho" data-olho="${r.id}" role="button" tabindex="0" aria-pressed="false">\u25CB</span></button>`;
   }).join('');
   bindItems($('items'));
+  pintaVistos();
 }
-function bindItems(root) { root.querySelectorAll('.item').forEach((b) => b.onclick = () => select(D.routes.find((r) => r.id === +b.dataset.id), true)); }
+function bindItems(root) {
+  root.querySelectorAll('.item').forEach((b) => b.onclick = () => select(D.routes.find((r) => r.id === +b.dataset.id), true));
+  // o olho mostra e esconde sem escolher: tocar nele nao deve abrir a ficha
+  root.querySelectorAll('.olho').forEach((o) => {
+    const faz = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const r = D.routes.find((x) => x.id === +o.dataset.olho);
+      if (r) { mostraRota(r, !VISIVEIS.has(r.id)); pintaVistos(); }
+    };
+    o.onclick = faz;
+    o.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') faz(e); };
+  });
+}
+// "Mostrar todos" ao lado da contagem, feito aqui para nao mexer no html
+{
+  const c = document.getElementById('count');
+  if (c && !document.getElementById('mostrar-todos')) {
+    const b = document.createElement('button');
+    b.id = 'mostrar-todos'; b.type = 'button'; b.className = 'chip';
+    b.textContent = 'Mostrar todos';
+    b.onclick = () => todasAsRotas(VISIVEIS.size < D.routes.length);
+    c.insertAdjacentElement('afterend', b);
+  }
+}
 [['f-lidar', 'lidar'], ['f-fogo', 'fogo'], ['f-pnse', 'pnse'], ['f-of', 'of']].forEach(([id, k]) => $(id).onclick = () => { F[k] = !F[k]; $(id).setAttribute('aria-pressed', F[k]); renderList(); });
 [['d', FD, BD.length], ['u', FU, BU.length], ['h', FH, BH.length]].forEach(([pre, set, n]) => {
   for (let i = 0; i < n; i++) {
