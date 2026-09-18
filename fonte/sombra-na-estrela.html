@@ -713,11 +713,17 @@ function ligaArvores(map, op) {
   const ZOOM0 = op.zoom0 == null ? 14.0 : op.zoom0;
   const ZOOM1 = op.zoom1 == null ? 15.4 : op.zoom1;
   // limite de cada nivel, em metros: [todos, de 3 em 3, de 9 em 9]
-  const DIST = op.dist || [600, 1500, 3000];
+  // Contas, nao palpite. Pinhal cerrado sao ~430 arvores/ha e a serra tem uns
+  // 30% de floresta. Com detalhe fino ate 600 m isso da 57 000 arvores so no
+  // circulo de perto -- quatro vezes o tecto. Resultado: o perto comia tudo e
+  // o longe nunca entrava, que era a queixa dele das "longinquas nem
+  // aparecem". Com 300 m de detalhe fino, 1000 m a um terco e 3000 m a um
+  // nono, da ~10 000: cabe no tecto E chega aos tres quilometros.
+  const DIST = op.dist || [300, 1000, 3000];
   // 30 000 era de mais: o telemovel dele baixou o tecto sozinho e disse-o no
   // ecra. Comeca-se mais abaixo e o vigia sobe... nao, o vigia so desce, mas
   // 14 000 ja da floresta cheia a vista e cabe num telefone.
-  const TECTO = op.tecto == null ? 14000 : op.tecto;
+  let TECTO = op.tecto == null ? 14000 : op.tecto;
   const ORCAMENTO = op.orcamento == null ? 140 : op.orcamento; // celulas novas por passagem
   const GRELHA = 3.0;                                  // m: passo da grelha base
   const FUNDO = op.fundo || [0.86, 0.86, 0.80];        // cor para onde desmaia
@@ -892,6 +898,7 @@ function ligaArvores(map, op) {
   const CELZ = 17, P2 = Math.pow(2, CELZ);
   const celulas = new Map();      // "x/y/salto" -> Float32Array, 11 por arvore
   let INST = null, nInst = 0, assinatura = '', semTerreno = false, incompleto = false, cortado = false;
+  let rFar = DIST[2];    // alcance actual das arvores, em metros; move-se devagar
 
   const tileLon = (x) => x / P2 * 360 - 180;
   const tileLat = (y) => {
@@ -933,19 +940,6 @@ function ligaArvores(map, op) {
   // grelhas grossas sao sub-conjuntos da fina, aproximar so ACRESCENTA arvores.
   const nivelDe = (i, j) => (i % 9 === 0 && j % 9 === 0) ? 0 : ((i % 3 === 0 && j % 3 === 0) ? 1 : 2);
 
-  // Numero proprio de cada arvore, tirado so da sua posicao: nao muda com o
-  // mapa, por isso o sorteio do tecto da sempre o mesmo conjunto.
-  //
-  // A primeira versao usava o fract(sin(...)) de manual de shaders. Nao serve
-  // AQUI: esse truque precisa que as coordenadas variem entre 0 e 1, e as
-  // coordenadas mercator variam 1e-5 ao longo de uma vista inteira. Nesse
-  // intervalo o seno e praticamente uma recta, e o fract de uma recta da
-  // FAIXAS -- arvores as riscas com corredores vazios pelo meio, que foi o que
-  // ele fotografou. Agora e um hash de inteiros, que da ruido a serio.
-  function sorte(mx, my) {
-    const a = (mx * 134217728) | 0, b = (my * 134217728) | 0;   // ~0,3 m por unidade
-    return baralha(a, b, 11);
-  }
 
   function fazCelula(tx, ty, salto, feats) {
     const w = tileLon(tx), e = tileLon(tx + 1);
@@ -1061,7 +1055,7 @@ function ligaArvores(map, op) {
         const cla = (tileLat(ty) + tileLat(ty + 1)) / 2;
         const dx = (clo - ct.lng) / mLon, dy = (cla - ct.lat) / mLat;
         const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > RMAX + 200) continue;
+        if (d > Math.min(RMAX, rFar * 1.3) + 200) continue;
         lista.push([d, tx, ty]);
       }
     }
@@ -1071,7 +1065,12 @@ function ligaArvores(map, op) {
     let faltouDEM = false, faltouTempo = false;
     {
       for (const [d, tx, ty] of lista) {
-        const salto = d < DIST[0] ? 1 : (d < DIST[1] ? 3 : 9);
+        // A distancia e a do CENTRO da celula, mas as arvores dela espalham-se
+        // por 234 m. Sem esta folga havia uma faixa onde o shader queria
+        // desenhar arvores de detalhe fino que a celula nem tinha construido --
+        // e essas nao ha maneira de as murchar, simplesmente faltavam.
+        const FOLGA = 250;
+        const salto = d < DIST[0] + FOLGA ? 1 : (d < DIST[1] + FOLGA ? 3 : 9);
         // A chave leva o estado do relevo: sem relevo as cotas sao todas zero
         // (e certo, o mapa e plano), e essa celula nao serve quando o relevo
         // liga. Sem isto, ligar o 3D deixava as arvores enterradas.
@@ -1087,34 +1086,38 @@ function ligaArvores(map, op) {
           celulas.set(ch, c);
           if (celulas.size > 1500) celulas.delete(celulas.keys().next().value);
         }
-        if (c.length) { partes.push(c); total += c.length / 11; }
+        if (c.length) { partes.push([d, c]); total += c.length / 11; }
       }
     }
     semTerreno = faltouDEM;
     incompleto = faltouTempo;
 
-    // O tecto NAO se aplica cortando na ordem em que as celulas saem. Foi
-    // assim a primeira vez e deu um erro com forma: as celulas percorrem-se
-    // de noroeste para sudeste, as do principio gastavam o tecto todo e as do
-    // fim ficavam sem uma unica arvore -- meio mapa com floresta e meio sem,
-    // com uma fronteira recta a separar. Corta-se por um numero tirado da
-    // POSICAO da arvore, que e sempre o mesmo: o conjunto que passa e o mesmo
-    // esteja o mapa onde estiver, e esta espalhado por igual.
-    const manterG = total > TECTO ? TECTO / total : 1;
+    // ---- O TECTO, E O DEFEITO QUE ELE APONTOU DESDE O PRINCIPIO -----------
+    // Estava a aplicar-se como FRACCAO DO TOTAL EM VISTA: manter = TECTO/total.
+    // O total muda quando ele anda -- entra numa zona de floresta, o total
+    // sobe, a fraccao desce, e arvores que ja estavam no ecra desaparecem sem
+    // ele ter feito nada senao andar. Tornar o sorteio estavel nao chegava: o
+    // que tinha de ser estavel era o LIMITE, e era ele que mexia.
+    //
+    // Agora o tecto e uma DISTANCIA, nao uma fraccao. As celulas ja vem
+    // ordenadas do centro para fora; enchem-se ate ao tecto e a distancia onde
+    // isso acontece passa a ser o alcance das arvores -- o mesmo alcance que o
+    // shader usa para as murchar. O corte e a vista acabam no mesmo sitio, por
+    // isso nao ha fronteira: ha arvores a ficarem pequenas ate desaparecerem.
+    //
+    // O alcance move-se devagar (um quarto do caminho de cada vez) para nao
+    // saltar de um fotograma para o outro.
     const buf = new Float32Array(Math.min(total, TECTO) * 11);
-    let k = 0;
-    for (const c of partes) {
+    let k = 0, dCorte = 0;
+    for (const [d, c] of partes) {
       const nc = c.length / 11;
-      for (let t = 0; t < nc; t++) {
-        if (k >= TECTO) break;
-        const o = t * 11;
-        if (manterG < 1 && sorte(c[o], c[o + 1]) > manterG) continue;
-        buf.set(c.subarray(o, o + 11), k * 11); k++;
-      }
-      if (k >= TECTO) break;
+      if (k + nc > TECTO) { dCorte = d; break; }
+      buf.set(c, k * 11); k += nc;
     }
+    const alvo = Math.max(500, Math.min(RMAX, dCorte || rFar * 1.25));
+    rFar += (alvo - rFar) * 0.25;
     INST = buf; nInst = k;
-    cortado = manterG < 1;
+    cortado = !!dCorte;
     if (op.aoContar) op.aoContar(k, cortado, incompleto);
   }
 
@@ -1214,7 +1217,8 @@ function ligaArvores(map, op) {
       gl.uniform1f(locs.uEsc, esc);
       gl.uniform1f(locs.uRef, refMapa());
       gl.uniform2f(locs.uCentro, c[0], c[1]);
-      gl.uniform3f(locs.uDist, DIST[0], DIST[1], DIST[2]);
+      // o alcance que o shader usa para murchar e o MESMO onde o tecto cortou
+      gl.uniform3f(locs.uDist, Math.min(DIST[0], rFar), Math.min(DIST[1], rFar), rFar);
       const fz = Math.max(0, Math.min(1, (map.getZoom() - ZOOM0) / (ZOOM1 - ZOOM0)));
       gl.uniform1f(locs.uZoom, fz * fz * (3 - 2 * fz));   // suave nas duas pontas
       gl.uniform3f(locs.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
@@ -1284,6 +1288,8 @@ function ligaArvores(map, op) {
     semeia: () => { assinatura = ''; talvezSemeia(true); },
     quantas: () => nInst,
     esquece() { celulas.clear(); assinatura = ''; talvezSemeia(true); },
+    // baixar o tecto sem destruir a camada: destrui-la fazia o aviso repetir-se
+    tecto(n) { TECTO = Math.max(1500, n | 0); assinatura = ''; talvezSemeia(true); },
     // mediana de ms entre fotogramas desta camada, ou null se ainda nao ha
     // amostra que chegue para dizer alguma coisa. Seis chegam: um telemovel
     // que esteja mesmo a sofrer desenha poucos fotogramas, e exigir vinte
@@ -1292,6 +1298,22 @@ function ligaArvores(map, op) {
       if (ritmos.length < 6) return null;
       const o = ritmos.slice().sort((a, b) => a - b);
       return +o[o.length >> 1].toFixed(1);
+    },
+    // A prova de que andar com o mapa nao mexe nas arvores: conta e soma as
+    // arvores DENTRO DE UMA CAIXA FIXA no terreno. Se a caixa e a mesma, o
+    // numero e a soma tem de ser os mesmos, esteja o centro do mapa onde
+    // estiver. Era exactamente isto que falhava antes, e nao havia medicao
+    // nenhuma que o apanhasse -- so o olho dele.
+    naCaixa(w, s, e, n) {
+      if (!nInst || !INST) return { n: 0, soma: 0 };
+      const a = merc(w, n), b = merc(e, s);   // mercator: y cresce para sul
+      let q = 0, soma = 0;
+      for (let i = 0; i < nInst; i++) {
+        const x = INST[i * 11], y = INST[i * 11 + 1];
+        if (x < a[0] || x > b[0] || y < a[1] || y > b[1]) continue;
+        q++; soma += x * 1e6 + y * 1e6 + INST[i * 11 + 3];
+      }
+      return { n: q, soma: +soma.toFixed(3) };
     },
     // Para diagnostico: cada arvore assenta na cota do SEU ponto e tem a SUA
     // altura. Se o intervalo de cotas for zero numa encosta, ha algo errado.
@@ -1306,6 +1328,7 @@ function ligaArvores(map, op) {
         niv[INST[i * 11 + 10]]++;
       }
       return { n: nInst, celulas: celulas.size, niveis: niv, incompleto, cortado,
+               alcance: Math.round(rFar),
                cotaMin: +c0.toFixed(1), cotaMax: +c1.toFixed(1),
                alturaMin: +a0.toFixed(1), alturaMax: +a1.toFixed(1),
                alturaMedia: +(sa / nInst).toFixed(1) };
@@ -1334,11 +1357,14 @@ function vigiaArvores() {
     if (!ARV || !arvQuer) return;
     const r = ARV.ritmo(), tec = arvTecto();
     if (r == null) return;
-    if (r > 55 && tec > 4000) {
+    if (r > 55 && tec > 3000) {
       const novo = Math.round(tec / 2);
       try { localStorage.setItem('sne-arv-tecto', String(novo)); } catch (e) {}
-      arvoresTopo(false); arvoresTopo(true);
-      toast('Menos árvores: o telemóvel não estava a acompanhar.');
+      // baixar o tecto na camada que ja existe. Antes destruia-se e criava-se
+      // outra, e por isso o aviso repetia-se de cada vez -- era o que ele
+      // estava farto de ver. Uma vez chega: ele ja percebeu.
+      ARV.tecto(novo);
+      if (!avisoLento) { avisoLento = true; toast('Menos árvores: o telemóvel não estava a acompanhar.'); }
     }
   });
 }
@@ -1382,7 +1408,7 @@ function ligaVigiaTamanho() {
 // floresta, e a altitude continua a ler-se pelo sombreado e pelas curvas de
 // nivel, que nao se mexem daqui. O botao do relevo so muda se o terreno se
 // levanta -- e ai as cotas guardadas por celula deixam de servir.
-let ARV = null, avisoArv = false, arvQuer = false;
+let ARV = null, avisoArv = false, avisoLento = false, arvQuer = false;
 function arvoresTopo(liga) {
   arvQuer = !!liga;
   if (!mapT) return;
@@ -1397,7 +1423,7 @@ function arvoresTopo(liga) {
     if (ARV || !mapT || !arvQuer) return;
     try {
       ARV = ligaArvores(mapT, {
-        dist: [600, 1500, 3000], tecto: arvTecto(),
+        dist: [300, 1000, 3000], tecto: arvTecto(),
         fundo: [0.87, 0.86, 0.80],
         aoContar: (n) => {
           // dito uma vez, e dito como e: a altura das arvores e modelada da

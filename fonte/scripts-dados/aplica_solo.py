@@ -74,11 +74,14 @@ function vigiaArvores() {
     if (!ARV || !arvQuer) return;
     const r = ARV.ritmo(), tec = arvTecto();
     if (r == null) return;
-    if (r > 55 && tec > 4000) {
+    if (r > 55 && tec > 3000) {
       const novo = Math.round(tec / 2);
       try { localStorage.setItem('sne-arv-tecto', String(novo)); } catch (e) {}
-      arvoresTopo(false); arvoresTopo(true);
-      toast('Menos árvores: o telemóvel não estava a acompanhar.');
+      // baixar o tecto na camada que ja existe. Antes destruia-se e criava-se
+      // outra, e por isso o aviso repetia-se de cada vez -- era o que ele
+      // estava farto de ver. Uma vez chega: ele ja percebeu.
+      ARV.tecto(novo);
+      if (!avisoLento) { avisoLento = true; toast('Menos árvores: o telemóvel não estava a acompanhar.'); }
     }
   });
 }
@@ -122,7 +125,7 @@ function ligaVigiaTamanho() {
 // floresta, e a altitude continua a ler-se pelo sombreado e pelas curvas de
 // nivel, que nao se mexem daqui. O botao do relevo so muda se o terreno se
 // levanta -- e ai as cotas guardadas por celula deixam de servir.
-let ARV = null, avisoArv = false, arvQuer = false;
+let ARV = null, avisoArv = false, avisoLento = false, arvQuer = false;
 function arvoresTopo(liga) {
   arvQuer = !!liga;
   if (!mapT) return;
@@ -137,7 +140,7 @@ function arvoresTopo(liga) {
     if (ARV || !mapT || !arvQuer) return;
     try {
       ARV = ligaArvores(mapT, {
-        dist: [600, 1500, 3000], tecto: arvTecto(),
+        dist: [300, 1000, 3000], tecto: arvTecto(),
         fundo: [0.87, 0.86, 0.80],
         aoContar: (n) => {
           // dito uma vez, e dito como e: a altura das arvores e modelada da
