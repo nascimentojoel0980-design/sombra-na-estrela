@@ -1314,7 +1314,7 @@ function pathInfo(ll) {
   const pop = L.popup({ maxWidth: 280 }).setLatLng(ll).setContent(body).openOn(map);
   setTimeout(() => document.querySelectorAll('.pi-b').forEach((b) => b.onclick = () => { map.closePopup(pop); select(D.routes.find((r) => r.id === +b.dataset.id)); }), 0);
 }
-map.on('click', (e) => { if (document.body.classList.contains('building')) { if (RD) addTo(snapNode(e.latlng)); return; } pathInfo(e.latlng); });
+map.on('click', (e) => { if (document.body.classList.contains('building')) { if (build.livre) addLivre(e.latlng); else if (RD) addTo(snapNode(e.latlng)); return; } pathInfo(e.latlng); });
 // Caminhos alternativos: saídas até aldeias, variantes/atalhos e todos os caminhos num raio de 8 km
 const altGroup = L.layerGroup().addTo(map);
 const ALT_KEY = 'sne-alt';
@@ -1366,7 +1366,7 @@ const REDE_URL = 'dados/rede.json';
 const COVER = { 100: ['Zona urbana', '#C2504B'], 211: ['Cultivo', '#D8C24A'], 212: ['Cultivo', '#D8C24A'], 213: ['Área agrícola', '#D8C24A'], 311: ['Sobreiro / azinheira', '#7E5BA6'], 312: ['Eucalipto', '#4FBF52'], 313: ['Folhosas', '#2E9E3A'], 321: ['Pinheiro bravo', '#1F7A2E'], 322: ['Pinheiro manso', '#1B5E2A'], 323: ['Resinosas', '#2C7A86'], 410: ['Matos', '#9A8442'], 420: ['Erva', '#C8BE8C'], 500: ['Rocha / sem vegetação', '#8A8A8A'], 610: ['Zona húmida', '#3E86C6'], 620: ['Água', '#3A5BD9'] };
 const KINDNAME = ['Trilho', 'Estradão', 'Escadas', 'Percurso'];
 let RD = null, rdLoading = null, rdGrid = null, rdCSR = null;
-const build = { nodes: [], edges: [], layer: null, pref: 'curto' };
+const build = { nodes: [], edges: [], layer: null, pref: 'curto', livre: false, fimLL: null, fimNo: -1 };
 function loadRede() {
   if (RD) return Promise.resolve(RD);
   if (!rdLoading) rdLoading = fetch(REDE_URL).then((r) => r.json()).then((j) => {
@@ -1420,26 +1420,81 @@ function edgePts(ei, fromNode) {
   const e = RD.e[ei], pts = decodePoly(e[8]);
   return e[0] === fromNode ? pts : pts.slice().reverse();
 }
+// um troco pode vir da rede mapeada ou ser desenhado a mao
+const trocoPts = (x) => x.livre ? x.pts : edgePts(x.ei, x.from);
+const trocoL = (x) => x.livre ? x.L : RD.e[x.ei][2];
 function buildPts() {
   const out = [];
-  build.edges.forEach((x, i) => { const p = edgePts(x.ei, x.from); out.push(...(i ? p.slice(1) : p)); });
+  build.edges.forEach((x, i) => { const p = trocoPts(x); out.push(...(i ? p.slice(1) : p)); });
   return out;
 }
 function buildStats() {
-  let L = 0, up = 0, dn = 0, shL = 0, shSum = 0; const cov = {}, kinds = {};
-  build.edges.forEach((x) => { const e = RD.e[x.ei]; L += e[2]; up += e[3]; dn += e[4]; if (e[6] >= 0) { shL += e[2]; shSum += e[6] * e[2]; } cov[e[5]] = (cov[e[5]] || 0) + e[2]; kinds[e[7]] = (kinds[e[7]] || 0) + e[2]; });
-  return { L, up, dn, shade: shL ? shSum / shL : null, shCov: L ? shL / L : 0, cov, kinds };
+  let L = 0, up = 0, dn = 0, shL = 0, shSum = 0, livreL = 0; const cov = {}, kinds = {};
+  build.edges.forEach((x) => {
+    if (x.livre) {
+      L += x.L; up += x.up || 0; dn += x.dn || 0; livreL += x.L;
+      if (x.sh >= 0) { shL += x.L; shSum += x.sh * x.L; }
+      if (x.cov) cov[x.cov] = (cov[x.cov] || 0) + x.L;
+      return;
+    }
+    const e = RD.e[x.ei]; L += e[2]; up += e[3]; dn += e[4];
+    if (e[6] >= 0) { shL += e[2]; shSum += e[6] * e[2]; }
+    cov[e[5]] = (cov[e[5]] || 0) + e[2]; kinds[e[7]] = (kinds[e[7]] || 0) + e[2];
+  });
+  return { L, up, dn, shade: shL ? shSum / shL : null, shCov: L ? shL / L : 0, cov, kinds, livreL, livrePct: L ? livreL / L : 0 };
+}
+// distancia entre dois pontos, em metros
+function distM(a, b) {
+  const k = Math.cos((a[0] + b[0]) / 2 * Math.PI / 180);
+  const dy = (b[0] - a[0]) * 111320, dx = (b[1] - a[1]) * 111320 * k;
+  return Math.hypot(dx, dy);
+}
+// altitudes ao longo de uma linha, tiradas do modelo de elevacao
+async function amostraZ(pts, passo) {
+  const D = await ensureDEM();
+  const kx = (D.w - 1) / (DEM_B[2] - DEM_B[0]), ky = (D.h - 1) / (DEM_B[3] - DEM_B[1]);
+  const z = (p) => {
+    const fx = Math.min(D.w - 1.001, Math.max(0, (p[1] - DEM_B[0]) * kx)), fy = Math.min(D.h - 1.001, Math.max(0, (DEM_B[3] - p[0]) * ky));
+    const c0 = Math.floor(fx), r0 = Math.floor(fy), wx = fx - c0, wy = fy - r0;
+    const a = D.z[r0 * D.w + c0], b = D.z[r0 * D.w + c0 + 1], c = D.z[(r0 + 1) * D.w + c0], d = D.z[(r0 + 1) * D.w + c0 + 1];
+    return (a * (1 - wx) + b * wx) * (1 - wy) + (c * (1 - wx) + d * wx) * wy;
+  };
+  const out = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = distM(pts[i], pts[i + 1]), n = Math.max(1, Math.round(d / (passo || 30)));
+    for (let j = 0; j < n; j++) {
+      const t = j / n;
+      out.push(z([pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]));
+    }
+  }
+  out.push(z(pts[pts.length - 1]));
+  return out;
+}
+// sombra e terreno de um troco desenhado: vem do caminho mapeado mais proximo
+function contextoLivre(meio) {
+  if (!RD) return { sh: -1, cov: 0 };
+  const n = snapNode(L.latLng(meio[0], meio[1]), 250);
+  if (n < 0) return { sh: -1, cov: 0 };
+  for (let p = rdCSR.start[n]; p < rdCSR.start[n + 1]; p++) {
+    const e = RD.e[rdCSR.adjE[p]];
+    if (e[6] >= 0) return { sh: e[6], cov: e[5] };
+  }
+  const e0 = RD.e[rdCSR.adjE[rdCSR.start[n]]];
+  return { sh: -1, cov: e0 ? e0[5] : 0 };
 }
 function drawBuild() {
   if (!build.layer) build.layer = L.layerGroup().addTo(map);
   build.layer.clearLayers();
   build.edges.forEach((x) => {
-    const e = RD.e[x.ei], pts = edgePts(x.ei, x.from);
+    const pts = trocoPts(x), sh = x.livre ? x.sh : RD.e[x.ei][6];
     L.polyline(pts, { color: '#0B120D', weight: 9, opacity: .55, interactive: false }).addTo(build.layer);
-    L.polyline(pts, { color: e[6] >= 0 ? shadeCol(e[6]) : '#9FB6C9', weight: 5, opacity: 1, interactive: false }).addTo(build.layer);
+    L.polyline(pts, Object.assign({ color: sh >= 0 ? shadeCol(sh) : '#9FB6C9', weight: 5, opacity: 1, interactive: false },
+      x.livre ? { dashArray: '10 6' } : {})).addTo(build.layer);
   });
-  build.nodes.forEach((n, i) => {
-    const p = RD.v[n];
+  const pontas = [];
+  build.edges.forEach((x, i) => { const p = trocoPts(x); if (!i) pontas.push(p[0]); pontas.push(p[p.length - 1]); });
+  if (!pontas.length && build.fimLL) pontas.push(build.fimLL);
+  pontas.forEach((p, i) => {
     L.circleMarker(p, { radius: i === 0 ? 7 : 5, color: '#fff', weight: 2, fillColor: i === 0 ? '#2E7D4F' : '#1C2118', fillOpacity: 1, interactive: false }).addTo(build.layer);
   });
   renderBuildPanel();
@@ -1459,39 +1514,60 @@ function renderBuildPanel() {
       <div><span class="wl">Desnível +</span><span class="wv">${fmt(s.up)} m</span></div>
       <div><span class="wl">Sombra</span><span class="wv" style="color:${s.shade == null ? 'var(--muted)' : shadeCol(s.shade)}">${s.shade == null ? '—' : fmt(s.shade) + '%'}</span></div>
     </div>
-    <div class="bstats"><span>↘ ${fmt(s.dn)} m</span><span>${hh} h ${String(mm % 60).padStart(2, '0')}</span><span>${s.shade == null ? 'sem LiDAR' : `LiDAR em ${fmt(100 * s.shCov)}% do traçado`}</span></div>
+    <div class="bstats"><span>↘ ${fmt(s.dn)} m</span><span>${hh} h ${String(mm % 60).padStart(2, '0')}</span><span>${s.shade == null ? 'sem LiDAR' : `${s.livreL > 0 ? 'sombra estimada nos troços à mão' : 'LiDAR em ' + fmt(100 * s.shCov) + '% do traçado'}`}</span></div>
     <div class="cvs">${coverList(s.cov, s.L)}</div>
     ${buildProfile()}
     ${buildChips()}
     <div class="gpxrow"><button class="btn" id="b-gpx">Descarregar GPX</button><button class="btn alt" id="b-save">Guardar</button><button class="btn alt" id="b-undo">Anular último</button><button class="btn alt" id="b-clear">Limpar</button><button class="btn alt" id="b-loop">Fechar volta</button></div>
     <span class="note" id="b-msg" aria-live="polite"></span>${trailList()}`;
   bindBuildChips();
-  document.getElementById('b-undo').onclick = () => { if (build.edges.length) { const lastNode = build.nodes[build.nodes.length - 2]; build.edges.pop(); build.nodes.pop(); drawBuild(); } };
-  document.getElementById('b-clear').onclick = () => { build.edges = []; build.nodes = []; drawBuild(); };
-  document.getElementById('b-loop').onclick = () => addTo(build.nodes[0]);
+  document.getElementById('b-undo').onclick = () => {
+    if (!build.edges.length) { build.fimLL = null; build.fimNo = -1; build.nodes = []; drawBuild(); return; }
+    const fora = build.edges.pop();
+    if (!fora.livre && build.nodes.length > 1) build.nodes.pop();
+    const ult = build.edges[build.edges.length - 1];
+    if (!ult) { build.fimLL = build.nodes.length ? RD.v[build.nodes[0]] : null; build.fimNo = build.nodes.length ? build.nodes[0] : -1; }
+    else { const p = trocoPts(ult); build.fimLL = p[p.length - 1]; build.fimNo = ult.livre ? -1 : build.nodes[build.nodes.length - 1]; }
+    drawBuild(); updateZprof();
+  };
+  document.getElementById('b-clear').onclick = () => { build.edges = []; build.nodes = []; build.fimLL = null; build.fimNo = -1; build.zprof = null; drawBuild(); };
+  document.getElementById('b-loop').onclick = () => {
+    const p = buildPts();
+    if (!p.length) return;
+    if (build.nodes.length && build.fimNo >= 0) addTo(build.nodes[0]);
+    else addLivre(L.latLng(p[0][0], p[0][1]));
+  };
   document.getElementById('b-gpx').onclick = () => saveBuildGpx();
   document.getElementById('b-save').onclick = saveTrail;
   bindTrailList();
 }
 function buildChips() {
   const opt = [['curto', 'Mais curto'], ['sombra', 'Mais sombra'], ['suave', 'Menos subida']];
-  return `<div class="chips">${opt.map(([k, t]) => `<button class="chipb b-pref" data-k="${k}" aria-pressed="${build.pref === k}">${t}</button>`).join('')}</div>`;
+  return `<div class="fgrp"><span class="flab">Modo</span><div class="chips">
+      <button class="chipb b-modo" data-v="0" aria-pressed="${!build.livre}">Seguir caminhos</button>
+      <button class="chipb b-modo" data-v="1" aria-pressed="${build.livre}">Desenho livre</button>
+    </div></div>
+    <div class="fgrp"${build.livre ? ' hidden' : ''}><span class="flab">Preferir</span><div class="chips">${opt.map(([k, t]) => `<button class="chipb b-pref" data-k="${k}" aria-pressed="${build.pref === k}">${t}</button>`).join('')}</div></div>
+    ${build.livre ? '<p class="note">Desenho livre: cada toque traça uma recta desde o ponto anterior. Serve para caminhos que ninguém mapeou. A altitude é medida no modelo de elevação; a sombra e o terreno são estimados pelo caminho mapeado mais próximo, e vão assinalados a tracejado.</p>' : ''}`;
 }
 function bindTrailList() {
   document.querySelectorAll('.tri-o').forEach((b) => b.onclick = (ev) => { if (ev.target.classList.contains('tri-x')) { delTrail(+ev.target.dataset.i); return; } openTrail(+b.dataset.i); });
 }
-function bindBuildChips() { document.querySelectorAll('.b-pref').forEach((b) => b.onclick = () => { build.pref = b.dataset.k; renderBuildPanel(); }); }
+function bindBuildChips() {
+  document.querySelectorAll('.b-pref').forEach((b) => b.onclick = () => { build.pref = b.dataset.k; renderBuildPanel(); });
+  document.querySelectorAll('.b-modo').forEach((b) => b.onclick = () => { build.livre = b.dataset.v === '1'; renderBuildPanel(); });
+}
 function buildProfile() {
   const e = build.edges; if (e.length < 1) return '';
   const W = 360, H = 90, pl = 30, pr = 6, pt = 8, pb = 14;
   let acc = 0; const pts = [[0, null]];
-  const segs = e.map((x) => { const ed = RD.e[x.ei]; const a = acc; acc += ed[2]; return { a, b: acc, sh: ed[6] }; });
+  const segs = e.map((x) => { const a = acc; acc += trocoL(x); return { a, b: acc, sh: x.livre ? x.sh : RD.e[x.ei][6], livre: !!x.livre }; });
   const zs = build.zprof;
   if (!zs || !zs.length) return `<div class="prof"><div class="prof-h"><strong>Perfil</strong><span>a calcular…</span></div></div>`;
   let lo = Math.min(...zs), hi = Math.max(...zs); const sp = Math.max(hi - lo, 40); lo -= sp * .08; hi = lo + sp * 1.16;
   const X = (i) => pl + (W - pl - pr) * i / (zs.length - 1), Y = (v) => pt + (H - pt - pb) * (1 - (v - lo) / (hi - lo));
   const line = zs.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
-  const bars = segs.map((s) => `<rect x="${(pl + (W - pl - pr) * s.a / acc).toFixed(1)}" y="${H - pb + 2}" width="${Math.max(1, (W - pl - pr) * (s.b - s.a) / acc).toFixed(1)}" height="4" fill="${s.sh >= 0 ? shadeCol(s.sh) : '#9FB6C9'}"/>`).join('');
+  const bars = segs.map((s) => `<rect x="${(pl + (W - pl - pr) * s.a / acc).toFixed(1)}" y="${H - pb + 2}" width="${Math.max(1, (W - pl - pr) * (s.b - s.a) / acc).toFixed(1)}" height="4" fill="${s.sh >= 0 ? shadeCol(s.sh) : '#9FB6C9'}" opacity="${s.livre ? 0.55 : 1}"/>`).join('');
   return `<div class="prof"><div class="prof-h"><strong>Perfil</strong><span>${fmt(Math.min(...zs))}–${fmt(Math.max(...zs))} m</span></div>
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Perfil do trilho"><path d="${line}L${X(zs.length - 1)},${H - pb}L${pl},${H - pb}Z" fill="color-mix(in srgb,var(--accent) 20%,transparent)"/><path d="${line}" class="pl"/>${bars}
       <text x="${pl - 4}" y="${(Y(Math.max(...zs)) + 3).toFixed(1)}" text-anchor="end" class="pt">${fmt(Math.max(...zs))}</text>
@@ -1516,21 +1592,44 @@ async function updateZprof() {
 }
 function addTo(node) {
   if (node < 0) return;
-  if (!build.nodes.length) { build.nodes = [node]; drawBuild(); return; }
-  const from = build.nodes[build.nodes.length - 1];
+  const msg = document.getElementById('b-msg');
+  if (!build.fimLL) { build.nodes = [node]; build.fimNo = node; build.fimLL = RD.v[node]; drawBuild(); return; }
+  if (build.fimNo < 0) { addLivre(L.latLng(RD.v[node][0], RD.v[node][1]), node); return; }  // vinha de desenho livre
+  const from = build.fimNo;
   if (from === node) return;
   const r = shortest(from, node);
-  const msg = document.getElementById('b-msg');
-  if (!r) { if (msg) msg.textContent = 'Não há caminho conhecido até aí.'; return; }
+  if (!r) { if (msg) msg.textContent = 'Não há caminho conhecido até aí. Podes passar a Desenho livre e traçar à mão.'; return; }
+  if (msg) msg.textContent = '';
   r.eids.forEach((ei, i) => build.edges.push({ ei, from: r.nodes[i] }));
-  build.nodes.push(node);
+  build.nodes.push(node); build.fimNo = node; build.fimLL = RD.v[node];
+  drawBuild(); updateZprof();
+}
+// desenho livre: uma linha recta do fim actual ate onde tocaste
+async function addLivre(ll, noDestino) {
+  const p = [ll.lat, ll.lng];
+  if (!build.fimLL) { build.fimLL = p; build.fimNo = noDestino == null ? -1 : noDestino; if (noDestino != null) build.nodes = [noDestino]; drawBuild(); return; }
+  const a = build.fimLL, b = p;
+  const d = distM(a, b);
+  if (d < 5) return;
+  const ctx = contextoLivre([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  const troco = { livre: true, pts: [a, b], L: d, up: 0, dn: 0, sh: ctx.sh, cov: ctx.cov };
+  build.edges.push(troco);
+  build.fimLL = b; build.fimNo = noDestino == null ? -1 : noDestino;
+  if (noDestino != null) build.nodes.push(noDestino);
+  drawBuild();
+  try {
+    const zs = await amostraZ([a, b], 25);
+    let up = 0, dn = 0;
+    for (let i = 1; i < zs.length; i++) { const dz = zs[i] - zs[i - 1]; if (dz > 0) up += dz; else dn -= dz; }
+    troco.up = up; troco.dn = dn;
+  } catch (e) {}
   drawBuild(); updateZprof();
 }
 function gpxBuild() {
   const pts = buildPts(), x = (s) => String(s).replace(/[<&>"]/g, (c) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
   const s = buildStats();
   const name = 'Trilho ' + fmt(s.L / 1000, 1) + ' km';
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Sombra na Estrela" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${x(name)}</name><desc>${x('Criado na página Sombra na Estrela sobre caminhos do OpenStreetMap. Desnível +' + Math.round(s.up) + ' m. ' + (s.shade == null ? 'Sem dados de sombra.' : 'Sombra ' + Math.round(s.shade) + '% (LiDAR DGT em ' + Math.round(100 * s.shCov) + '% do traçado).'))}</desc></metadata>\n<trk><name>${x(name)}</name><trkseg>${pts.map((p) => `<trkpt lat="${p[0].toFixed(6)}" lon="${p[1].toFixed(6)}"></trkpt>`).join('')}</trkseg></trk>\n</gpx>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Sombra na Estrela" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>${x(name)}</name><desc>${x('Criado em Caminhos da Estrela. ' + (s.livreL > 0 ? Math.round(s.livrePct * 100) + '% traçado à mão fora da rede mapeada. ' : 'Todo sobre caminhos do OpenStreetMap. ') + 'Desnível +' + Math.round(s.up) + ' m. ' + (s.shade == null ? 'Sem dados de sombra.' : 'Sombra ' + Math.round(s.shade) + '% (LiDAR DGT em ' + Math.round(100 * s.shCov) + '% do traçado).'))}</desc></metadata>\n<trk><name>${x(name)}</name><trkseg>${pts.map((p) => `<trkpt lat="${p[0].toFixed(6)}" lon="${p[1].toFixed(6)}"></trkpt>`).join('')}</trkseg></trk>\n</gpx>\n`;
 }
 async function saveBuildGpx() {
   const msg = document.getElementById('b-msg'), dl = await downloadsP;
@@ -1558,14 +1657,20 @@ function saveTrail() {
   const s = buildStats(), name = prompt('Nome do trilho:', 'Trilho ' + fmt(s.L / 1000, 1) + ' km');
   if (name === null) return;
   const a = triLoad();
-  a.push({ n: name || ('Trilho ' + fmt(s.L / 1000, 1) + ' km'), d: Date.now(), nodes: build.nodes, e: build.edges.map((x) => [x.ei, x.from]), km: +(s.L / 1000).toFixed(2), up: Math.round(s.up), sh: s.shade == null ? null : Math.round(s.shade) });
+  a.push({ n: name || ('Trilho ' + fmt(s.L / 1000, 1) + ' km'), d: Date.now(), nodes: build.nodes, e: build.edges.map((x) => x.livre ? ['L', x.pts, x.L, x.up, x.dn, x.sh, x.cov] : [x.ei, x.from]), km: +(s.L / 1000).toFixed(2), up: Math.round(s.up), sh: s.shade == null ? null : Math.round(s.shade), livre: +(s.livrePct * 100).toFixed(0) });
   const ok = triSave(a);
   const m = document.getElementById('b-msg'); if (m) m.textContent = ok ? 'Guardado neste telemóvel.' : 'Não foi possível guardar neste telemóvel.';
   renderBuildPanel();
 }
 function openTrail(i) {
   const t = triLoad()[i]; if (!t) return;
-  build.nodes = t.nodes; build.edges = t.e.map(([ei, from]) => ({ ei, from }));
+  build.nodes = t.nodes || [];
+  build.edges = (t.e || []).map((x) => x[0] === 'L'
+    ? { livre: true, pts: x[1], L: x[2], up: x[3], dn: x[4], sh: x[5], cov: x[6] }
+    : { ei: x[0], from: x[1] });
+  const ult = build.edges[build.edges.length - 1];
+  if (ult) { const p = trocoPts(ult); build.fimLL = p[p.length - 1]; build.fimNo = ult.livre ? -1 : (build.nodes[build.nodes.length - 1] ?? -1); }
+  else { build.fimLL = null; build.fimNo = -1; }
   drawBuild(); updateZprof();
   const pts = buildPts(); if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
 }
