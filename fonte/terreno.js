@@ -818,6 +818,7 @@ function abreVista(canvas, T, op) {
                     porCima: true };
   const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0 };
   let solAlt = 30, solAz = 180, solV = [0, 0, 1];
+  let corDest = [0.10, 0.36, 0.78];
 
   const unis = (p, ns) => { const o = {}; for (const n of ns) o[n] = gl.getUniformLocation(p, n); return o; };
   const SOMBRA_U = ['uHori', 'uSol', 'uSolAlt', 'uSolAz', 'uNdir', 'uTemHori'];
@@ -914,6 +915,17 @@ function abreVista(canvas, T, op) {
   A.cam = gl.createVertexArray(); gl.bindVertexArray(A.cam);
   const fc = fitaCaminhos(T, 0.9); A.grupos = fc.grupos; A.nCam = fc.pos.length / 3;
   if (A.nCam) vbo(P.rota, 'aP', fc.pos, 3);
+
+  // trilho em destaque e marca de "estou aqui": VAOs proprios, refeitos so
+  // quando mudam (o destaque quando se escolhe outro, a marca a cada fixo)
+  A.dest = gl.createVertexArray(); A.bufDest = gl.createBuffer(); A.nDest = 0;
+  gl.bindVertexArray(A.dest); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
+  { const l2 = gl.getAttribLocation(P.rota, 'aP');
+    gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
+  A.marca = gl.createVertexArray(); A.bufMarca = gl.createBuffer(); A.nMarca = 0;
+  gl.bindVertexArray(A.marca); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufMarca);
+  { const l2 = gl.getAttribLocation(P.rota, 'aP');
+    gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
 
   A.curva = gl.createVertexArray(); gl.bindVertexArray(A.curva);
   const cu = linhasCurvas(T, 0.8); A.nCurva = cu.n;
@@ -1123,6 +1135,21 @@ function abreVista(canvas, T, op) {
         gl.bindVertexArray(A.rota);
         gl.drawArrays(gl.TRIANGLES, 0, A.nRota);
       }
+      // o trilho escolhido por cima dos outros, mais grosso e mais vivo
+      if (A.nDest) {
+        const c = corDest;
+        gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
+        gl.bindVertexArray(A.dest);
+        gl.drawArrays(gl.TRIANGLES, 0, A.nDest);
+      }
+      // a marca de "estou aqui" nunca se esconde, nem atras do monte: quem
+      // esta a andar precisa de se ver, mesmo que o relevo diga que nao.
+      if (A.nMarca) {
+        gl.uniform1f(L.rota.uPorCima, 0);
+        gl.uniform3f(L.rota.uCor, 0.13, 0.42, 0.85);
+        gl.bindVertexArray(A.marca);
+        gl.drawArrays(gl.TRIANGLES, 0, A.nMarca);
+      }
       if (mostrar.porCima) gl.enable(gl.DEPTH_TEST);
     };
     desenhaFitas();
@@ -1154,6 +1181,45 @@ function abreVista(canvas, T, op) {
     aproxima: (f) => cam.dist = trava(cam.dist * f, 40, 20000),
     vaiA(lo, la, dist) { const m = T.emM(lo, la); cam.x = m[0]; cam.y = m[1];
                          if (dist) cam.dist = dist; },
+    // linhas em [lon, lat] achatadas, como as do ficheiro
+    destaque(linhas, cor, largura) {
+      corDest = cor || [0.10, 0.36, 0.78];
+      const v = fitaLinhas(T, linhas || [], largura || 9, 1.6);
+      A.nDest = v.length / 3;
+      gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+    },
+    // onde estou: um anel no chao e um pau a apontar ao ceu
+    marca(lo, la, raio) {
+      if (lo == null) { A.nMarca = 0; return null; }
+      const m = T.emM(lo, la);
+      const z = T.cotaEm(m[0], m[1]);
+      const R = raio || 14, H = 45, V = [];
+      const N = 14;
+      for (let i = 0; i < N; i++) {
+        const a0 = i / N * 6.283, a1 = (i + 1) / N * 6.283;
+        const p0 = [m[0] + Math.cos(a0) * R, m[1] + Math.sin(a0) * R];
+        const p1 = [m[0] + Math.cos(a1) * R, m[1] + Math.sin(a1) * R];
+        const q0 = [m[0] + Math.cos(a0) * R * 0.62, m[1] + Math.sin(a0) * R * 0.62];
+        const q1 = [m[0] + Math.cos(a1) * R * 0.62, m[1] + Math.sin(a1) * R * 0.62];
+        for (const q of [[q0, 1.5], [p0, 1.5], [q1, 1.5], [q1, 1.5], [p0, 1.5], [p1, 1.5]])
+          V.push(q[0][0], q[0][1], z + q[1]);
+      }
+      const e = 2.2;
+      for (let i = 0; i < 4; i++) {
+        const a0 = i / 4 * 6.283, a1 = (i + 1) / 4 * 6.283;
+        const x0 = m[0] + Math.cos(a0) * e, y0 = m[1] + Math.sin(a0) * e;
+        const x1 = m[0] + Math.cos(a1) * e, y1 = m[1] + Math.sin(a1) * e;
+        V.push(x0, y0, z, x1, y1, z, x0, y0, z + H);
+        V.push(x1, y1, z, x1, y1, z + H, x0, y0, z + H);
+      }
+      A.nMarca = V.length / 3;
+      gl.bindBuffer(gl.ARRAY_BUFFER, A.bufMarca);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.DYNAMIC_DRAW);
+      return { x: m[0], y: m[1], z };
+    },
+    // esta dentro da caixa desta zona?
+    dentro(lo, la) { return lo >= T.lo0 && lo <= T.lo1 && la >= T.la0 && la <= T.la1; },
     desliga() {
       vivo = false;
       for (const p of C) if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
@@ -1551,3 +1617,138 @@ async function cozeCaixa(caixa, op) {
 
 if (typeof module !== 'undefined') Object.assign(module.exports,
   { cozeCaixa, leMVT, aneisMVT, mapaHorizonte });
+
+// ===========================================================================
+// TRILHOS: a base de dados, os meus, e o que se sabe de cada um
+// ===========================================================================
+
+// polilinha codificada (o mesmo formato que a aplicacao ja usa nos percursos)
+function descodificaPoly(s) {
+  const pts = []; let i = 0, la = 0, lo = 0;
+  while (i < s.length) {
+    let r = 0, sh = 0, b;
+    do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+    la += (r & 1) ? ~(r >> 1) : (r >> 1);
+    r = 0; sh = 0;
+    do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+    lo += (r & 1) ? ~(r >> 1) : (r >> 1);
+    pts.push([la / 1e5, lo / 1e5]);
+  }
+  return pts;
+}
+
+// GPX: so o que interessa -- os pontos, a altitude se vier, e a hora se vier.
+// Nada de XML parser a serio: um ficheiro de GPS e sempre a mesma coisa.
+function leGPX(texto) {
+  const doc = new DOMParser().parseFromString(texto, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('o ficheiro nao e um GPX valido');
+  const nome = (doc.querySelector('trk > name, rte > name, metadata > name') || {}).textContent;
+  const pts = [];
+  const nos = doc.querySelectorAll('trkpt, rtept');
+  for (const n of nos) {
+    const la = parseFloat(n.getAttribute('lat')), lo = parseFloat(n.getAttribute('lon'));
+    if (!isFinite(la) || !isFinite(lo)) continue;
+    const e = n.querySelector('ele'), t = n.querySelector('time');
+    pts.push({ la, lo,
+      z: e ? parseFloat(e.textContent) : null,
+      t: t ? Date.parse(t.textContent) : null });
+  }
+  if (pts.length < 2) throw new Error('o GPX nao tem pontos a que se chame um trilho');
+  return { nome: (nome || '').trim() || 'Trilho importado', pts };
+}
+
+const RAIO_T = 6371000;
+function metros(a, b) {
+  const f = Math.PI / 180;
+  const dla = (b.la - a.la) * f, dlo = (b.lo - a.lo) * f;
+  const m = Math.cos((a.la + b.la) / 2 * f);
+  return RAIO_T * Math.hypot(dla, dlo * m);
+}
+
+// O que se sabe de um trilho. A cota vem do GPS quando ele a traz e do terreno
+// quando nao traz -- e diz-se qual foi, porque um GPS de telemovel erra 15 m
+// na vertical com facilidade e o terreno nao erra nada dessa maneira.
+function medeTrilho(T, pts, op) {
+  op = op || {};
+  const n = pts.length;
+  if (n < 2) return null;
+  const doGPS = op.cotaDoGPS !== false && pts.some((p) => p.z != null);
+  const z = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    if (doGPS && pts[i].z != null) z[i] = pts[i].z;
+    else if (T) { const m = T.emM(pts[i].lo, pts[i].la); z[i] = T.cotaEm(m[0], m[1]); }
+    else z[i] = 0;
+  }
+  // Alisar antes de contar subida: sem isto o ruido do GPS inventa centenas de
+  // metros de desnivel que nunca se subiram. Mas a janela tem de ser
+  // proporcional -- com 4 fixos, um trilho de tres pontos ficava todo na media
+  // e dava zero de subida.
+  const zs = new Float64Array(n);
+  const J = Math.max(0, Math.min(4, Math.floor(n / 8)));
+  for (let i = 0; i < n; i++) {
+    let s = 0, c = 0;
+    for (let k = Math.max(0, i - J); k <= Math.min(n - 1, i + J); k++) { s += z[k]; c++; }
+    zs[i] = s / c;
+  }
+  // Subida acumulada com HISTERESE, nao com um limiar por amostra. Com o
+  // limiar por amostra, um trilho de 400 pontos a subir 300 m sobe 0,75 m de
+  // cada vez -- fica tudo abaixo do limiar e a conta dava 207 em vez de 300.
+  // A histerese compara com o ultimo extremo marcado: o ruido nao passa, a
+  // rampa passa inteira.
+  const LIMIAR = 3;
+  let dist = 0, sobe = 0, desce = 0, zmin = 1e9, zmax = -1e9, ref = zs[0];
+  const acum = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    if (i) dist += metros(pts[i - 1], pts[i]);
+    acum[i] = dist;
+    const d = zs[i] - ref;
+    if (d > LIMIAR) { sobe += d; ref = zs[i]; }
+    else if (d < -LIMIAR) { desce += -d; ref = zs[i]; }
+    if (zs[i] < zmin) zmin = zs[i];
+    if (zs[i] > zmax) zmax = zs[i];
+  }
+  const t0 = pts[0].t, t1 = pts[n - 1].t;
+  const dur = (t0 && t1 && t1 > t0) ? (t1 - t0) / 1000 : null;
+  let dentro = 0;
+  if (T) for (const p of pts)
+    if (p.lo >= T.lo0 && p.lo <= T.lo1 && p.la >= T.la0 && p.la <= T.la1) dentro++;
+  return {
+    pontos: n, km: dist / 1000, sobe: Math.round(sobe), desce: Math.round(desce),
+    zmin: Math.round(zmin), zmax: Math.round(zmax),
+    cotaDe: doGPS ? 'GPS' : 'terreno',
+    dur, vel: dur ? (dist / 1000) / (dur / 3600) : null,
+    dentro: T ? dentro / n : null,
+    z: zs, acum,
+  };
+}
+
+// Quanto do trilho esta ao sol a esta hora. E a pergunta que da nome a
+// aplicacao, e aqui responde-se com o mapa de horizonte que ja esta cozido:
+// para cada ponto, compara-se a altura do sol com a altura a que o monte tapa
+// o ceu naquela direccao.
+function solNoTrilho(T, pts, quando) {
+  if (!T || !T.hori) return null;
+  const s = posicaoSol(quando, (T.la0 + T.la1) / 2, (T.lo0 + T.lo1) / 2);
+  const H = T.hori, nd = H.ndir;
+  const f = ((s.az % 360) + 360) % 360 / 360 * nd;
+  const l0 = Math.floor(f) % nd, l1 = (l0 + 1) % nd, t = f - Math.floor(f);
+  const marca = new Uint8Array(pts.length);
+  let ao = 0, dentro = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.lo < T.lo0 || p.lo > T.lo1 || p.la < T.la0 || p.la > T.la1) { marca[i] = 2; continue; }
+    dentro++;
+    if (s.alt <= 0) { marca[i] = 0; continue; }
+    const m = T.emM(p.lo, p.la);
+    const i0 = Math.min(H.nx - 1, Math.max(0, Math.round(m[0] / T.larg * (H.nx - 1))));
+    const j0 = Math.min(H.ny - 1, Math.max(0, Math.round((T.alt - m[1]) / T.alt * (H.ny - 1))));
+    const a0 = H.dados[l0 * H.nx * H.ny + j0 * H.nx + i0] / 2;
+    const a1 = H.dados[l1 * H.nx * H.ny + j0 * H.nx + i0] / 2;
+    const h = a0 * (1 - t) + a1 * t;
+    if (s.alt > h) { marca[i] = 1; ao++; }
+  }
+  return { sol: s, marca, pct: dentro ? 100 * ao / dentro : 0, dentro };
+}
+
+if (typeof module !== 'undefined') Object.assign(module.exports,
+  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, metros });

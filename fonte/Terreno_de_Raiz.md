@@ -457,3 +457,73 @@ A prova são as imagens, não aquele número.)
 Fica no menu como **Sempre à vista**, ligado por defeito. Desligado, as fitas
 voltam a desenhar-se antes das plantas e o z-buffer trata de tudo, que é o
 comportamento honesto de quem quer ver a floresta como ela é.
+
+
+---
+
+## 14. Trilhos, localização ao vivo e o que se sabe de cada um
+
+### A base de dados não se copia, carrega-se
+
+Os 133 percursos já existem em `dados/dados.js` — é o mesmo ficheiro que a
+aplicação usa. A página de relevo carrega-o e mostra-os numa lista com procura
+e um filtro **Só os desta zona**, que pergunta ponto a ponto se o traçado toca
+a caixa cozida. Escolher um desenha-o em destaque, mais grosso e azul, e leva
+a câmara até ao meio dele.
+
+### Meus trilhos
+
+Entram por duas portas:
+
+- **Importar GPX** — leitor próprio, que tira os pontos, a altitude e a hora.
+  Sem parser de XML a sério: um ficheiro de GPS é sempre a mesma coisa.
+- **Gravar trilho** — do GPS do telemóvel, guardando um ponto a cada 4 m
+  andados (mais junto que isso é ruído, não caminho).
+
+Ficam no `localStorage` **do próprio telemóvel**, não vão a lado nenhum. As
+coordenadas guardam-se com cinco casas, que é um metro; o resto era peso.
+
+### A subida acumulada é a conta que toda a gente erra
+
+Duas armadilhas, as duas apanhadas a medir:
+
+**Alisar com janela fixa.** Com uma janela de ±4 pontos, um trilho de três
+pontos ficava todo na média e dava **zero** de subida. A janela passou a ser
+proporcional ao número de pontos.
+
+**Limiar por amostra.** Descartar cada passo menor que 0,8 m parece razoável e
+está errado: um trilho de 400 pontos a subir 300 m sobe 0,75 m de cada vez —
+fica tudo abaixo do limiar e a conta dava **207 m em vez de 300**. A conta
+passou a ser por **histerese**, comparando com o último extremo marcado, que é
+como um altímetro faz. Medido nos três casos:
+
+| caso | esperado | medido |
+|---|---|---|
+| rampa de 300 m com ruído de ±6 m | ~300 / 0 | **298 / 0** |
+| só ruído, terreno plano | 0 / 0 | **0 / 0** |
+| sobe 200 e desce 200 | ~200 / ~200 | **195 / 195** |
+
+A cota vem do GPS quando o ficheiro a traz e do terreno quando não traz — e a
+ficha **diz qual foi**, porque um GPS de telemóvel erra 15 m na vertical com
+facilidade e o terreno não erra dessa maneira.
+
+### Quanto do trilho está ao sol
+
+É a pergunta que dá nome à aplicação, e aqui responde-se de graça: o mapa de
+horizonte já está cozido, por isso para cada ponto do trilho compara-se a
+altura do sol com a altura a que o monte tapa o céu naquela direcção. Sai uma
+percentagem e uma tira de 60 bocados ao longo do percurso — laranja ao sol,
+azul-acinzentado à sombra, bege onde o trilho sai da caixa cozida.
+
+Muda com a barra da hora, ao vivo.
+
+### Localização ao vivo
+
+`watchPosition`, um anel no chão e um pau a apontar ao céu. A marca **nunca se
+esconde**, nem atrás do monte: quem está a andar precisa de se ver, mesmo que o
+relevo diga que não. A linha por baixo diz a posição, o erro do GPS, a cota do
+chão segundo o terreno e a cota segundo o GPS — lado a lado, que é a única
+maneira honesta de as mostrar.
+
+Há um **Seguir-me** que põe a câmara a andar com ele, e um **Ir para mim** que
+só aparece quando ele está dentro da caixa.

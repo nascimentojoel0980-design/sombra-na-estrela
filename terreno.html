@@ -44,6 +44,25 @@
   .int input:checked + i::after{transform:translateX(18px)}
   .esc{width:118px;flex:none;accent-color:var(--laranja)}
   #info{padding:6px 14px 2px;color:#8A8270;font-size:11.5px;line-height:1.5;white-space:pre-wrap}
+  h3 small{font-weight:400;text-transform:none;letter-spacing:0;color:#A79E88}
+  .bt{display:inline-block;border:1px solid var(--linha);background:#fff;border-radius:9px;
+    padding:8px 12px;font:inherit;font-size:13px;color:var(--tinta);cursor:pointer}
+  .bt:active{background:#EFEADA}
+  .bt.on{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .busca{flex:1;border:1px solid var(--linha);border-radius:9px;padding:8px 10px;
+    font:inherit;font-size:13px;background:#fff;color:var(--tinta);min-width:0}
+  .tr{display:flex;align-items:flex-start;gap:9px;padding:9px 14px;border-top:1px solid var(--linha);
+    cursor:pointer}
+  .tr:active{background:#F4F0E2}
+  .tr.sel{background:#EAF1EC}
+  .tr b{display:block;font-weight:600;font-size:13px}
+  .tr i{font-style:normal;color:#8A8270;font-size:11.5px;display:block;line-height:1.5}
+  .tr .x{flex:none;color:#A0361F;font-size:17px;padding:0 3px}
+  .ref{display:inline-block;background:#EFEADA;border-radius:5px;padding:1px 5px;
+    font-size:10.5px;font-weight:700;margin-right:5px;vertical-align:1px}
+  .barra{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:5px 0 1px}
+  .barra i{display:block;height:100%}
+  .vazio{padding:10px 14px;color:#A79E88;font-size:12px}
   .aviso{margin:10px 14px 0;padding:9px 11px;border-radius:9px;background:#F3EEDD;
     color:#6B6350;font-size:12px;line-height:1.45}
 
@@ -95,6 +114,29 @@
   <div class=lin><span>Detalhe da vegetação<small id=d0txt></small></span>
     <input class=esc id=d0 type=range min=120 max=500 step=10></div>
 
+  <h3>Onde estou</h3>
+  <div class=lin><span>Localização ao vivo<small id=gpsTxt>desligada</small></span>
+    <label class=int><input type=checkbox id=gps><i></i></label></div>
+  <div class=lin><span>Seguir-me<small>a câmara anda comigo</small></span>
+    <label class=int><input type=checkbox id=segue><i></i></label></div>
+  <div class=lin><button class=bt id=gravar>Gravar trilho</button>
+    <button class=bt id=verMe hidden>Ir para mim</button></div>
+
+  <h3>Trilhos <small id=nTrilhos></small></h3>
+  <div class=lin><input class=busca id=busca type=search placeholder="Procurar por nome ou código"></div>
+  <div class=lin><span>Só os desta zona</span>
+    <label class=int><input type=checkbox id=soZona checked><i></i></label></div>
+  <div id=lista></div>
+
+  <h3>Meus trilhos <small id=nMeus></small></h3>
+  <div class=lin>
+    <label class="bt" for=gpx>Importar GPX</label>
+    <input id=gpx type=file accept=".gpx,application/gpx+xml" hidden>
+  </div>
+  <div id=meus></div>
+
+  <div id=estat></div>
+
   <h3>Esta zona</h3>
   <div id=info></div>
   <div class=aviso id=aviso hidden></div>
@@ -114,9 +156,9 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=10"></script>
+<script src="fonte/terreno.js?v=11"></script>
 <script>
-const VER = '10';
+const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
 let V = null, T = null, ZONAS = [], zonaAberta = null;
 
@@ -222,7 +264,10 @@ document.getElementById('dia').value =
   + String(hoje.getDate()).padStart(2, '0');
 document.getElementById('dia').addEventListener('change', mudaHora);
 document.getElementById('hora').value = hoje.getHours() * 60 + hoje.getMinutes();
-document.getElementById('hora').addEventListener('input', mudaHora);
+document.getElementById('hora').addEventListener('input', () => {
+  mudaHora();
+  if (escolhido) { const t = trilhoDe(escolhido); if (t) mostraEstat(t); }
+});
 
 addEventListener('keydown', (e) => {
   if (!V) return;
@@ -251,5 +296,309 @@ for (const b of document.querySelectorAll('#bts button')) {
   b.addEventListener('pointerleave', para);
 }
 cv.addEventListener('pointerdown', () => document.getElementById('menu').classList.remove('on'));
-arranca().catch((e) => { diz('erro: ' + e.message); console.error(e); });
+
+// ===========================================================================
+// TRILHOS
+// ===========================================================================
+let BD = [];              // os percursos da base de dados
+let MEUS = [];            // os que ele importou ou gravou
+let escolhido = null;     // { fonte: 'bd'|'meu', id }
+
+const $ = (id) => document.getElementById(id);
+const km1 = (v) => v.toFixed(v < 10 ? 1 : 0) + ' km';
+const hm = (s) => s == null ? '' : (s / 3600 | 0) + 'h' + String(Math.round(s / 60) % 60).padStart(2, '0');
+
+// A base de dados dos percursos ja existe: e a mesma que a aplicacao usa. Nao
+// se copia, carrega-se. Se nao vier, a seccao diz porque.
+async function carregaBD() {
+  if (BD.length) return BD;
+  try {
+    if (typeof window.__DATA__ === 'undefined') {
+      await new Promise((ok, ko) => {
+        const sc = document.createElement('script');
+        sc.src = 'dados/dados.js?v=' + VER;
+        sc.onload = ok; sc.onerror = () => ko(new Error('nao abriu dados/dados.js'));
+        document.head.appendChild(sc);
+      });
+    }
+    BD = (window.__DATA__ && window.__DATA__.routes) || [];
+  } catch (e) { BD = []; $('nTrilhos').textContent = '— ' + e.message; }
+  for (const r of BD) if (!r._g) r._g = (r.geoe || []).map(descodificaPoly);
+  return BD;
+}
+const geoDe = (r) => r._g || [];
+// [lon, lat] achatado, que e como o motor quer
+const paraFita = (partes) => partes.map((p) => {
+  const f = new Float32Array(p.length * 2);
+  for (let i = 0; i < p.length; i++) { f[i*2] = p[i][1]; f[i*2+1] = p[i][0]; }
+  return f;
+});
+const paraPontos = (partes) => partes.flat().map(([la, lo]) => ({ la, lo, z: null, t: null }));
+
+function tocaZona(r) {
+  if (!T) return true;
+  for (const p of geoDe(r)) for (const [la, lo] of p)
+    if (lo >= T.lo0 && lo <= T.lo1 && la >= T.la0 && la <= T.la1) return true;
+  return false;
+}
+
+function pintaLista() {
+  const q = ($('busca').value || '').trim().toLowerCase();
+  const so = $('soZona').checked;
+  const el = $('lista');
+  let n = 0, html = '';
+  for (const r of BD) {
+    if (so && !tocaZona(r)) continue;
+    if (q && !((r.nome || '') + ' ' + (r.ref || '')).toLowerCase().includes(q)) continue;
+    n++;
+    if (n > 60) continue;
+    const sel = escolhido && escolhido.fonte === 'bd' && escolhido.id === r.id;
+    html += '<div class="tr' + (sel ? ' sel' : '') + '" data-bd="' + r.id + '">'
+      + '<div style="flex:1;min-width:0">'
+      + (r.ref ? '<span class=ref>' + esc(r.ref) + '</span>' : '')
+      + '<b>' + esc(r.nome || 'sem nome') + '</b>'
+      + '<i>' + km1(r.km || 0) + ' · ' + (r.el ? '↗ ' + r.el.up + ' m · ' : '')
+      + (r.zmin != null ? r.zmin + '–' + r.zmax + ' m' : '') + '</i></div></div>';
+  }
+  el.innerHTML = html || '<div class=vazio>Nenhum trilho com esse nome' + (so ? ' nesta zona.' : '.') + '</div>';
+  $('nTrilhos').textContent = n > 60 ? '(' + n + ', a mostrar 60)' : '(' + n + ')';
+}
+const esc = (t) => String(t).replace(/[<&>"]/g, (c) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
+
+$('lista').addEventListener('click', (e) => {
+  const d = e.target.closest('[data-bd]'); if (!d) return;
+  const r = BD.find((x) => x.id === +d.dataset.bd); if (!r) return;
+  escolhe({ fonte: 'bd', id: r.id });
+});
+
+function escolhe(q) {
+  const igual = escolhido && q && escolhido.fonte === q.fonte && escolhido.id === q.id;
+  escolhido = igual ? null : q;
+  pintaLista(); pintaMeus();
+  if (!V) return;
+  if (!escolhido) { V.destaque([]); $('estat').innerHTML = ''; return; }
+  const t = trilhoDe(escolhido);
+  if (!t) return;
+  V.destaque(t.fita, t.cor, 10);
+  if (t.centro) V.vaiA(t.centro[0], t.centro[1], Math.max(700, Math.min(4000, (t.km || 3) * 320)));
+  mostraEstat(t);
+}
+
+function trilhoDe(q) {
+  if (q.fonte === 'bd') {
+    const r = BD.find((x) => x.id === q.id); if (!r) return null;
+    const partes = geoDe(r), pts = paraPontos(partes);
+    const meio = pts[Math.floor(pts.length / 2)];
+    return { nome: r.nome, ref: r.ref, km: r.km, r, pts, fita: paraFita(partes),
+             cor: [0.10, 0.36, 0.78], centro: meio ? [meio.lo, meio.la] : null };
+  }
+  const m = MEUS.find((x) => x.id === q.id); if (!m) return null;
+  const pts = m.pts;
+  const meio = pts[Math.floor(pts.length / 2)];
+  return { nome: m.nome, km: (m.est && m.est.km) || 0, meu: m, pts,
+           fita: paraFita([pts.map((p) => [p.la, p.lo])]),
+           cor: [0.72, 0.30, 0.66], centro: meio ? [meio.lo, meio.la] : null };
+}
+
+function mostraEstat(t) {
+  const e = medeTrilho(T, t.pts, { cotaDoGPS: !!t.meu });
+  const q = new Date();
+  const m = +$('hora').value; q.setHours(m / 60 | 0, m % 60, 0, 0);
+  const sol = solNoTrilho(T, t.pts, q);
+
+  // Um percurso que so tem uma ponta dentro desta caixa NAO pode ter a subida
+  // medida neste relevo: a grelha de cotas encosta o que esta fora a borda, e
+  // a conta sai do nada. Nesses casos manda a ficha, que foi feita sobre o
+  // percurso inteiro. So se ele estiver todo aqui dentro e que se mede aqui.
+  const todoAqui = e.dentro != null && e.dentro > 0.995;
+  const ficha = t.r && t.r.el;
+  const usaFicha = !!(ficha && !todoAqui);
+  const km = usaFicha ? (t.r.km || e.km) : e.km;
+  const sobe = usaFicha ? ficha.up : e.sobe;
+  const desce = usaFicha ? ficha.dn : e.desce;
+  const zmin = usaFicha ? Math.round(t.r.zmin) : e.zmin;
+  const zmax = usaFicha ? Math.round(t.r.zmax) : e.zmax;
+  const donde = usaFicha ? 'ficha do percurso'
+    : (t.meu ? 'medido, cota pelo ' + e.cotaDe : 'medido neste relevo');
+
+  let html = '<div class=lin><div style="flex:1">'
+    + '<b>' + esc(t.nome) + '</b>'
+    + '<i>' + km1(km) + ' · ↗ ' + sobe + ' m · ↘ ' + desce + ' m · '
+    + zmin + '–' + zmax + ' m<br>' + donde
+    + (e.dur ? ' · ' + hm(e.dur) + ' · ' + e.vel.toFixed(1) + ' km/h' : '')
+    + (t.r && t.r.arv != null ? '<br>copa ' + t.r.arv.toFixed(0) + '%' : '')
+    + '</i>';
+  if (sol && sol.dentro) {
+    html += '<div class=barra>' + barraSol(sol) + '</div>'
+      + '<i>' + sol.pct.toFixed(0) + '% ao sol às '
+      + String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
+      + (sol.dentro < t.pts.length
+          ? ' — mas só ' + Math.round(100 * sol.dentro / t.pts.length)
+            + '% do trilho está dentro desta zona, e a sombra só se sabe dessa parte'
+          : '') + '</i>';
+  } else if (T && !T.hori) {
+    html += '<i>esta zona foi cozida sem mapa de sombra</i>';
+  } else {
+    html += '<i>o trilho está fora desta zona — a sombra não se pode calcular aqui</i>';
+  }
+  $('estat').innerHTML = html + '</div></div>';
+}
+function barraSol(sol) {
+  // uma tira com 60 bocados: quanto de cada bocado esta ao sol
+  const N = 60, m = sol.marca, n = m.length;
+  let out = '';
+  for (let k = 0; k < N; k++) {
+    let ao = 0, c = 0;
+    for (let i = Math.floor(k * n / N); i < Math.floor((k + 1) * n / N); i++) {
+      if (m[i] === 2) continue;
+      c++; if (m[i] === 1) ao++;
+    }
+    const f = c ? ao / c : -1;
+    const cor = f < 0 ? '#D8D2C0' : (f > 0.66 ? '#E8A33D' : (f > 0.33 ? '#B9AE8C' : '#6E7A86'));
+    out += '<i style="flex:1;background:' + cor + '"></i>';
+  }
+  return out;
+}
+
+// ---- meus trilhos: ficam no proprio telemovel, nao vao a lado nenhum
+const CHAVE = 'sne-meus-trilhos';
+function leMeus() {
+  try { MEUS = JSON.parse(localStorage.getItem(CHAVE) || '[]'); } catch (e) { MEUS = []; }
+  if (!Array.isArray(MEUS)) MEUS = [];
+}
+function guardaMeus() {
+  try { localStorage.setItem(CHAVE, JSON.stringify(MEUS)); return true; }
+  catch (e) {
+    alert('Não coube no armazenamento do telemóvel. Apaga um trilho antigo e tenta outra vez.');
+    return false;
+  }
+}
+function pintaMeus() {
+  const el = $('meus');
+  $('nMeus').textContent = MEUS.length ? '(' + MEUS.length + ')' : '';
+  if (!MEUS.length) {
+    el.innerHTML = '<div class=vazio>Ainda não há nenhum. Importa um GPX ou carrega em '
+      + '“Gravar trilho” para fazer um agora.</div>';
+    return;
+  }
+  el.innerHTML = MEUS.map((m) => {
+    const sel = escolhido && escolhido.fonte === 'meu' && escolhido.id === m.id;
+    const e = m.est || {};
+    return '<div class="tr' + (sel ? ' sel' : '') + '" data-meu="' + m.id + '">'
+      + '<div style="flex:1;min-width:0"><b>' + esc(m.nome) + '</b><i>'
+      + km1(e.km || 0) + ' · ↗ ' + (e.sobe || 0) + ' m · ' + (e.zmin || 0) + '–' + (e.zmax || 0) + ' m'
+      + (e.dur ? ' · ' + hm(e.dur) : '')
+      + '<br>' + new Date(m.quando).toLocaleDateString('pt-PT') + ' · ' + esc(m.origem)
+      + '</i></div><div class=x data-apaga="' + m.id + '">✕</div></div>';
+  }).join('');
+}
+$('meus').addEventListener('click', (e) => {
+  const ap = e.target.closest('[data-apaga]');
+  if (ap) {
+    const m = MEUS.find((x) => x.id === +ap.dataset.apaga);
+    if (m && confirm('Apagar “' + m.nome + '”? Não há como voltar atrás.')) {
+      MEUS = MEUS.filter((x) => x.id !== m.id);
+      if (escolhido && escolhido.fonte === 'meu' && escolhido.id === m.id) escolhe(null);
+      guardaMeus(); pintaMeus();
+    }
+    return;
+  }
+  const d = e.target.closest('[data-meu]'); if (!d) return;
+  escolhe({ fonte: 'meu', id: +d.dataset.meu });
+});
+
+function acrescenta(nome, pts, origem) {
+  const est = medeTrilho(T, pts, { cotaDoGPS: true });
+  // arredondar antes de guardar: cinco casas sao 1 m, e o resto e peso a mais
+  const leves = pts.map((p) => ({ la: +p.la.toFixed(5), lo: +p.lo.toFixed(5),
+    z: p.z == null ? null : Math.round(p.z), t: p.t || null }));
+  const m = { id: Date.now(), nome, origem, quando: Date.now(), pts: leves,
+              est: { km: est.km, sobe: est.sobe, desce: est.desce,
+                     zmin: est.zmin, zmax: est.zmax, dur: est.dur, cotaDe: est.cotaDe } };
+  MEUS.unshift(m);
+  if (!guardaMeus()) { MEUS.shift(); return null; }
+  pintaMeus();
+  escolhe({ fonte: 'meu', id: m.id });
+  return m;
+}
+
+$('gpx').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  try {
+    const g = leGPX(await f.text());
+    const m = acrescenta(g.nome || f.name.replace(/\.gpx$/i, ''), g.pts, 'GPX importado');
+    if (m) $('menu').classList.add('on');
+  } catch (err) { alert('Não deu para ler o GPX: ' + err.message); }
+  e.target.value = '';
+});
+
+// ---- localizacao ao vivo
+let vigia = null, aGravar = null, ultimo = null;
+$('gps').addEventListener('change', () => {
+  if ($('gps').checked) ligaGPS(); else desligaGPS();
+});
+function ligaGPS() {
+  if (!navigator.geolocation) { $('gpsTxt').textContent = 'este aparelho não tem GPS'; $('gps').checked = false; return; }
+  $('gpsTxt').textContent = 'à procura de sinal…';
+  vigia = navigator.geolocation.watchPosition(fixo, (err) => {
+    $('gpsTxt').textContent = 'sem posição: ' + err.message;
+    $('gps').checked = false; desligaGPS();
+  }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+}
+function desligaGPS() {
+  if (vigia != null) navigator.geolocation.clearWatch(vigia);
+  vigia = null; ultimo = null;
+  if (V) V.marca(null);
+  $('verMe').hidden = true;
+  $('gpsTxt').textContent = 'desligada';
+  if (aGravar) paraGravar();
+}
+function fixo(p) {
+  const { latitude: la, longitude: lo, accuracy: erro, altitude: z, speed: vel } = p.coords;
+  ultimo = { la, lo, z: (z == null ? null : z), t: p.timestamp };
+  const dentro = V && V.dentro(lo, la);
+  if (V) V.marca(dentro ? lo : null, la, Math.max(10, Math.min(60, erro || 15)));
+  $('verMe').hidden = !dentro;
+  const chao = (V && dentro) ? T.cotaEm.apply(null, T.emM(lo, la)) : null;
+  $('gpsTxt').textContent =
+    (dentro ? '' : 'fora desta zona · ')
+    + la.toFixed(5) + ', ' + lo.toFixed(5)
+    + ' · ±' + Math.round(erro || 0) + ' m'
+    + (chao != null ? ' · chão ' + Math.round(chao) + ' m' : '')
+    + (z != null ? ' · GPS ' + Math.round(z) + ' m' : '')
+    + (vel ? ' · ' + (vel * 3.6).toFixed(1) + ' km/h' : '')
+    + (aGravar ? ' · a gravar ' + aGravar.pts.length + ' pontos' : '');
+  if (aGravar) {
+    const u = aGravar.pts[aGravar.pts.length - 1];
+    if (!u || metros(u, ultimo) > 4) aGravar.pts.push(Object.assign({}, ultimo));
+  }
+  if ($('segue').checked && dentro && V) V.vaiA(lo, la);
+}
+$('verMe').addEventListener('click', () => {
+  if (ultimo && V && V.dentro(ultimo.lo, ultimo.la)) V.vaiA(ultimo.lo, ultimo.la, 600);
+});
+$('gravar').addEventListener('click', () => {
+  if (aGravar) { paraGravar(); return; }
+  if (!$('gps').checked) { $('gps').checked = true; ligaGPS(); }
+  aGravar = { pts: [], t0: Date.now() };
+  $('gravar').textContent = 'Parar e guardar';
+  $('gravar').classList.add('on');
+});
+function paraGravar() {
+  const g = aGravar; aGravar = null;
+  $('gravar').textContent = 'Gravar trilho';
+  $('gravar').classList.remove('on');
+  if (!g || g.pts.length < 2) { if (g) alert('Não deu para gravar: o GPS não chegou a dar dois pontos.'); return; }
+  const d = new Date(g.t0);
+  acrescenta('Gravado ' + d.toLocaleDateString('pt-PT') + ' ' +
+             d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+             g.pts, 'gravado no telemóvel');
+}
+
+$('busca').addEventListener('input', pintaLista);
+$('soZona').addEventListener('change', pintaLista);
+
+arranca()
+  .then(async () => { await carregaBD(); leMeus(); pintaLista(); pintaMeus(); })
+  .catch((e) => { diz('erro: ' + e.message); console.error(e); });
 </script>
