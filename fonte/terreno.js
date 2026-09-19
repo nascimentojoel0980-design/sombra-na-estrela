@@ -42,6 +42,16 @@ const CLASSES = {
   9: { cor: [0.55, 0.75, 0.88] },                                        // agua
 };
 const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
+// Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
+// cada lado do eixo, e a sua largura desenhada. Nao e enfeite: e o que faz o
+// caminho ler-se de cima por entre as copas.
+const CAMINHOS = [
+  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.91, 0.51, 0.25] },
+  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.94, 0.74, 0.39] },
+  { n: 'estradao', limpo:  6, larg: 4.5, cor: [0.54, 0.42, 0.23] },
+  { n: 'caminho',  limpo:  5, larg: 3.0, cor: [0.62, 0.60, 0.56] },
+  { n: 'trilho',   limpo:  4, larg: 2.2, cor: [0.70, 0.23, 0.18] },
+];
 const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
 
@@ -111,6 +121,8 @@ async function carregaTerreno(url) {
     return { linhas, extra };
   };
   T.rotas = leLinhas(B.ROTA, false).linhas;
+  const cm = leLinhas(B.CAMS, true);
+  T.caminhos = cm.linhas; T.caminhosTipo = cm.extra;   // [tipo, 0] por linha
   const cv = leLinhas(B.CURV, true);
   T.curvas = cv.linhas; T.curvasAlt = cv.extra;    // [alt, mestra] por linha
 
@@ -524,18 +536,15 @@ if (typeof module !== 'undefined') Object.assign(module.exports,
 // projectada por cima: assim uma lomba tapa mesmo o que esta do outro lado, e
 // o percurso passa por dentro do corredor que ja foi aberto na vegetacao.
 function fitaRotas(T, largura, acima) {
-  largura = largura || 7; acima = acima || 1.2;
-  const cotaEm = (x, y) => {
-    const fx = Math.min(T.nx - 1.001, Math.max(0, x / T.larg * (T.nx - 1)));
-    const fy = Math.min(T.ny - 1.001, Math.max(0, (T.alt - y) / T.alt * (T.ny - 1)));
-    const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j;
-    const a = T.cota(i, j), b = T.cota(i + 1, j), c = T.cota(i, j + 1), d = T.cota(i + 1, j + 1);
-    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
-  };
+  return new Float32Array(fitaLinhas(T, T.rotas, largura || 7, acima || 1.2));
+}
+
+function fitaLinhas(T, linhas, largura, acima) {
+  const cotaEm = (x, y) => T.cotaEm(x, y);
   const emM = (lo, la) => [(lo - T.lo0) * T.mlon, (la - T.la0) * T.mlat];
   const V = [];
   const h = largura / 2;
-  for (const l of T.rotas) {
+  for (const l of (linhas || [])) {
     const n = l.length / 2;
     if (n < 2) continue;
     const P = new Array(n);
@@ -553,7 +562,26 @@ function fitaRotas(T, largura, acima) {
       for (const q of [a0, b0, a1, a1, b0, b1]) V.push(q[0], q[1], q[2]);
     }
   }
-  return new Float32Array(V);
+  return V;
+}
+
+// As fitas de todos os caminhos, agrupadas por genero: cada grupo e um
+// intervalo do mesmo buffer, e desenha-se com a sua cor e uma chamada so.
+function fitaCaminhos(T, acima) {
+  if (!T.caminhos || !T.caminhos.length) return { pos: new Float32Array(0), grupos: [] };
+  const porTipo = CAMINHOS.map(() => []);
+  for (let i = 0; i < T.caminhos.length; i++) {
+    const t = T.caminhosTipo ? T.caminhosTipo[i * 2] : 3;
+    (porTipo[t] || porTipo[3]).push(T.caminhos[i]);
+  }
+  const V = [], grupos = [];
+  for (let t = 0; t < CAMINHOS.length; t++) {
+    const ini = V.length / 3;
+    const f = fitaLinhas(T, porTipo[t], CAMINHOS[t].larg, acima == null ? 0.9 : acima);
+    for (let k = 0; k < f.length; k++) V.push(f[k]);
+    grupos.push({ tipo: t, ini, n: V.length / 3 - ini });
+  }
+  return { pos: new Float32Array(V), grupos };
 }
 
 const VS_ROTA = `#version 300 es
@@ -565,7 +593,8 @@ uniform vec3 uFundo; uniform float uNevoa; uniform vec3 uCor;
 out vec4 oCor;
 void main(){ oCor = vec4(mix(uCor, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0); }`;
 
-if (typeof module !== 'undefined') Object.assign(module.exports, { fitaRotas, VS_ROTA, FS_ROTA });
+if (typeof module !== 'undefined') Object.assign(module.exports,
+  { fitaRotas, fitaCaminhos, fitaLinhas, CAMINHOS, VS_ROTA, FS_ROTA });
 
 // ------------------------------------------------------- curvas de nivel
 // As curvas ja vinham nos azulejos com a cota: nao ha nada a calcular, so a
@@ -744,7 +773,8 @@ function abreVista(canvas, T, op) {
   let M, BLO, S, texClasse, texHori, bufInst, aInst, C = [], vivo = true;
   const cam = { x: T.larg / 2, y: T.alt / 2, dist: op.dist || 2400,
                 rumo: op.rumo || 0.6, incl: op.incl == null ? 0.95 : op.incl };
-  const mostrar = { curvas: true, nomes: true, plantas: true };
+  const mostrar = { curvas: true, nomes: true, plantas: true,
+                    caminhos: true, percursos: true, sombra: true };
   const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0 };
   let solAlt = 30, solAz = 180, solV = [0, 0, 1];
 
@@ -831,6 +861,10 @@ function abreVista(canvas, T, op) {
   const fita = fitaRotas(T, op.larguraRota || 7, 1.2); A.nRota = fita.length / 3;
   if (A.nRota) vbo(P.rota, 'aP', fita, 3);
 
+  A.cam = gl.createVertexArray(); gl.bindVertexArray(A.cam);
+  const fc = fitaCaminhos(T, 0.9); A.grupos = fc.grupos; A.nCam = fc.pos.length / 3;
+  if (A.nCam) vbo(P.rota, 'aP', fc.pos, 3);
+
   A.curva = gl.createVertexArray(); gl.bindVertexArray(A.curva);
   const cu = linhasCurvas(T, 0.8); A.nCurva = cu.n;
   if (A.nCurva) { vbo(P.curva, 'aP', cu.pos, 3); vbo(P.curva, 'aM', cu.mestra, 1); }
@@ -874,7 +908,7 @@ function abreVista(canvas, T, op) {
     gl.uniform1f(u.uSolAlt, solAlt);
     gl.uniform1f(u.uSolAz, ((solAz % 360) + 360) % 360 / 360);
     gl.uniform1f(u.uNdir, T.hori ? T.hori.ndir : 16);
-    gl.uniform1f(u.uTemHori, T.hori ? 1 : 0);
+    gl.uniform1f(u.uTemHori, (T.hori && mostrar.sombra) ? 1 : 0);
   }
   function coord() {
     const cz = T.cotaEm(cam.x, cam.y);
@@ -984,7 +1018,18 @@ function abreVista(canvas, T, op) {
       gl.drawArrays(gl.LINES, 0, A.nCurva);
       gl.disable(gl.BLEND);
     }
-    if (A.nRota) {
+    // caminhos primeiro, percursos por cima: a rota e que manda no mapa
+    if (mostrar.caminhos && A.nCam) {
+      gl.useProgram(P.rota); comuns(L.rota);
+      gl.bindVertexArray(A.cam);
+      for (const g of A.grupos) {
+        if (!g.n) continue;
+        const c = CAMINHOS[g.tipo].cor;
+        gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
+        gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
+      }
+    }
+    if (mostrar.percursos && A.nRota) {
       gl.useProgram(P.rota); comuns(L.rota);
       const c = op.corRota || [0.83, 0.25, 0.18];
       gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
@@ -1039,6 +1084,9 @@ function abreVista(canvas, T, op) {
       cam.y = trava(cam.y + (dx * sn + dy * cs) * k, 0, T.alt);
     },
     roda: (d) => cam.rumo += d,
+    // O alcance da densidade cheia muda a quente: e so um uniform e o numero
+    // de instancias que se manda desenhar. O buffer nao se toca.
+    d0: (v) => { op.d0 = Math.max(60, Math.min(900, v)); return op.d0; },
     inclina: (d) => cam.incl = trava(cam.incl + d, 0.06, 1.45),
     aproxima: (f) => cam.dist = trava(cam.dist * f, 40, 20000),
     vaiA(lo, la, dist) { const m = T.emM(lo, la); cam.x = m[0]; cam.y = m[1];
@@ -1203,6 +1251,7 @@ function aneisMVT(geom) {
 }
 
 const TAB_G = { urbano: 1, agricola: 2, floresta: 3, matos: 4, rocha: 5, agua: 6, outro: 7 };
+const TIPO_CAM = { nacional: 0, estrada: 1, estradao: 2, caminho: 3, trilho: 4 };
 const lon2x = (lo, z) => Math.floor((lo + 180) / 360 * Math.pow(2, z));
 const lat2y = (la, z) => { const r = la * Math.PI / 180;
   return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z)); };
@@ -1315,6 +1364,7 @@ async function cozeCaixa(caixa, op) {
   aviso('carta do solo');
   const classe = new Uint8Array(mx * my);
   const rotas = [], curvas = [], curvasAlt = [], pontos = [];
+  const caminhos = [], caminhosTipo = [];
   const x0 = lon2x(lo0, zsolo), x1 = lon2x(lo1, zsolo);
   const y0 = lat2y(la1, zsolo), y1 = lat2y(la0, zsolo);
   const vistos = new Set();
@@ -1343,7 +1393,7 @@ async function cozeCaixa(caixa, op) {
         if (f.gtipo !== 3) return;
         pintaPol(classe, mx, my, caixa, aneisMVT(f.geom).map((a) => emGraus(a, ext)), 9);
       });
-      const linhas = (f, ext, destino, extra) => {
+      const linhas = (f, ext, destino, extra, tipo) => {
         if (f.gtipo !== 2) return;
         for (const a of aneisMVT(f.geom)) {
           if (a.length < 2) continue;
@@ -1354,10 +1404,15 @@ async function cozeCaixa(caixa, op) {
           const l = new Float32Array(g.length * 2);
           for (let k = 0; k < g.length; k++) { l[k * 2] = g[k][0]; l[k * 2 + 1] = g[k][1]; }
           destino.push(l);
+          if (tipo !== undefined) caminhosTipo.push(tipo, 0);
           if (extra) extra.push(+f.props.alt || 0, f.props.g ? 1 : 0);
         }
       };
       aplica('rotas', (f, ext) => linhas(f, ext, rotas, null));
+      aplica('caminhos', (f, ext) => {
+        const t = TIPO_CAM[f.props.t];
+        linhas(f, ext, caminhos, null, t === undefined ? 3 : t);
+      });
       aplica('curvas', (f, ext) => linhas(f, ext, curvas, curvasAlt));
       aplica('pontos', (f, ext) => {
         if (f.gtipo !== 1) return;
@@ -1374,12 +1429,15 @@ async function cozeCaixa(caixa, op) {
     }
   }
 
-  // corredor sem vegetacao ao longo do tracado: bit 7, a classe fica
-  const raio = op.corredor == null ? 9 : op.corredor;
-  if (raio > 0) {
-    const kx = mx / (lo1 - lo0), ky = my / (la1 - la0);
-    const rx = Math.max(1, Math.round(raio / (larg / mx))), ry = Math.max(1, Math.round(raio / (alt / my)));
-    for (const l of (op.rotas || rotas)) {
+  // Corredor sem vegetacao: bit 7, a classe fica. Em TODOS -- percursos,
+  // nacionais, estradas, estradoes, caminhos e trilhos -- cada um com a sua
+  // largura. Onde se anda nao cresce mato, e e por isso que o caminho se ve.
+  const kx = mx / (lo1 - lo0), ky = my / (la1 - la0);
+  const abre = (linhasG, raio) => {
+    if (!(raio > 0)) return;
+    const rx = Math.max(1, Math.round(raio / (larg / mx)));
+    const ry = Math.max(1, Math.round(raio / (alt / my)));
+    for (const l of linhasG) {
       const n = l.length / 2;
       for (let i = 0; i + 1 < n; i++) {
         const ax = l[i*2], ay = l[i*2+1], bx = l[i*2+2], by = l[i*2+3];
@@ -1397,7 +1455,10 @@ async function cozeCaixa(caixa, op) {
         }
       }
     }
-  }
+  };
+  abre(op.rotas || rotas, op.corredor == null ? 9 : op.corredor);
+  for (let t = 0; t < CAMINHOS.length; t++)
+    abre(caminhos.filter((_, i) => caminhosTipo[i * 2] === t), CAMINHOS[t].limpo);
 
   let hori = null;
   if (op.horizonte !== false) {
@@ -1410,6 +1471,7 @@ async function cozeCaixa(caixa, op) {
   for (let k = 0; k < cotas.length; k++) cotas[k] = Math.round((Z[k] - z0) / (z1 - z0) * 65535);
   const T = { versao: 2, blocos: ['COZIDO'], lo0, la0, lo1, la1, nx, ny, passo, z0, z1,
               mx, my, passoC: celula, cotas, classe, rotas,
+              caminhos, caminhosTipo: new Int16Array(caminhosTipo),
               curvas, curvasAlt: new Int16Array(curvasAlt), pontos, hori, altv: null,
               mlat, mlon, larg, alt };
   T.cota = (i, j) => T.z0 + T.cotas[j * T.nx + i] / 65535 * (T.z1 - T.z0);

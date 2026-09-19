@@ -16,6 +16,7 @@ poder acrescentar coisas sem partir o que ja la esta:
   ALTV  altura da vegetacao medida por LiDAR (CHM), em decimetros. So existe
         quando se passa --chm; sem ela, a altura e o valor por defeito da classe
   ROTA  tracado dos percursos
+  CAMS  estradas, estradoes, caminhos e trilhos, com o genero de cada um
   CURV  curvas de nivel, com a cota de cada uma
   PONT  cumes, povoacoes e servicos, com nome
   HORI  mapa de horizonte: o angulo a que o terreno tapa o sol, por direccao.
@@ -34,6 +35,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lepmtiles import PM, mvt_camadas, aneis
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Sobe sempre que o CONTEUDO mudar. Vai no nome do ficheiro, nao numa query:
+# a regra do service worker para dados/ e cache primeiro e com ignoreSearch,
+# ou seja a ignorar a query -- so o caminho e que ela nao sabe ignorar.
+VERSAO_DADOS = 3
 DEM_CAIXA = (-8.1, 40.0, -7.15, 40.7)
 
 TAB_G = {'urbano': 1, 'agricola': 2, 'floresta': 3, 'matos': 4,
@@ -43,6 +48,12 @@ NOME = {0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
 # generos de ponto que valem a pena carregar
 PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
           'parque', 'cascata', 'lagoa']
+
+# Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
+# cada lado do eixo: uma nacional abre mais do que um trilho de cabras.
+# Nao e enfeite -- e o que faz o caminho ler-se de cima por entre as copas.
+TIPO_CAM = {'nacional': 0, 'estrada': 1, 'estradao': 2, 'caminho': 3, 'trilho': 4}
+LIMPO = {'nacional': 11.0, 'estrada': 9.0, 'estradao': 6.0, 'caminho': 5.0, 'trilho': 4.0}
 
 
 # ----------------------------------------------------------------- cotas
@@ -239,6 +250,10 @@ def main():
     ap.add_argument('--chm', default=None,
                     help='GeoTIFF do modelo de altura do coberto (LiDAR), EPSG:4326')
     ap.add_argument('--zsolo', type=int, default=15)
+    ap.add_argument('--titulo', default=None, help='como aparece no menu da aplicacao')
+    ap.add_argument('--versao', type=int, default=VERSAO_DADOS,
+                    help='vai no NOME do ficheiro: e a unica coisa que a cache do '
+                         'telemovel nao sabe ignorar (ver ARMADILHAS 10)')
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
     a = ap.parse_args()
@@ -286,7 +301,21 @@ def main():
         (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'rotas') if gt == 2)]
     npt = sum(len(l) for l in rotas)
     print('percursos: %d tracados, %s pontos' % (len(rotas), f'{npt:,}'))
+
+    # --- estradas, estradoes, caminhos e trilhos
+    cams = []
+    for props, g in sem_repetir(
+            (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'caminhos') if gt == 2):
+        t = props.get('t') or 'caminho'
+        cams.append((TIPO_CAM.get(t, 3), t, g))
+    porT = {}
+    for _, t, _ in cams: porT[t] = porT.get(t, 0) + 1
+    print('caminhos: %d (%s)' % (len(cams), ', '.join('%s %d' % kv for kv in sorted(porT.items()))))
+
     abre_corredor(C, rotas, a.caixa, mx, my, a.corredor)
+    for t, r in LIMPO.items():
+        ls = [g for tt, nome, g in cams if nome == t]
+        if ls: abre_corredor(C, ls, a.caixa, mx, my, r)
     ncorr = int((C & 128).astype(bool).sum())
     print('corredor sem vegetacao: %.2f km2' % (ncorr * a.classe * a.classe / 1e6))
     cont = np.bincount((C & 127).ravel(), minlength=10)
@@ -363,6 +392,8 @@ def main():
         return bloco(tag, c + pts.tobytes())
 
     saida += linhas_bloco('ROTA', rotas)
+    saida += linhas_bloco('CAMS', [g for _, _, g in cams],
+                          np.array([[t, 0] for t, _, _ in cams], dtype=np.int16))
     saida += linhas_bloco('CURV', [g for _, _, g in curvas],
                           np.array([[alt, gr] for alt, gr, _ in curvas], dtype=np.int16))
     corpo = bytearray(struct.pack('<I', len(pontos)))
@@ -375,13 +406,43 @@ def main():
     if H is not None:
         saida += bloco('HORI', struct.pack('<HHH', nx, ny, a.dir) + H.tobytes())
 
-    dest = os.path.join(RAIZ, 'dados/terreno', a.nome + '.terr.gz')
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    ficheiro = '%s-v%d.terr.gz' % (a.nome, a.versao)
+    pasta = os.path.join(RAIZ, 'dados/terreno')
+    os.makedirs(pasta, exist_ok=True)
+    dest = os.path.join(pasta, ficheiro)
     with gzip.open(dest, 'wb', compresslevel=9) as f:
         f.write(bytes(saida))
     print('\n%s' % dest)
     print('  por comprimir %.2f MB   comprimido %.2f MB'
           % (len(saida) / 1e6, os.path.getsize(dest) / 1e6))
+
+    # --- o indice, que e por onde a aplicacao sabe que esta zona existe.
+    # Cozer uma zona nova e so correr isto: o menu apanha-a sozinho.
+    import json
+    ip = os.path.join(pasta, 'index.json')
+    idx = {'zonas': []}
+    if os.path.exists(ip):
+        try: idx = json.load(open(ip, encoding='utf-8'))
+        except Exception: pass
+    zonas = [z for z in idx.get('zonas', []) if z.get('nome') != a.nome]
+    zonas.append({
+        'nome': a.nome,
+        'titulo': a.titulo or a.nome.replace('-', ' ').title(),
+        'ficheiro': ficheiro,
+        'caixa': [round(v, 6) for v in a.caixa],
+        'km': [round(larg_m / 1000, 1), round(alt_m / 1000, 1)],
+        'passo': a.passo, 'classe': a.classe,
+        'cota': [round(z0), round(z1)],
+        'fonte': fonte,
+        'bytes': os.path.getsize(dest),
+        'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
+                'caminhos': bool(cams), 'sombra': H is not None,
+                'altura_medida': ALTV is not None},
+    })
+    zonas.sort(key=lambda z: z['titulo'])
+    idx['zonas'] = zonas
+    json.dump(idx, open(ip, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print('  indice: %s (%d zona%s)' % (ip, len(zonas), '' if len(zonas) == 1 else 's'))
 
 
 if __name__ == '__main__':

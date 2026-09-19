@@ -1,0 +1,35 @@
+{
+ "zonas": [
+  {
+   "nome": "manteigas",
+   "titulo": "Vale Glaciar de Manteigas",
+   "ficheiro": "manteigas-v3.terr.gz",
+   "caixa": [
+    -7.62,
+    40.31,
+    -7.49,
+    40.42
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 25.0,
+   "classe": 8.0,
+   "cota": [
+    597,
+    1993
+   ],
+   "fonte": "Copernicus 30 m",
+   "bytes": 2730433,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "altura_medida": false
+   }
+  }
+ ]
+}

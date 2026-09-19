@@ -2764,7 +2764,8 @@ function labels3D(r, bb) {
 }
 document.getElementById('x3').onclick = () => fecha3D();
 document.getElementById('t3h').addEventListener('input', horaTerreno);
-for (const [id, k] of [['t3c', 'curvas'], ['t3n', 'nomes']]) {
+for (const [id, k] of [['t3c', 'curvas'], ['t3n', 'nomes'],
+                       ['t3k', 'caminhos'], ['t3a', 'plantas'], ['t3s', 'sombra']]) {
   document.getElementById(id).addEventListener('click', () => {
     if (!VISTA) return;
     VISTA.mostrar[k] = !VISTA.mostrar[k];

@@ -343,3 +343,72 @@ servir o velho. **Muda-se o caminho de tudo:** a página passou de
 `teste-terreno.html` para `terreno.html`, o código para `?v=8`, os dados para
 `manteigas-v2.terr.gz`. Um caminho novo não está em cache nenhuma, por
 definição. O endereço antigo ficou a redireccionar.
+
+
+---
+
+## 11. A plataforma, pronta a receber
+
+Pediu para deixar a casa montada antes de o mapa chegar. Está.
+
+### O índice é que manda
+
+O cozedor escreve `dados/terreno/index.json` sempre que coze uma zona:
+
+```json
+{"zonas": [{"nome": "manteigas", "titulo": "Vale Glaciar de Manteigas",
+            "ficheiro": "manteigas-v3.terr.gz", "km": [11.0, 12.2],
+            "cota": [597, 1993], "fonte": "Copernicus 30 m",
+            "tem": {"curvas": true, "sombra": true, "altura_medida": false}}]}
+```
+
+A página lê-o e monta o menu de zonas a partir dele. **Cozer uma zona nova é
+só correr o `gera_terreno.py`** — aparece no menu sozinha, sem tocar em código
+nenhum:
+
+```bash
+python3 fonte/scripts-dados/gera_terreno.py --nome torre \
+    --titulo "Torre e Covão d'Ametade" --caixa -7.66 40.29 -7.55 40.37
+```
+
+O nome do ficheiro leva a versão do conteúdo (`VERSAO_DADOS`, hoje 3), pela
+razão da secção 10: a query o telemóvel sabe ignorar, o caminho não.
+
+### As secções
+
+| secção | o que tem |
+|---|---|
+| **O que se vê** | percursos · caminhos e trilhos · árvores, mato e rocha · curvas · nomes |
+| **Sol** | sombra dos montes (liga/desliga) · dia · hora (barra em baixo) |
+| **Densidade** | até que distância vai densidade cheia (120 a 500 m) |
+| **Esta zona** | tamanho, cotas, grelha, fonte, e o que custou a desenhar |
+
+A densidade muda **a quente**: é um uniform e o número de instâncias que se
+manda desenhar. O buffer não se toca.
+
+E o aviso de que a altura das árvores é modelada, não medida, aparece sozinho
+enquanto a zona não trouxer o bloco `ALTV` — some quando o LiDAR entrar.
+
+---
+
+## 12. Onde há caminho não há árvore
+
+Estava só nos percursos. Passa a estar em tudo o que se anda, cada género com
+a sua largura limpa de cada lado do eixo:
+
+| género | limpo | desenhado |
+|---|---|---|
+| nacional | 11 m | 9,0 m |
+| estrada | 9 m | 7,0 m |
+| estradão | 6 m | 4,5 m |
+| caminho | 5 m | 3,0 m |
+| trilho | 4 m | 2,2 m |
+| percurso | 9 m | 7,0 m |
+
+Na caixa de Manteigas são **2 326 caminhos** além dos 2 843 traçados de
+percurso, e o corredor sem vegetação passou de 4,00 para **7,46 km²**.
+
+Os caminhos desenham-se por baixo dos percursos e com as cores da carta 2D —
+nacional cor de tijolo, estrada amarela, estradão castanho, caminho cinzento,
+trilho vermelho. Um grupo por género, uma chamada de desenho cada, todos do
+mesmo buffer.
