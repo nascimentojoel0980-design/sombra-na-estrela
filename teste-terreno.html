@@ -2,6 +2,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Terreno de raiz — Vale Glaciar de Manteigas</title>
+<meta http-equiv="Cache-Control" content="no-cache">
 <style>
   html,body{margin:0;height:100%;background:#DED9C8;overflow:hidden;
     font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#2C2A24;
@@ -32,9 +33,12 @@
   <button data-a=baixo title="deitar a camara">▼</button>
 </div>
 <div id=ajuda>um dedo anda · dois dedos: afastar aproxima, torcer roda, subir inclina</div>
-<script src="fonte/terreno.js"></script>
+<script src="fonte/terreno.js?v=3"></script>
 <script>
-const FICHEIRO = 'dados/terreno/manteigas.terr.gz';
+// A versao no url e o que impede o telemovel de servir a copia de ontem:
+// muda o endereco, logo nao ha cache que valha. Sobe sempre que isto mudar.
+const VER = '3';
+const FICHEIRO = 'dados/terreno/manteigas.terr.gz?v=' + VER;
 const cv = document.getElementById('c'), hud = document.getElementById('hud');
 const gl = cv.getContext('webgl2', { antialias: true, alpha: false });
 if (!gl) { hud.textContent = 'Este aparelho não tem WebGL2.'; throw new Error('sem webgl2'); }
