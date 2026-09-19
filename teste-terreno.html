@@ -53,7 +53,11 @@
 <script src="fonte/terreno.js?v=7"></script>
 <script>
 const VER = '7';
-const FICHEIRO = 'dados/terreno/manteigas.terr.gz?v=' + VER;
+// O nome do ficheiro leva a versao do FORMATO, nao so uma query. O service
+// worker antigo serve tudo o que esta em dados/ pela cache e com ignoreSearch,
+// ou seja a ignorar o ?v= -- so mudando o caminho e que a copia velha deixa de
+// aparecer. Foi assim que ele apanhou o formato 1 depois de eu publicar o 2.
+const FICHEIRO = 'dados/terreno/manteigas-v2.terr.gz?v=' + VER;
 const cv = document.getElementById('c'), hud = document.getElementById('hud');
 let V = null, T = null;
 

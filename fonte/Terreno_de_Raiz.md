@@ -305,3 +305,26 @@ Se o terreno de raiz não arrancar — sem WebGL2, azulejo em falta, o que for �
 cai-se na vista antiga do MapLibre em vez de ficar sem nada. Isto não é
 teórico: apanhou um erro meu à primeira (o `terreno3D` mexia no `maplibregl`,
 que nessa via nem chega a ser carregado) e o botão continuou a funcionar.
+
+
+---
+
+## 10. O nome do ficheiro leva a versão do formato
+
+Publiquei o formato 2 e o telemóvel dele continuou a abrir o formato 1, com um
+erro que não dizia nada: `Cannot read properties of undefined (reading 'o')` —
+o leitor procurava o bloco `BBOX` num ficheiro que não tem blocos nenhuns.
+
+A causa não era o ficheiro nem o `?v=`: era o **service worker**. A regra dele
+para tudo o que está em `dados/` é cache primeiro **e com `ignoreSearch`**, ou
+seja, a ignorar a própria query. `?v=7` não muda nada para quem ignora a query.
+
+Duas mudanças, e a primeira é a que conta:
+
+1. O ficheiro passa a chamar-se `manteigas-v2.terr.gz`. **O caminho** ele não
+   ignora. Sempre que o formato mudar, muda o nome.
+2. O leitor recusa um ficheiro de versão < 2 com uma frase que diz o que é e o
+   que fazer, em vez de rebentar três linhas mais à frente.
+
+A regra fica: **`?v=` serve para código, não para dados**. Para dados, muda o
+caminho.

@@ -66,6 +66,9 @@ async function carregaTerreno(url) {
   const tag = (o) => String.fromCharCode(d.getUint8(o), d.getUint8(o+1), d.getUint8(o+2), d.getUint8(o+3));
   if (tag(0) !== 'TERR') throw new Error('nao e um ficheiro TERR (veio ' + tag(0) + ')');
   const versao = d.getUint16(4, true);
+  if (versao < 2) throw new Error('este ficheiro e do formato antigo (versao '
+    + versao + '). Quase de certeza veio da cache do telemovel: limpa os dados '
+    + 'do sitio, ou espera que o service worker novo tome conta.');
   const B = {};
   let o = 8;
   while (o + 8 <= buf.byteLength) {

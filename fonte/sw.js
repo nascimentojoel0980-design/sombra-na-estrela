@@ -1,5 +1,5 @@
 // Caminhos da Estrela - funcionamento sem rede
-const V = 'ce-v1';
+const V = 'ce-v3';
 const NUCLEO = [
   './', 'index.html', 'manifest.json',
   'lib/leaflet.js', 'lib/pmtiles.js', 'lib/maplibre-gl-csp.js', 'lib/maplibre-gl-csp-worker.js',
@@ -232,8 +232,13 @@ self.addEventListener('fetch', (e) => {
 
   // a pagina e os dados que mudam: rede primeiro, cache so se nao houver rede.
   // (antes era cache primeiro, e por isso as versoes novas nunca chegavam ao telemovel)
+  // O terreno cozido e o codigo entram aqui. A regra de /dados/ la em baixo e
+  // cache primeiro E com ignoreSearch, ou seja a ignorar a propria query: com
+  // ela, uma versao nova nunca chegava ao telemovel nem com ?v=.
   const semprePelaRede = u.pathname.endsWith('/') || u.pathname.endsWith('index.html')
     || u.pathname.endsWith('manifest.json') || u.pathname.endsWith('sw.js')
+    || u.pathname.endsWith('teste-terreno.html') || /\/fonte\//.test(u.pathname)
+    || /\/dados\/terreno\//.test(u.pathname)
     || /\/dados\/(rede|osm)\.json$/.test(u.pathname);
   if (semprePelaRede) {
     e.respondWith(fetch(req, { cache: 'no-store' }).then((r) => {

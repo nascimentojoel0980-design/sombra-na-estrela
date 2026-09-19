@@ -271,7 +271,19 @@ têm de ser feitas pelo Joel no Git Bash do Windows dele.
 GitHub estão no Credential Manager do Windows. Nunca lhe peças palavras-passe
 nem as escrevas em lado nenhum.
 
-**9. `let` de topo NÃO está no `window`.** Num ensaio com o Playwright pus
+**9. O `sw.js` da raiz é GERADO.** A fonte é `fonte/sw.js`; o
+`build_site.py` copia-a por cima. Editei o da raiz, publiquei, e o
+`build_site.py` seguinte deitou a correcção fora sem dizer nada — o telemóvel
+do Joel continuou a servir o ficheiro velho da cache e o erro que ele viu não
+tinha nada que ver com o que eu julgava. **Nunca editar nada na raiz**:
+`index.html`, `sw.js` e `dados/` saem todos de `fonte/`.
+
+**10. `?v=` serve para código, não para dados.** A regra do service worker
+para `dados/` é cache primeiro **com `ignoreSearch`** — a query é ignorada.
+Para um ficheiro de dados chegar novo ao telemóvel, muda-se o **caminho**
+(`manteigas-v2.terr.gz`), não a query.
+
+**11. `let` de topo NÃO está no `window`.** Num ensaio com o Playwright pus
 `window.ARV = ligaArvores(...)` e depois li `ARV.resumo()`. O `ARV` do
 `app.js` é um `let` de topo, que **não** cria propriedade no `window`, e o
 âmbito léxico ganha: estive a medir a camada da aplicação, não a minha. Deu
@@ -279,7 +291,7 @@ exactamente o mesmo número nas duas medições e quase o dei por bom. Uma camad
 de ensaio leva `id` próprio (`op.id`) e lê-se por uma variável própria
 (`window.__T`).
 
-**10. `map.project()` ignora o relevo.** Com terreno ligado e o ecrã
+**12. `map.project()` ignora o relevo.** Com terreno ligado e o ecrã
 inclinado, a linha desenhada no chão não está onde o `project()` a põe.
 Amostrar píxeis nesses pontos mede ruído. Para comparar duas versões da mesma
 vista, conta píxeis da imagem inteira por cor.
