@@ -179,21 +179,129 @@ de desenho de mapa, não limitação: ao longe o símbolo lê-se melhor do que a
 
 ---
 
-## 5. O que falta
+## 5. Rocha, mato e água
+
+**19/09/2026.** A mesma camada 3D deixou de ser só árvores. O `tipo` viaja com
+cada instância (ranhura 10 do buffer) e é o *shader* que decide a forma:
+
+| tipo | o que é | forma no shader | onde nasce |
+|---|---|---|---|
+| 0 | árvore | copa entre cone e bola + **tronco**, base da copa a 30–34% da altura | COS 5 (floresta) e 4 (montado) |
+| 1 | mato | meia-bola achatada **assente no chão**, sem tronco | COS 6 |
+| 2 | rocha | bloco de lado a pique e topo quebrado, sem tronco | COS 7, acima dos 1200 m |
+
+O tronco não desaparece com um `if` à volta do desenho — isso obrigaria a duas
+chamadas. Os vértices de tronco colapsam num ponto (`p = vec3(0.0)`) e os
+triângulos degenerados não chegam a rasterizar. Continua a ser **uma única
+chamada de desenho** para tudo.
+
+### Quantos, e porque não são mais
+
+A relação de Poisson das árvores não serve para mato: para tapar 55% do chão
+com moitas de 0,7 m de raio seriam ~4 900 por hectare, e a grelha de 3 m só dá
+1 111 pontos por hectare. Em vez de fingir densidade que não cabe, o mato e a
+rocha nascem em **tufos maiores numa sub-grelha duas vezes mais larga** (6 m):
+
+| | altura | raio | λ (por m²) | sub-grelha |
+|---|---|---|---|---|
+| mato | 1,4 m | ~2,2 m | 0,020 | 6 m |
+| rocha | 2,2 m | ~2,9 m | 0,012 | 6 m |
+
+A sub-grelha é fixa na posição, como a das árvores: aproximar **acrescenta**,
+nunca troca de sítio.
+
+E crescem do chão **mais tarde** do que as árvores — rampa própria, de 15,3 a
+16,4 (`uRast`). Um tufo de 1,4 m visto de 800 m é um ponto de um píxel, e mil
+pontos de um píxel não são relevo, são sujidade no ecrã: a essa escala quem
+diz o que lá está é o padrão 2D, que foi desenhado para se ler assim. Medido numa encosta de Manteigas, o que a sub-grelha
+poupa não é pouco:
+
+```
+                     mato     rocha
+grelha de 3 m       44 394    65 087
+sub-grelha de 6 m   10 267    36 386
+```
+
+E a rocha nunca nasce dentro de uma albufeira ou lagoa. Enquanto os azulejos
+não forem refeitos, o código 7 vem no mesmo saco que as zonas húmidas e a água
+(ver secção 1), por isso cada candidato a pedregulho é testado contra os
+polígonos da camada `aguaA` antes de entrar — senão apareciam pedras em cima da
+Lagoa Comprida.
+
+### A tabela que estava mal na camada das árvores
+
+O `g` dos azulejos velhos traduzia-se com `{rocha:5, matos:4, agua:6, outro:7}`
+e **defeito 7**. O defeito apanhava o urbano, o agrícola e as pastagens e
+mandava-os todos para rocha. Passou a ser a mesma tabela do `COD` do `app.js`,
+com **defeito 0** — o que não se conhece não semeia nada.
+
+### A água
+
+A água não precisa da COS: tem camadas próprias nos azulejos (`aguaA` para
+albufeiras e lagoas, `aguaL` para os cursos). O que faltava era ela ler-se com
+o relevo ligado e vegetação por cima: o `fill-outline-color` de 1 px
+desaparecia. Agora a mancha leva margem com espessura própria (`agua-a-c`) e os
+cursos de água engrossam com o zoom em vez de terem a mesma largura em 10 e em
+16.
+
+---
+
+## 6. Os percursos por baixo das copas
+
+Com as árvores ligadas, o traçado deixava de se ver. Desenhá-lo por cima de
+tudo dava uma linha a flutuar sobre as copas — falso e feio. A solução é a que
+existe no terreno: **um trilho é uma faixa sem vegetação**. Nada nasce a menos
+de **9 m** do traçado (`CORREDOR`), e o caminho lê-se de qualquer ângulo sem
+nenhum truque de desenho.
+
+O corredor não pode depender do azulejo das rotas ter chegado. Se a célula for
+construída antes disso fica guardada **com árvores em cima do caminho, para
+sempre** — e foi o que aconteceu à primeira. Por isso o traçado vem da lista
+que a aplicação já tem toda em memória (`tracadosTodos()`, sobre `D.routes`),
+que nunca muda; os azulejos ficam só como recurso, e se alguma célula chegou a
+ser construída sem traçados, a cache é deitada fora uma vez.
+
+### Medido
+
+Mesma vista, mesma semente, só o corredor a mudar. Contam-se os píxeis quase
+brancos (o realce do percurso — dentro de um bosque não há mais nada quase
+branco no ecrã):
+
+| vista | sem corredor | com 9 m | |
+|---|---|---|---|
+| Alvoco (68% de copa), z16,4 **a pique** | 1 972 px | **2 492 px** | ×1,26 |
+| Alvoco, z16,4 **inclinado a 40°** | 1 426 px | **1 925 px** | ×1,35 |
+| Margaraça (97,6% de copa), z16 inclinado a 45° | 65 px | **106 px** | ×1,63 |
+
+A pique o traçado deixa de vir aos bocados: a linha atravessa a mancha inteira
+sem copas em cima. Custa 956 árvores de 20 481 — **menos de 5%**.
+
+Fica dito o que isto **não** resolve: com a câmara muito deitada, um troço
+distante continua a desaparecer atrás de copas que estão à frente dele — em
+Margaraça, com 97,6% de copa, o caminho lê-se como um rasgo e não como uma
+linha. Isso não é defeito de desenho, é o que se veria no sítio.
+
+---
+
+## 7. O que falta
 
 - **Refazer os azulejos** com o `cos_extrai.py` corrigido. Precisa do gpkg de
   166 MB e do `tippecanoe`. Até lá, as três classes perdidas continuam perdidas
   e `d`/`h` continuam a ser valor por defeito da classe em todo o lado.
-- **Ligar isto à aplicação.** Está tudo em `teste-arvores.html`, à parte, com
-  botões para ligar e desligar cada peça. Não mexi no `app.js` nem no
-  `sombra-na-estrela.html`.
+- ~~Ligar isto à aplicação.~~ **Feito.** A biblioteca é
+  `fonte/arvores3d.js` e é a **única fonte**: o
+  `fonte/scripts-dados/inline_arvores.py` mete-a dentro do `fonte/app.js` e do
+  `fonte/sombra-na-estrela.html` entre as mesmas duas fronteiras, e falha alto
+  se não as encontrar. Nunca editar a cópia à mão.
 - **Medir `d` e `h` a sério** onde há LiDAR — os dois CHM que existem cobrem
   Manteigas e Fundão e estão no pacote que ainda não entrou em ramo nenhum.
 
 ## Como se vê
 
 ```bash
-python3 fonte/scripts-dados/padroes.py      # -> fonte/padroes.json
+python3 fonte/scripts-dados/padroes.py        # -> fonte/padroes.json
+python3 fonte/scripts-dados/inline_arvores.py # arvores3d.js -> app.js e ao HTML
+python3 fonte/build_site.py                   # monta o site na raiz
 # servir a raiz do repositorio num servidor que aceite pedidos Range
 # (o topo.pmtiles precisa disso; o python3 -m http.server NAO serve)
 # e abrir /teste-arvores.html

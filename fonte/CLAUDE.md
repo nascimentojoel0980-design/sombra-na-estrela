@@ -261,6 +261,19 @@ têm de ser feitas pelo Joel no Git Bash do Windows dele.
 GitHub estão no Credential Manager do Windows. Nunca lhe peças palavras-passe
 nem as escrevas em lado nenhum.
 
+**9. `let` de topo NÃO está no `window`.** Num ensaio com o Playwright pus
+`window.ARV = ligaArvores(...)` e depois li `ARV.resumo()`. O `ARV` do
+`app.js` é um `let` de topo, que **não** cria propriedade no `window`, e o
+âmbito léxico ganha: estive a medir a camada da aplicação, não a minha. Deu
+exactamente o mesmo número nas duas medições e quase o dei por bom. Uma camada
+de ensaio leva `id` próprio (`op.id`) e lê-se por uma variável própria
+(`window.__T`).
+
+**10. `map.project()` ignora o relevo.** Com terreno ligado e o ecrã
+inclinado, a linha desenhada no chão não está onde o `project()` a põe.
+Amostrar píxeis nesses pontos mede ruído. Para comparar duas versões da mesma
+vista, conta píxeis da imagem inteira por cor.
+
 ---
 
 ## 7. Por fazer
