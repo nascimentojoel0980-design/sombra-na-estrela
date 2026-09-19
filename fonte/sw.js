@@ -237,7 +237,7 @@ self.addEventListener('fetch', (e) => {
   // ela, uma versao nova nunca chegava ao telemovel nem com ?v=.
   const semprePelaRede = u.pathname.endsWith('/') || u.pathname.endsWith('index.html')
     || u.pathname.endsWith('manifest.json') || u.pathname.endsWith('sw.js')
-    || u.pathname.endsWith('teste-terreno.html') || /\/fonte\//.test(u.pathname)
+    || /terreno\.html$/.test(u.pathname) || /\/fonte\//.test(u.pathname)
     || /\/dados\/terreno\//.test(u.pathname)
     || /\/dados\/(rede|osm)\.json$/.test(u.pathname);
   if (semprePelaRede) {

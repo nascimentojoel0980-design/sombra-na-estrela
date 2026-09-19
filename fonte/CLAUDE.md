@@ -283,6 +283,13 @@ para `dados/` é cache primeiro **com `ignoreSearch`** — a query é ignorada.
 Para um ficheiro de dados chegar novo ao telemóvel, muda-se o **caminho**
 (`manteigas-v2.terr.gz`), não a query.
 
+E se ele continuar a ver o velho depois disso, **o HTML também está em
+cache**: o GitHub Pages manda `max-age=600` e o service worker antigo não
+intercepta páginas que não conhece. Com três camadas a guardar (navegador,
+service worker antigo, service worker novo por activar) não se adivinha qual
+delas é: **muda-se o caminho de tudo de uma vez** — página, código e dados —
+e deixa-se o endereço antigo a redireccionar.
+
 **11. `let` de topo NÃO está no `window`.** Num ensaio com o Playwright pus
 `window.ARV = ligaArvores(...)` e depois li `ARV.resumo()`. O `ARV` do
 `app.js` é um `let` de topo, que **não** cria propriedade no `window`, e o

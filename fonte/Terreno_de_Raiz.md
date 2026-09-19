@@ -328,3 +328,18 @@ Duas mudanças, e a primeira é a que conta:
 
 A regra fica: **`?v=` serve para código, não para dados**. Para dados, muda o
 caminho.
+
+### E nem isso chegou à primeira
+
+Mudei o nome do ficheiro e ele continuou a ver o mesmo erro. Faltava a peça de
+cima: **o HTML também estava em cache**. O GitHub Pages manda `max-age=600`, o
+service worker antigo não intercepta esta página (logo não a renova), e por
+isso o telemóvel continuava a correr a página de ontem — que pedia o ficheiro
+de ontem, com o `terreno.js` de ontem.
+
+Quando há três camadas a guardar coisas (navegador, service worker antigo,
+service worker novo por activar), não vale a pena adivinhar qual delas está a
+servir o velho. **Muda-se o caminho de tudo:** a página passou de
+`teste-terreno.html` para `terreno.html`, o código para `?v=8`, os dados para
+`manteigas-v2.terr.gz`. Um caminho novo não está em cache nenhuma, por
+definição. O endereço antigo ficou a redireccionar.
