@@ -10,13 +10,28 @@
   #hud{position:fixed;left:10px;top:10px;background:rgba(255,253,246,.92);
     padding:9px 12px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.14);
     font-variant-numeric:tabular-nums;white-space:pre;font-size:12.5px;line-height:1.55}
-  #ajuda{position:fixed;right:10px;bottom:10px;background:rgba(255,253,246,.92);
-    padding:8px 11px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.14);font-size:12px}
+  #ajuda{position:fixed;left:10px;right:10px;bottom:10px;text-align:center;
+    background:rgba(255,253,246,.9);padding:7px 10px;border-radius:10px;
+    box-shadow:0 2px 10px rgba(0,0,0,.14);font-size:11.5px}
+  #bts{position:fixed;right:10px;top:50%;transform:translateY(-50%);
+    display:grid;grid-template-columns:44px;gap:7px}
+  #bts button{width:44px;height:44px;border:0;border-radius:11px;
+    background:rgba(255,253,246,.94);box-shadow:0 2px 8px rgba(0,0,0,.18);
+    font-size:19px;color:#2C2A24;touch-action:none;cursor:pointer}
+  #bts button:active{background:#E8E2D2}
   b{font-weight:700}
 </style>
 <canvas id=c></canvas>
 <div id=hud>a carregar…</div>
-<div id=ajuda>arrastar = andar · dois dedos / direito = rodar e inclinar · roda = aproximar</div>
+<div id=bts>
+  <button data-a=mais title="aproximar">+</button>
+  <button data-a=menos title="afastar">−</button>
+  <button data-a=esq title="rodar para a esquerda">⟲</button>
+  <button data-a=dir title="rodar para a direita">⟳</button>
+  <button data-a=cima title="levantar a camara">▲</button>
+  <button data-a=baixo title="deitar a camara">▼</button>
+</div>
+<div id=ajuda>um dedo anda · dois dedos: afastar aproxima, torcer roda, subir inclina</div>
 <script src="fonte/terreno.js"></script>
 <script>
 const FICHEIRO = 'dados/terreno/manteigas.terr.gz';
@@ -235,28 +250,98 @@ arranque          ler ${conta.ler.toFixed(0)} + malha ${conta.malha.toFixed(0)} 
 construido a andar  0 ms`;
 }
 
-// ---- gestos
-let arrasta = null;
-cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId);
-  arrasta = { x: e.clientX, y: e.clientY, b: e.button }; });
-cv.addEventListener('pointerup', () => arrasta = null);
+// ---- gestos: telemovel primeiro
+// Um dedo anda. Dois dedos fazem as tres coisas ao mesmo tempo: afastar e
+// juntar da zoom, torcer roda, e subir e descer juntos inclina. O rato
+// continua a valer (botao direito ou shift roda, roda do rato aproxima).
+const dedos = new Map();
+let par = null, botao = 0;
+const trava = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function estadoPar() {
+  const [a, b] = [...dedos.values()];
+  return { d: Math.hypot(b.x - a.x, b.y - a.y),
+           a: Math.atan2(b.y - a.y, b.x - a.x),
+           cy: (a.y + b.y) / 2 };
+}
+function andaEcra(dx, dy) {
+  const k = cam.dist * 0.0016;
+  const sn = Math.sin(cam.rumo), cs = Math.cos(cam.rumo);
+  cam.x = trava(cam.x - (dx * cs - dy * sn) * k, 0, T.larg);
+  cam.y = trava(cam.y + (dx * sn + dy * cs) * k, 0, T.alt);
+}
+function roda(d) { cam.rumo += d; }
+function inclina(d) { cam.incl = trava(cam.incl + d, 0.06, 1.45); }
+function aproxima(f) { cam.dist = trava(cam.dist * f, 60, 14000); }
+
+cv.addEventListener('pointerdown', (e) => {
+  cv.setPointerCapture(e.pointerId);
+  dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  botao = e.button;
+  if (dedos.size === 2) par = estadoPar();
+});
+const larga = (e) => {
+  dedos.delete(e.pointerId);
+  par = dedos.size === 2 ? estadoPar() : null;
+};
+cv.addEventListener('pointerup', larga);
+cv.addEventListener('pointercancel', larga);
+cv.addEventListener('pointerleave', larga);
 cv.addEventListener('pointermove', (e) => {
-  if (!arrasta) return;
-  const dx = e.clientX - arrasta.x, dy = e.clientY - arrasta.y;
-  arrasta.x = e.clientX; arrasta.y = e.clientY;
-  if (arrasta.b === 2 || e.shiftKey) {
-    cam.rumo += dx * 0.006;
-    cam.incl = Math.max(0.06, Math.min(1.45, cam.incl + dy * 0.005));
-  } else {
-    const k = cam.dist * 0.0016;
-    const s = Math.sin(cam.rumo), c = Math.cos(cam.rumo);
-    cam.x -= (dx * c - dy * s) * k; cam.y += (dx * s + dy * c) * k;
-    cam.x = Math.max(0, Math.min(T.larg, cam.x)); cam.y = Math.max(0, Math.min(T.alt, cam.y));
+  const p = dedos.get(e.pointerId);
+  if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (dedos.size === 1) {
+    if (botao === 2 || e.shiftKey) { roda(dx * 0.006); inclina(dy * 0.005); }
+    else andaEcra(dx, dy);
+  } else if (dedos.size === 2 && par) {
+    const n = estadoPar();
+    if (par.d > 8 && n.d > 8) aproxima(par.d / n.d);
+    let da = n.a - par.a;                       // o angulo da a volta em +-PI
+    if (da > Math.PI) da -= 2 * Math.PI;
+    if (da < -Math.PI) da += 2 * Math.PI;
+    roda(-da);
+    inclina((n.cy - par.cy) * 0.004);
+    par = n;
   }
 });
 cv.addEventListener('contextmenu', (e) => e.preventDefault());
 cv.addEventListener('wheel', (e) => { e.preventDefault();
-  cam.dist = Math.max(60, Math.min(14000, cam.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+  aproxima(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+addEventListener('keydown', (e) => {
+  const k = e.key;
+  if (k === '+' || k === '=') aproxima(0.8);
+  else if (k === '-') aproxima(1.25);
+  else if (k === 'ArrowLeft') roda(-0.12);
+  else if (k === 'ArrowRight') roda(0.12);
+  else if (k === 'ArrowUp') inclina(-0.08);
+  else if (k === 'ArrowDown') inclina(0.08);
+  else return;
+  e.preventDefault();
+});
+
+// Botoes: se o multi-toque falhar em algum aparelho, isto chega para tudo.
+for (const b of document.querySelectorAll('#bts button')) {
+  let t = null;
+  const faz = () => {
+    const a = b.dataset.a;
+    if (a === 'mais') aproxima(0.86);
+    else if (a === 'menos') aproxima(1.16);
+    else if (a === 'esq') roda(-0.09);
+    else if (a === 'dir') roda(0.09);
+    else if (a === 'cima') inclina(-0.06);
+    else if (a === 'baixo') inclina(0.06);
+  };
+  b.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation(); faz();
+    t = setInterval(faz, 90);
+  });
+  const para = () => { if (t) { clearInterval(t); t = null; } };
+  b.addEventListener('pointerup', para);
+  b.addEventListener('pointercancel', para);
+  b.addEventListener('pointerleave', para);
+}
 window.CAM = cam; window.CONTA = conta;
 arranca().catch((e) => { hud.textContent = 'erro: ' + e.message; console.error(e); });
 </script>
