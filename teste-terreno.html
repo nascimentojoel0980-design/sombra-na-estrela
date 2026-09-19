@@ -1,0 +1,262 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Terreno de raiz — Vale Glaciar de Manteigas</title>
+<style>
+  html,body{margin:0;height:100%;background:#DED9C8;overflow:hidden;
+    font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#2C2A24;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  canvas{display:block;width:100%;height:100%}
+  #hud{position:fixed;left:10px;top:10px;background:rgba(255,253,246,.92);
+    padding:9px 12px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.14);
+    font-variant-numeric:tabular-nums;white-space:pre;font-size:12.5px;line-height:1.55}
+  #ajuda{position:fixed;right:10px;bottom:10px;background:rgba(255,253,246,.92);
+    padding:8px 11px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.14);font-size:12px}
+  b{font-weight:700}
+</style>
+<canvas id=c></canvas>
+<div id=hud>a carregar…</div>
+<div id=ajuda>arrastar = andar · dois dedos / direito = rodar e inclinar · roda = aproximar</div>
+<script src="fonte/terreno.js"></script>
+<script>
+const FICHEIRO = 'dados/terreno/manteigas.terr.gz';
+const cv = document.getElementById('c'), hud = document.getElementById('hud');
+const gl = cv.getContext('webgl2', { antialias: true, alpha: false });
+if (!gl) { hud.textContent = 'Este aparelho não tem WebGL2.'; throw new Error('sem webgl2'); }
+const FUNDO = [0.871, 0.851, 0.784];
+
+let T, M, S, pChao, pPlanta, pRota, vaoChao, vaoPlanta, vaoRota, texClasse, nInd, nRota, bufInst, aInst;
+let locR = {};
+const VERT_MODELO = 108;        // 36 triangulos
+// O WebGL2 nao tem baseInstance: drawArraysInstanced comeca sempre na
+// instancia 0. Para desenhar um prefixo DO BLOCO e nao do buffer inteiro,
+// muda-se o ponto de partida do atributo. Sao tres chamadas por bloco e o
+// buffer continua a ser o mesmo, intocado, do principio ao fim.
+function apontaBloco(primeira) {
+  const o = primeira * 12;
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufInst);
+  gl.vertexAttribPointer(aInst.pos, 3, gl.UNSIGNED_SHORT, true, 12, o);
+  gl.vertexAttribPointer(aInst.par, 4, gl.UNSIGNED_BYTE, false, 12, o + 6);
+  gl.vertexAttribPointer(aInst.rot, 2, gl.UNSIGNED_BYTE, true, 12, o + 10);
+}
+let locC = {}, locP = {};
+// camara tipo mapa: um ponto no chao, uma distancia, um rumo e uma inclinacao
+const cam = { x: 0, y: 0, dist: 1800, rumo: 0.6, incl: 1.05 };
+const conta = { total: 0, desenhadas: 0, blocos: 0, ms: 0, semear: 0, malha: 0, ler: 0 };
+
+function coord() {
+  const cz = cotaNoChao(cam.x, cam.y);
+  const h = Math.cos(cam.incl) * cam.dist, r = Math.sin(cam.incl) * cam.dist;
+  const ox = cam.x - Math.sin(cam.rumo) * r, oy = cam.y - Math.cos(cam.rumo) * r;
+  // o olho nunca entra dentro do monte: senao ve-se o mundo pelo avesso
+  const oz = Math.max(cz + h, cotaNoChao(ox, oy) + 25);
+  return { olho: [ox, oy, oz], alvo: [cam.x, cam.y, cz] };
+}
+function cotaNoChao(x, y) {
+  if (!T) return 0;
+  const fx = Math.min(T.nx - 1.001, Math.max(0, x / T.larg * (T.nx - 1)));
+  const fy = Math.min(T.ny - 1.001, Math.max(0, (T.alt - y) / T.alt * (T.ny - 1)));
+  const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j;
+  const a = T.cota(i, j), b = T.cota(i + 1, j), c = T.cota(i, j + 1), d = T.cota(i + 1, j + 1);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+
+function paleta(T) {
+  const im = new Uint8Array(T.mx * T.my * 3);
+  const tab = new Float32Array(256 * 3);
+  for (const k in CLASSES) { const c = CLASSES[k].cor; tab[k*3]=c[0]; tab[k*3+1]=c[1]; tab[k*3+2]=c[2]; }
+  for (let i = 0; i < T.mx * T.my; i++) {
+    const c = (T.classe[i] & 127) * 3;
+    im[i*3] = tab[c]*255; im[i*3+1] = tab[c+1]*255; im[i*3+2] = tab[c+2]*255;
+  }
+  return im;
+}
+
+async function arranca() {
+  let t = performance.now();
+  T = await carregaTerreno(FICHEIRO); conta.ler = performance.now() - t;
+  cam.x = T.larg / 2; cam.y = T.alt / 2;
+  hud.textContent = 'a construir a malha…';
+  await new Promise(r => setTimeout(r, 0));
+
+  t = performance.now(); M = malhaTerreno(T); conta.malha = performance.now() - t;
+  hud.textContent = 'a semear a caixa toda, uma vez…';
+  await new Promise(r => setTimeout(r, 0));
+  t = performance.now(); S = semeiaTudo(T); conta.semear = performance.now() - t;
+  conta.total = S.total;
+
+  pChao = prog(gl, VS_CHAO, FS_CHAO);
+  pPlanta = prog(gl, VS_PLANTA, FS_PLANTA);
+  for (const n of ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa']) locC[n] = gl.getUniformLocation(pChao, n);
+  for (const n of ['uMVP','uCam','uCaixa','uZ0','uD0','uFundo','uNevoa']) locP[n] = gl.getUniformLocation(pPlanta, n);
+
+  // ---- chao: um VAO, um buffer, uma vez
+  vaoChao = gl.createVertexArray(); gl.bindVertexArray(vaoChao);
+  const bp = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bp);
+  gl.bufferData(gl.ARRAY_BUFFER, M.pos, gl.STATIC_DRAW);
+  let l = gl.getAttribLocation(pChao, 'aP'); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l, 3, gl.FLOAT, false, 0, 0);
+  const bn = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bn);
+  gl.bufferData(gl.ARRAY_BUFFER, M.nor, gl.STATIC_DRAW);
+  l = gl.getAttribLocation(pChao, 'aN'); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l, 3, gl.FLOAT, false, 0, 0);
+  const bi = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bi);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, M.idx, gl.STATIC_DRAW);
+  nInd = M.nInd; gl.bindVertexArray(null);
+
+  texClasse = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texClasse);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, T.mx, T.my, 0, gl.RGB, gl.UNSIGNED_BYTE, paleta(T));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.generateMipmap(gl.TEXTURE_2D);
+
+  // ---- plantas: um VAO, um buffer, uma vez
+  vaoPlanta = gl.createVertexArray(); gl.bindVertexArray(vaoPlanta);
+  const bm = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bm);
+  gl.bufferData(gl.ARRAY_BUFFER, modeloPlanta(), gl.STATIC_DRAW);
+  l = gl.getAttribLocation(pPlanta, 'aV'); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l, 4, gl.FLOAT, false, 20, 0);
+  l = gl.getAttribLocation(pPlanta, 'aBossa'); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l, 1, gl.FLOAT, false, 20, 16);
+  bufInst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bufInst);
+  gl.bufferData(gl.ARRAY_BUFFER, S.buf, gl.STATIC_DRAW);
+  aInst = { pos: gl.getAttribLocation(pPlanta, 'aPos'),
+            par: gl.getAttribLocation(pPlanta, 'aPar'),
+            rot: gl.getAttribLocation(pPlanta, 'aRot') };
+  for (const k in aInst) { gl.enableVertexAttribArray(aInst[k]); gl.vertexAttribDivisor(aInst[k], 1); }
+  apontaBloco(0);
+  gl.bindVertexArray(null);
+
+  // ---- percursos: fita sobre a malha, tambem um buffer estatico
+  pRota = prog(gl, VS_ROTA, FS_ROTA);
+  for (const n of ['uMVP','uCam','uFundo','uNevoa','uCor']) locR[n] = gl.getUniformLocation(pRota, n);
+  const fita = fitaRotas(T, 7, 1.2);
+  nRota = fita.length / 3;
+  vaoRota = gl.createVertexArray(); gl.bindVertexArray(vaoRota);
+  const br = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, br);
+  gl.bufferData(gl.ARRAY_BUFFER, fita, gl.STATIC_DRAW);
+  l = gl.getAttribLocation(pRota, 'aP'); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l, 3, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+
+  gl.enable(gl.DEPTH_TEST);
+  gl.clearColor(FUNDO[0], FUNDO[1], FUNDO[2], 1);
+  window.PRONTO = true;
+  requestAnimationFrame(desenha);
+}
+
+let ultimo = 0, nFrames = 0; const ritmos = [];
+function desenha(ts) {
+  requestAnimationFrame(desenha);
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  gl.viewport(0, 0, W, H);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  const { olho, alvo } = coord();
+  const longe = Math.max(8000, cam.dist * 6);
+  const P = perspetiva(1.0, W / H, Math.max(2, cam.dist * 0.01), longe);
+  const V = olhar(olho, alvo, [0, 0, 1]);
+  const MVP = mult(P, V);
+  const nevoa = longe * 0.75;
+
+  gl.useProgram(pChao);
+  gl.uniformMatrix4fv(locC.uMVP, false, MVP);
+  gl.uniform3f(locC.uCam, olho[0], olho[1], olho[2]);
+  gl.uniform2f(locC.uTam, T.larg, T.alt);
+  gl.uniform3f(locC.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
+  gl.uniform1f(locC.uNevoa, nevoa);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texClasse);
+  gl.uniform1i(locC.uClasse, 0);
+  gl.bindVertexArray(vaoChao);
+  gl.drawElements(gl.TRIANGLES, nInd, gl.UNSIGNED_INT, 0);
+
+  gl.useProgram(pRota);
+  gl.uniformMatrix4fv(locR.uMVP, false, MVP);
+  gl.uniform3f(locR.uCam, olho[0], olho[1], olho[2]);
+  gl.uniform3f(locR.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
+  gl.uniform1f(locR.uNevoa, nevoa);
+  gl.uniform3f(locR.uCor, 0.83, 0.25, 0.18);
+  gl.bindVertexArray(vaoRota);
+  gl.drawArrays(gl.TRIANGLES, 0, nRota);
+
+  // plantas: um prefixo de cada bloco. Nada se constroi -- so muda quantas
+  // instancias se mandam desenhar de um buffer que ja la esta todo.
+  gl.useProgram(pPlanta);
+  gl.uniformMatrix4fv(locP.uMVP, false, MVP);
+  gl.uniform3f(locP.uCam, olho[0], olho[1], olho[2]);
+  gl.uniform3f(locP.uCaixa, T.larg, T.alt, T.z1 - T.z0);
+  gl.uniform1f(locP.uZ0, T.z0);
+  gl.uniform1f(locP.uD0, D0);
+  gl.uniform3f(locP.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
+  gl.uniform1f(locP.uNevoa, nevoa);
+  gl.bindVertexArray(vaoPlanta);
+  let des = 0, blocos = 0;
+  for (let b = 0; b < S.nB; b++) {
+    const n = S.ini[b + 1] - S.ini[b];
+    if (!n) continue;
+    const bi = b % S.bx, bj = (b / S.bx) | 0;
+    const x0 = bi * BLOCO, x1 = x0 + BLOCO;
+    const y1 = T.alt - bj * BLOCO, y0 = y1 - BLOCO;
+    // distancia ao canto MAIS PERTO: o prefixo tem de dar para a planta mais
+    // exigente do bloco, senao via-se o corte do buffer em vez da rampa.
+    const dx = Math.max(x0 - olho[0], 0, olho[0] - x1);
+    const dy = Math.max(y0 - olho[1], 0, olho[1] - y1);
+    const d = Math.max(1, Math.hypot(dx, dy));
+    if (d > longe) continue;
+    const frac = Math.min(1, (D0 / d) * (D0 / d));
+    const q = Math.min(n, Math.ceil(n * frac) + 1);
+    if (q <= 0) continue;
+    apontaBloco(S.ini[b]);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, VERT_MODELO, q);
+    des += q; blocos++;
+  }
+  conta.desenhadas = des; conta.blocos = blocos;
+  gl.bindVertexArray(null);
+
+  if (ultimo) { ritmos.push(ts - ultimo); if (ritmos.length > 60) ritmos.shift(); }
+  ultimo = ts;
+  if ((++nFrames & 3) === 0) mostra();
+}
+function mostra() {
+  const r = ritmos.length ? ritmos.slice().sort((a, b) => a - b)[ritmos.length >> 1] : 0;
+  hud.textContent =
+`Vale Glaciar de Manteigas   ${(T.larg/1000).toFixed(1)} x ${(T.alt/1000).toFixed(1)} km
+plantas cozidas   ${conta.total.toLocaleString('pt-PT')}
+a desenhar        ${conta.desenhadas.toLocaleString('pt-PT')}  (${(100*conta.desenhadas/conta.total).toFixed(1)}%)
+blocos            ${conta.blocos}
+fotograma         ${r.toFixed(1)} ms  (${(1000/Math.max(r,0.01)).toFixed(0)} fps)
+arranque          ler ${conta.ler.toFixed(0)} + malha ${conta.malha.toFixed(0)} + semear ${conta.semear.toFixed(0)} ms
+construido a andar  0 ms`;
+}
+
+// ---- gestos
+let arrasta = null;
+cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId);
+  arrasta = { x: e.clientX, y: e.clientY, b: e.button }; });
+cv.addEventListener('pointerup', () => arrasta = null);
+cv.addEventListener('pointermove', (e) => {
+  if (!arrasta) return;
+  const dx = e.clientX - arrasta.x, dy = e.clientY - arrasta.y;
+  arrasta.x = e.clientX; arrasta.y = e.clientY;
+  if (arrasta.b === 2 || e.shiftKey) {
+    cam.rumo += dx * 0.006;
+    cam.incl = Math.max(0.06, Math.min(1.45, cam.incl + dy * 0.005));
+  } else {
+    const k = cam.dist * 0.0016;
+    const s = Math.sin(cam.rumo), c = Math.cos(cam.rumo);
+    cam.x -= (dx * c - dy * s) * k; cam.y += (dx * s + dy * c) * k;
+    cam.x = Math.max(0, Math.min(T.larg, cam.x)); cam.y = Math.max(0, Math.min(T.alt, cam.y));
+  }
+});
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+cv.addEventListener('wheel', (e) => { e.preventDefault();
+  cam.dist = Math.max(60, Math.min(14000, cam.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
+window.CAM = cam; window.CONTA = conta;
+arranca().catch((e) => { hud.textContent = 'erro: ' + e.message; console.error(e); });
+</script>
