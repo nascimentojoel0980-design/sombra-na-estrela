@@ -45,48 +45,117 @@ const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
 
 // ------------------------------------------------------------------ ficheiro
+// O ficheiro e por BLOCOS de quatro letras. Ler assim quer dizer que um
+// ficheiro velho continua a abrir quando se acrescenta coisa nova, e que um
+// ficheiro novo nao parte um visualizador velho: o que ele nao conhecer, salta.
 async function carregaTerreno(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error('nao abriu ' + url + ': ' + r.status);
   let buf = await r.arrayBuffer();
   // Ha servidores que desencolhem o .gz sozinhos e outros que o entregam tal
-  // e qual. Em vez de adivinhar pelo nome, olha-se para os dois primeiros
-  // bytes: 1f 8b e gzip, 'TERR' ja vem pronto.
+  // e qual: em vez de adivinhar pelo nome, olha-se para os dois primeiros bytes.
   const b0 = new Uint8Array(buf, 0, 2);
   if (b0[0] === 0x1f && b0[1] === 0x8b) {
     if (typeof DecompressionStream === 'undefined')
-      throw new Error('o ficheiro veio comprimido e este navegador nao o sabe abrir');
+      throw new Error('veio comprimido e este navegador nao o sabe abrir');
     buf = await new Response(new Blob([buf]).stream()
       .pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   }
   const d = new DataView(buf);
-  const magia = String.fromCharCode(d.getUint8(0), d.getUint8(1), d.getUint8(2), d.getUint8(3));
-  if (magia !== 'TERR') throw new Error('nao e um ficheiro TERR (veio ' + magia + ')');
-  const T = {
-    versao: d.getUint16(4, true),
-    lo0: d.getFloat64(8, true), la0: d.getFloat64(16, true),
-    lo1: d.getFloat64(24, true), la1: d.getFloat64(32, true),
-    nx: d.getUint16(40, true), ny: d.getUint16(42, true), passo: d.getFloat32(44, true),
-    z0: d.getFloat32(48, true), z1: d.getFloat32(52, true),
-    mx: d.getUint16(56, true), my: d.getUint16(58, true), passoC: d.getFloat32(60, true),
-    nRotas: d.getUint32(64, true), nPontos: d.getUint32(68, true),
-  };
-  let o = 80;
-  T.cotas = new Uint16Array(buf, o, T.nx * T.ny); o += T.nx * T.ny * 2;
-  T.classe = new Uint8Array(buf, o, T.mx * T.my); o += T.mx * T.my;
-  const comp = new Uint32Array(buf.slice(o, o + T.nRotas * 4)); o += T.nRotas * 4;
-  const pts = new Float32Array(buf.slice(o, o + T.nPontos * 8));
-  T.rotas = []; let k = 0;
-  for (let i = 0; i < T.nRotas; i++) {
-    const n = comp[i], l = new Float32Array(n * 2);
-    for (let j = 0; j < n * 2; j++) l[j] = pts[k++];
-    T.rotas.push(l);
+  const tag = (o) => String.fromCharCode(d.getUint8(o), d.getUint8(o+1), d.getUint8(o+2), d.getUint8(o+3));
+  if (tag(0) !== 'TERR') throw new Error('nao e um ficheiro TERR (veio ' + tag(0) + ')');
+  const versao = d.getUint16(4, true);
+  const B = {};
+  let o = 8;
+  while (o + 8 <= buf.byteLength) {
+    const t = tag(o), n = d.getUint32(o + 4, true);
+    B[t] = { o: o + 8, n };
+    o += 8 + n;
   }
-  // metros locais: origem no canto sudoeste da caixa
+  const T = { versao, blocos: Object.keys(B) };
+
+  const bb = B.BBOX.o;
+  T.lo0 = d.getFloat64(bb, true); T.la0 = d.getFloat64(bb + 8, true);
+  T.lo1 = d.getFloat64(bb + 16, true); T.la1 = d.getFloat64(bb + 24, true);
+
+  let p = B.COTA.o;
+  T.nx = d.getUint16(p, true); T.ny = d.getUint16(p + 2, true);
+  T.passo = d.getFloat32(p + 4, true);
+  T.z0 = d.getFloat32(p + 8, true); T.z1 = d.getFloat32(p + 12, true);
+  T.cotas = new Uint16Array(buf.slice(p + 16, p + 16 + T.nx * T.ny * 2));
+
+  p = B.CLAS.o;
+  T.mx = d.getUint16(p, true); T.my = d.getUint16(p + 2, true);
+  T.passoC = d.getFloat32(p + 4, true);
+  T.classe = new Uint8Array(buf.slice(p + 8, p + 8 + T.mx * T.my));
+
+  const leLinhas = (bl, comExtra) => {
+    if (!bl) return { linhas: [], extra: null };
+    let q = bl.o;
+    const n = d.getUint32(q, true); q += 4;
+    const comp = new Uint32Array(buf.slice(q, q + n * 4)); q += n * 4;
+    let extra = null;
+    if (comExtra) { extra = new Int16Array(buf.slice(q, q + n * 4)); q += n * 4; }
+    let tot = 0; for (let i = 0; i < n; i++) tot += comp[i];
+    const pts = new Float32Array(buf.slice(q, q + tot * 8));
+    const linhas = []; let k = 0;
+    for (let i = 0; i < n; i++) {
+      const c = comp[i], l = new Float32Array(c * 2);
+      for (let j = 0; j < c * 2; j++) l[j] = pts[k++];
+      linhas.push(l);
+    }
+    return { linhas, extra };
+  };
+  T.rotas = leLinhas(B.ROTA, false).linhas;
+  const cv = leLinhas(B.CURV, true);
+  T.curvas = cv.linhas; T.curvasAlt = cv.extra;    // [alt, mestra] por linha
+
+  T.pontos = [];
+  if (B.PONT) {
+    let q = B.PONT.o;
+    const n = d.getUint32(q, true); q += 4;
+    const td = new TextDecoder('utf-8');
+    for (let i = 0; i < n; i++) {
+      const lo = d.getFloat32(q, true), la = d.getFloat32(q + 4, true);
+      const alt = d.getUint16(q + 8, true), lk = d.getUint8(q + 10), ln = d.getUint8(q + 11);
+      q += 12;
+      const k = td.decode(new Uint8Array(buf, q, lk)); q += lk;
+      const nome = td.decode(new Uint8Array(buf, q, ln)); q += ln;
+      T.pontos.push({ k, nome, lo, la, alt });
+    }
+  }
+
+  // Altura da vegetacao medida por LiDAR, quando existe. Sem ela, cada classe
+  // usa a sua altura por defeito e a legenda tem de dizer "modelado".
+  T.altv = null;
+  if (B.ALTV) {
+    const q = B.ALTV.o;
+    const ax = d.getUint16(q, true), ay = d.getUint16(q + 2, true);
+    T.altv = new Uint8Array(buf.slice(q + 4, q + 4 + ax * ay));
+  }
+
+  // Mapa de horizonte: por cada no e cada direccao, a que altura o terreno
+  // tapa o ceu. E com isto que a sombra e sombra e nao sombreado.
+  T.hori = null;
+  if (B.HORI) {
+    const q = B.HORI.o;
+    const hx = d.getUint16(q, true), hy = d.getUint16(q + 2, true), nd = d.getUint16(q + 4, true);
+    T.hori = { nx: hx, ny: hy, ndir: nd,
+               dados: new Uint8Array(buf.slice(q + 6, q + 6 + hx * hy * nd)) };
+  }
+
   T.mlat = 110540; T.mlon = 111320 * Math.cos((T.la0 + T.la1) / 2 * Math.PI / 180);
   T.larg = (T.lo1 - T.lo0) * T.mlon;
   T.alt = (T.la1 - T.la0) * T.mlat;
   T.cota = (i, j) => T.z0 + T.cotas[j * T.nx + i] / 65535 * (T.z1 - T.z0);
+  T.cotaEm = (x, y) => {
+    const fx = Math.min(T.nx - 1.001, Math.max(0, x / T.larg * (T.nx - 1)));
+    const fy = Math.min(T.ny - 1.001, Math.max(0, (T.alt - y) / T.alt * (T.ny - 1)));
+    const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j;
+    const a = T.cota(i, j), b = T.cota(i + 1, j), c = T.cota(i, j + 1), e = T.cota(i + 1, j + 1);
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
+  };
+  T.emM = (lo, la) => [(lo - T.lo0) * T.mlon, (la - T.la0) * T.mlat];
   return T;
 }
 
@@ -200,11 +269,13 @@ function semeiaTudo(T, op) {
       const n = quantos(i, j, cod);
       if (!n) continue;
       const E = CLASSES[cod];
+      // altura medida pelo LiDAR quando o ficheiro a traz; senao, a da classe
+      const hBase = (T.altv && T.altv[j * mx + i] > 8) ? T.altv[j * mx + i] / 10 : E.h;
       for (let k = 0; k < n; k++) {
         const x = (i + baralha(i, j, 20 + k)) * larguraCel;
         const y = T.alt - (j + baralha(i, j, 40 + k)) * alturaCel;
         const b = bloco(x, y), o = cursor[b]++ * 12, o2 = o >> 1;
-        const alt = E.h * (0.72 + 0.56 * baralha(i, j, 60 + k));
+        const alt = hBase * (0.72 + 0.56 * baralha(i, j, 60 + k));
         const raio = Math.max(0.35, alt * E.k * (0.85 + 0.3 * baralha(i, j, 80 + k)));
         U16[o2] = Math.min(65535, x * kx);
         U16[o2 + 1] = Math.min(65535, y * ky);
@@ -249,22 +320,51 @@ void main() {
   vD = length(aP - uCam);
   gl_Position = uMVP * vec4(aP, 1.0);
 }`;
+// A sombra sai do mapa de horizonte: para o azimute do sol le-se a que altura
+// o terreno tapa o ceu naquele ponto, e compara-se com a altura do sol. Se o
+// sol vier mais baixo, aquele sitio esta a sombra de um monte -- que e a
+// pergunta a que esta aplicacao inteira existe para responder.
+const GLSL_SOMBRA = `
+  uniform sampler2DArray uHori;   // ndir camadas, graus/2 num byte
+  uniform vec3 uSol;              // direccao do sol (x leste, y norte, z cima)
+  uniform float uSolAlt;          // altura do sol em graus
+  uniform float uSolAz;           // azimute em voltas (0 = norte, 0.25 = leste)
+  uniform float uNdir;
+  uniform float uTemHori;
+  float aoSol(vec2 uv) {
+    if (uTemHori < 0.5 || uSolAlt <= 0.0) return uSolAlt <= 0.0 ? 0.0 : 1.0;
+    float f = uSolAz * uNdir;
+    float l0 = floor(f), t = f - l0;
+    float a0 = texture(uHori, vec3(uv, mod(l0, uNdir))).r * 255.0 * 0.5;
+    float a1 = texture(uHori, vec3(uv, mod(l0 + 1.0, uNdir))).r * 255.0 * 0.5;
+    float h = mix(a0, a1, t);
+    return smoothstep(h - 0.8, h + 0.8, uSolAlt);
+  }`;
+
 const FS_CHAO = `#version 300 es
 precision highp float;
+precision highp sampler2DArray;
 in vec3 vN; in vec2 vUV; in float vD;
 uniform sampler2D uClasse; uniform vec3 uFundo; uniform float uNevoa;
+` + GLSL_SOMBRA + `
 out vec4 oCor;
 void main() {
-  vec3 sol = normalize(vec3(-0.55, 0.45, 0.70));
   vec3 n = normalize(vN);
-  float lam = max(0.0, dot(n, sol));
+  float lam = max(0.0, dot(n, uSol));
   float ceu = 0.5 + 0.5 * n.z;
+  float sol = aoSol(vUV);
   vec3 base = texture(uClasse, vUV).rgb;
-  vec3 c = base * (0.42 + 0.54 * lam + 0.16 * ceu);
+  // A luz do sol so entra se o monte a deixar passar; a do ceu entra sempre.
+  // Sao de cores diferentes -- o sol puxa ao amarelo, o ceu ao azul -- e e
+  // isso que faz a sombra ler-se como sombra e nao como um cinzento morto.
+  vec3 c = base * (vec3(1.02, 0.97, 0.87) * (0.64 * lam * sol)
+                 + vec3(0.78, 0.85, 1.00) * (0.34 + 0.24 * ceu));
   oCor = vec4(mix(c, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0);
 }`;
 
 const VS_PLANTA = `#version 300 es
+precision highp float;
+precision highp sampler2DArray;
 in vec4 aV;        // ux, uy, t, parte(0 copa 1 tronco)
 in float aBossa;
 in vec3 aPos;      // x, y, z normalizados na caixa
@@ -273,8 +373,10 @@ in vec2 aRot;      // rodar, posto
 uniform mat4 uMVP; uniform vec3 uCam;
 uniform vec3 uCaixa;       // largura, altura, (z1-z0) em metros
 uniform float uZ0;
+` + GLSL_SOMBRA + `
 uniform float uD0;         // raio de densidade cheia
-out vec3 vCor; out float vLuz; out float vD;
+uniform vec2 uTam;         // largura, altura da caixa, para ler o horizonte
+out vec3 vCor; out float vLuz; out float vD; out float vFrio;
 void main() {
   vec3 p0 = vec3(aPos.x * uCaixa.x, aPos.y * uCaixa.y, uZ0 + aPos.z * uCaixa.z);
   float alt = aPar.x * 0.1, raio = aPar.y * 0.05;
@@ -319,10 +421,11 @@ void main() {
   nrm.xy = vec2(nrm.x * c - nrm.y * s, nrm.x * s + nrm.y * c);
   p *= vive;
 
-  vec3 sol = normalize(vec3(-0.55, 0.45, 0.70));
-  float lam = max(0.0, dot(normalize(nrm), sol));
+  float lam = max(0.0, dot(normalize(nrm), uSol));
   float ceu = 0.5 + 0.5 * normalize(nrm).z;
-  vLuz = 0.46 + 0.42 * lam + 0.18 * ceu;
+  float sol = aoSol(vec2(p0.x / uTam.x, 1.0 - p0.y / uTam.y));
+  vLuz = 0.34 + 0.56 * lam * sol + 0.24 * ceu;
+  vFrio = 1.0 - 0.55 * lam * sol;
   vec3 cor;
   if (tipo > 1.5)      cor = vec3(0.53 + 0.17 * tom, 0.52 + 0.17 * tom, 0.50 + 0.16 * tom);
   else if (tipo > 0.5) cor = vec3(0.42 + 0.14 * tom, 0.44 + 0.15 * tom, 0.25 + 0.11 * tom);
@@ -333,11 +436,12 @@ void main() {
 }`;
 const FS_PLANTA = `#version 300 es
 precision mediump float;
-in vec3 vCor; in float vLuz; in float vD;
+in vec3 vCor; in float vLuz; in float vD; in float vFrio;
 uniform vec3 uFundo; uniform float uNevoa;
 out vec4 oCor;
 void main() {
-  oCor = vec4(mix(vCor * vLuz, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0);
+  vec3 c = vCor * vLuz * mix(vec3(1.02, 0.97, 0.87), vec3(0.80, 0.86, 1.00), vFrio);
+  oCor = vec4(mix(c, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0);
 }`;
 
 function modeloPlanta() {
@@ -458,3 +562,163 @@ out vec4 oCor;
 void main(){ oCor = vec4(mix(uCor, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0); }`;
 
 if (typeof module !== 'undefined') Object.assign(module.exports, { fitaRotas, VS_ROTA, FS_ROTA });
+
+// ------------------------------------------------------- curvas de nivel
+// As curvas ja vinham nos azulejos com a cota: nao ha nada a calcular, so a
+// pousar no relevo. Desenham-se como linhas de 1 pixel, que e o que uma carta
+// topografica faz -- engrossar so as faria competir com o percurso.
+function linhasCurvas(T, acima) {
+  acima = acima || 0.8;
+  const V = [], M = [];
+  for (let i = 0; i < T.curvas.length; i++) {
+    const l = T.curvas[i], n = l.length / 2;
+    const mestra = T.curvasAlt ? (T.curvasAlt[i * 2 + 1] ? 1 : 0) : 0;
+    for (let k = 0; k + 1 < n; k++) {
+      const a = T.emM(l[k * 2], l[k * 2 + 1]);
+      const b = T.emM(l[(k + 1) * 2], l[(k + 1) * 2 + 1]);
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 400) continue;   // salto de azulejo
+      V.push(a[0], a[1], T.cotaEm(a[0], a[1]) + acima,
+             b[0], b[1], T.cotaEm(b[0], b[1]) + acima);
+      M.push(mestra, mestra);
+    }
+  }
+  return { pos: new Float32Array(V), mestra: new Float32Array(M), n: M.length };
+}
+
+const VS_CURVA = `#version 300 es
+in vec3 aP; in float aM;
+uniform mat4 uMVP; uniform vec3 uCam;
+out float vD; out float vM;
+void main(){ vD = length(aP - uCam); vM = aM; gl_Position = uMVP * vec4(aP, 1.0); }`;
+const FS_CURVA = `#version 300 es
+precision mediump float; in float vD; in float vM;
+uniform vec3 uFundo; uniform float uNevoa;
+out vec4 oCor;
+void main(){
+  vec3 c = mix(vec3(0.70, 0.60, 0.45), vec3(0.56, 0.45, 0.27), vM);
+  float a = mix(0.55, 0.9, vM) * (1.0 - clamp(vD / uNevoa, 0.0, 1.0));
+  oCor = vec4(mix(c, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), a);
+}`;
+
+// ------------------------------------------------------------------- sol
+// Posicao do sol (NOAA simplificado, o mesmo que o SunCalc usa). Devolve
+// altura em graus acima do horizonte e azimute em graus a contar do norte.
+function posicaoSol(data, lat, lon) {
+  const R = Math.PI / 180;
+  const dias = (data.getTime() - Date.UTC(2000, 0, 1, 12)) / 86400000;
+  const M = R * (357.5291 + 0.98560028 * dias);
+  const C = R * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+  const L = M + C + R * 102.9372 + Math.PI;
+  const e = R * 23.4397;
+  const dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const ra = Math.atan2(Math.sin(L) * Math.cos(e), Math.cos(L));
+  const H = R * (280.16 + 360.9856235 * dias) + R * lon - ra;
+  const f = R * lat;
+  const alt = Math.asin(Math.sin(f) * Math.sin(dec) + Math.cos(f) * Math.cos(dec) * Math.cos(H));
+  const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(f) - Math.tan(dec) * Math.cos(f));
+  return { alt: alt / R, az: ((az / R) + 180 + 360) % 360 };
+}
+// vector do sol no referencial do terreno: x leste, y norte, z cima
+function vectorSol(alt, az) {
+  const R = Math.PI / 180, ca = Math.cos(alt * R);
+  return [Math.sin(az * R) * ca, Math.cos(az * R) * ca, Math.sin(alt * R)];
+}
+
+if (typeof module !== 'undefined') Object.assign(module.exports,
+  { linhasCurvas, VS_CURVA, FS_CURVA, posicaoSol, vectorSol });
+
+// ---------------------------------------------------- detalhe do chao
+// A 25 m o chao sao 430 mil triangulos e nao custa nada. Com o MDT LiDAR a 8 m
+// passam a 4,2 milhoes, sempre desenhados -- e ai custa. Entao o chao parte-se
+// em BLOCOS e cada bloco desenha-se com o passo que a distancia pedir.
+//
+// O problema classico disto sao as FENDAS: dois blocos vizinhos com passos
+// diferentes nao encaixam e ve-se o ceu pelo meio. A solucao aqui nao e
+// esconder a fenda com saias: e nao a deixar acontecer. A ORLA de cada bloco
+// e SEMPRE de passo 1, seja qual for o passo do miolo, por isso dois vizinhos
+// partilham exactamente os mesmos vertices na fronteira. Entre a orla fina e o
+// miolo grosso ha uma faixa de leques que costura os dois. Custa uma tira de
+// triangulos finos por bloco -- cerca de 6% -- e em troca nunca ha fenda
+// nenhuma, com qualquer combinacao de passos.
+const PASSOS = [1, 2, 4, 8];
+
+function malhaBlocos(T, BL) {
+  BL = BL || 64;
+  const { nx, ny } = T;
+  const bx = Math.ceil((nx - 1) / BL), by = Math.ceil((ny - 1) / BL);
+  const partes = [];                 // por bloco: {i0,j0,ci,cj, caixa, niveis:[{off,n}]}
+  const todos = [];                  // indices, todos seguidos, num so buffer
+  const V = (i, j) => j * nx + i;
+
+  for (let bj = 0; bj < by; bj++) {
+    for (let bi = 0; bi < bx; bi++) {
+      const i0 = bi * BL, j0 = bj * BL;
+      const ci = Math.min(BL, nx - 1 - i0), cj = Math.min(BL, ny - 1 - j0);
+      if (ci < 1 || cj < 1) continue;
+      const niveis = [];
+      for (const s of PASSOS) {
+        const ini = todos.length;
+        if (s === 1 || ci <= 2 * s || cj <= 2 * s) {
+          // pequeno de mais para ter miolo grosso: vai todo fino
+          for (let j = 0; j < cj; j++) for (let i = 0; i < ci; i++) {
+            const a = V(i0 + i, j0 + j), b = a + 1, c = a + nx, d = c + 1;
+            todos.push(a, c, b, b, c, d);
+          }
+        } else {
+          // miolo, de passo s
+          for (let j = s; j + s <= cj - s; j += s) for (let i = s; i + s <= ci - s; i += s) {
+            const a = V(i0 + i, j0 + j), b = V(i0 + i + s, j0 + j);
+            const c = V(i0 + i, j0 + j + s), d = V(i0 + i + s, j0 + j + s);
+            todos.push(a, c, b, b, c, d);
+          }
+          // as quatro faixas de costura: orla de passo 1, miolo de passo s
+          const faixa = (fino, grosso, n, inverte) => {
+            for (let c = 0; c + s <= n; c += s) {
+              const g0 = grosso(c), g1 = grosso(c + s);
+              for (let k = 0; k < s; k++) {
+                const f0 = fino(c + k), f1 = fino(c + k + 1);
+                if (inverte) todos.push(g0, f1, f0); else todos.push(g0, f0, f1);
+              }
+              if (inverte) todos.push(g0, g1, fino(c + s)); else todos.push(g0, fino(c + s), g1);
+            }
+          };
+          // norte: linha j0 fina, linha j0+s grossa
+          faixa((k) => V(i0 + k, j0), (k) => V(i0 + k, j0 + s), ci, true);
+          // sul: linha j0+cj fina, linha j0+cj-s grossa
+          faixa((k) => V(i0 + k, j0 + cj), (k) => V(i0 + k, j0 + cj - s), ci, false);
+          // oeste: coluna i0 fina, coluna i0+s grossa (so entre s e cj-s)
+          faixa((k) => V(i0, j0 + s + k), (k) => V(i0 + s, j0 + s + k), cj - 2 * s, false);
+          // este: coluna i0+ci fina, coluna i0+ci-s grossa
+          faixa((k) => V(i0 + ci, j0 + s + k), (k) => V(i0 + ci - s, j0 + s + k), cj - 2 * s, true);
+        }
+        niveis.push({ off: ini, n: todos.length - ini });
+      }
+      // caixa do bloco em metros, para medir distancia e cortar o que nao se ve
+      const dx = T.larg / (nx - 1), dy = T.alt / (ny - 1);
+      let z0 = 1e9, z1 = -1e9;
+      for (let j = 0; j <= cj; j += 4) for (let i = 0; i <= ci; i += 4) {
+        const z = T.cota(i0 + i, j0 + j);
+        if (z < z0) z0 = z; if (z > z1) z1 = z;
+      }
+      partes.push({
+        x0: i0 * dx, x1: (i0 + ci) * dx,
+        y0: T.alt - (j0 + cj) * dy, y1: T.alt - j0 * dy,
+        z0, z1, niveis,
+      });
+    }
+  }
+  return { idx: new Uint32Array(todos), partes, bx, by, BL };
+}
+
+// Que passo usar a esta distancia. O erro que um passo s deixa no ecra e
+// proporcional a s/distancia: fixa-se um erro e resolve-se para s.
+function passoDoBloco(d, passoMalha, metrosPorPixel) {
+  const alvo = metrosPorPixel * 2.2;          // 2,2 pixeis de erro, na pratica invisivel
+  for (let k = PASSOS.length - 1; k > 0; k--) {
+    if (PASSOS[k] * passoMalha <= alvo * (d / 500)) return k;
+  }
+  return 0;
+}
+
+if (typeof module !== 'undefined') Object.assign(module.exports,
+  { malhaBlocos, passoDoBloco, PASSOS });

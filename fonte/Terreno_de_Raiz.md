@@ -119,9 +119,22 @@ python3 fonte/scripts-dados/gera_terreno.py --nome manteigas \
     --mdt mdt2m_manteigas_wgs84.tif
 ```
 
-Precisa de duas coisas do lado do Joel: o **MDT de 2 m da DGT** para estas
-folhas, reprojectado para EPSG:4326 (`gdalwarp -t_srs EPSG:4326`), e a
-biblioteca `rasterio` instalada.
+Precisa de três coisas do lado do Joel:
+
+1. **MDT de 2 m da DGT** para estas folhas (modelo do terreno, sem vegetação).
+2. Opcionalmente o **CHM** — modelo de altura do coberto — que entra com
+   `--chm` e faz com que a altura das árvores passe a ser **medida** em vez de
+   valor por defeito da classe. Fica no bloco `ALTV`.
+3. Os dois reprojectados para graus, e o `rasterio` instalado:
+
+```bash
+pip install rasterio
+gdalwarp -t_srs EPSG:4326 mdt2m.tif  mdt_wgs84.tif
+gdalwarp -t_srs EPSG:4326 chm.tif    chm_wgs84.tif
+python3 fonte/scripts-dados/gera_terreno.py --nome manteigas \
+    --caixa -7.62 40.31 -7.49 40.42 --passo 8 --classe 4 \
+    --mdt mdt_wgs84.tif --chm chm_wgs84.tif
+```
 
 O que muda com ele, em números desta caixa:
 
@@ -131,23 +144,112 @@ O que muda com ele, em números desta caixa:
 | 8 m | 2 095 900 | 4 188 402 |
 | 4 m | 8 379 202 | 16 754 402 |
 
-A 8 m dá 4,2 M de triângulos de chão sempre desenhados. Junto com os ~3 M das
-plantas são 7 M por fotograma — o dobro do que um telemóvel quer. **A 8 m o
-chão precisa da mesma ideia que as plantas: níveis cozidos no ficheiro.** Isso
-ainda não está feito, e digo-o antes de ele apanhar.
+A 8 m seriam 4,2 M de triângulos de chão se fossem todos desenhados. **Já não
+são** — ver a secção 7: com blocos e passo por distância, essa mesma malha
+desenha-se com dezenas de milhar. Era a peça que faltava para o LiDAR entrar, e
+está feita.
 
 ---
 
-## 5. O que este ensaio ainda não tem
+## 5. O que o ficheiro traz, bloco a bloco
 
-- **Níveis de detalhe no chão.** Hoje a malha é uma só resolução. Chega para
-  25 m; não chega para LiDAR.
+O ficheiro deixou de ser um cabeçalho fixo e passou a ser uma lista de blocos
+de quatro letras. Um ficheiro velho continua a abrir depois de acrescentar
+coisas novas, e um ficheiro novo não parte um visualizador velho: o que ele
+não conhecer, salta.
+
+| bloco | o que é |
+|---|---|
+| `BBOX` | a caixa, em graus |
+| `COTA` | grelha de cotas, quantizada a 16 bits |
+| `CLAS` | classe do solo; **bit 7** = corredor do percurso, não nasce lá nada |
+| `ROTA` | traçado dos percursos |
+| `CURV` | curvas de nível, com a cota e a marca de mestra |
+| `PONT` | cumes, povoações e serviços, com nome |
+| `ALTV` | altura da vegetação medida por LiDAR (só com `--chm`) |
+| `HORI` | mapa de horizonte — é daqui que sai a **sombra** |
+
+As curvas de nível não se calculam: já vinham nos azulejos com a cota. São
+3 393 linhas, 59 827 pontos, e desenham-se com 1 píxel de espessura, que é o
+que uma carta faz — engrossá-las punha-as a competir com o percurso.
+
+---
+
+## 6. A sombra é sombra, não sombreado
+
+Para cada nó da grelha e cada uma de 16 direcções, o cozedor mede **a que
+altura o terreno tapa o céu**. Ao desenhar, compara-se a altura do sol com
+esse ângulo na direcção do sol: se o sol vier mais baixo, aquele ponto está à
+sombra de um monte.
+
+```
+mapa de horizonte: 16 direcções, 3,44 MB
+horizonte médio 10,6 graus, máximo 75,0
+```
+
+A posição do sol é a fórmula NOAA, conferida contra valores conhecidos em
+Manteigas (40,40° N):
+
+| | altura | azimute |
+|---|---|---|
+| 21/06 12:00 UTC | 71,7° | 155,8° |
+| 21/12 12:00 UTC | 25,8° | 172,8° |
+| 21/03 18:00 UTC | 7,3° | 264,1° |
+
+O máximo teórico no solstício de Verão a esta latitude é 73,0°; às 12:00 UTC
+ainda não é meio-dia solar ali (é às 12:30), daí os 71,7°. No de Inverno o
+máximo teórico é 26,2° contra 25,8° medidos.
+
+Visto no vale, com a mesma câmara: **às 08:30** a encosta alta está ao sol e o
+fundo do vale à sombra; **às 17:30**, com o sol a 11° a oeste, o vale inteiro
+já caiu atrás da parede. A luz do sol puxa ao amarelo e a do céu ao azul, por
+isso a sombra lê-se como sombra e não como um cinzento morto.
+
+---
+
+## 7. Detalhe do chão, sem fendas
+
+A 25 m o chão são 430 mil triângulos e não custa nada. Com o MDT LiDAR a 8 m
+passam a 4,2 milhões. Por isso o chão parte-se em blocos de 64×64 e cada bloco
+desenha-se com o passo que a distância pedir.
+
+O problema clássico disto são as **fendas**: dois blocos vizinhos com passos
+diferentes não encaixam e vê-se o céu pelo meio. A solução aqui não é
+escondê-las com saias — é não as deixar acontecer. **A orla de cada bloco é
+sempre de passo 1**, seja qual for o passo do miolo, por isso dois vizinhos
+partilham exactamente os mesmos vértices na fronteira. Entre a orla fina e o
+miolo grosso há uma faixa de leques que costura os dois. Custa uma tira de
+triângulos finos por bloco — cerca de 6% — e em troca não há fenda nenhuma com
+nenhuma combinação de passos.
+
+| passo | triângulos do chão inteiro |
+|---|---|
+| 1 | 428 652 |
+| 2 | 113 618 |
+| 4 | 36 310 |
+| 8 | 17 072 |
+
+Medido em uso, com corte pelo tronco de visão por cima:
+
+```
+câmara a 6 km   19 120 triângulos em 25 blocos
+câmara a 2,2 km 43 472 triângulos em 18 blocos
+```
+
+De 428 652 para 19 120 — vinte e duas vezes menos.
+
+---
+
+## 8. O que este ensaio ainda não tem
+
 - **Crescer.** O formato aceita qualquer caixa, mas crescer é **cozer outra
   vez, em terra**, não juntar pedaços em andamento. Duas caixas lado a lado
   carregam-se as duas inteiras e ficam as duas residentes — continua a não
   haver construção a andar, mas a memória soma.
-- **Nomes, curvas de nível, pontos de interesse, sombra.** Nada disto está no
-  ensaio. É um ensaio da estrutura, não um substituto do mapa.
+- **Levar isto ao mapa a sério.** O botão 3D de cada percurso continua a abrir
+  a vista antiga. Cozer uma caixa por percurso dava 133 ficheiros de meio MB;
+  o caminho certo é o navegador cozer a caixa do percurso à entrada, a partir
+  do `dem.webp` e dos azulejos que já tem — sem descarregar nada de novo.
 - **Velocidade a sério.** Os fotogramas medidos aqui (≈1,4 s) são do
   SwiftShader, que desenha por software neste contentor. **Não dizem nada**
   sobre o telemóvel. O que se mede daqui com sentido é o número de triângulos
