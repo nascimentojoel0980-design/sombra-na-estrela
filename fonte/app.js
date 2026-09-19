@@ -2616,9 +2616,109 @@ function route3dGeo(r) {
   else geo(r).forEach((part) => part.length > 1 && feats.push({ type: 'Feature', properties: { c: '#FFFFFF' }, geometry: { type: 'LineString', coordinates: part.map(([la, lo]) => [lo, la]) } }));
   return { type: 'FeatureCollection', features: feats };
 }
+
+// ---- 3D de raiz: o mesmo motor do teste-terreno, cozido a entrada ----------
+// Cozer as 133 caixas em terra dava 133 ficheiros de meio MB. Nao e preciso: o
+// telemovel ja tem o dem.webp e os azulejos, e cozer a caixa de um percurso
+// leva menos de um segundo. Depois de cozida nao se constroi mais nada -- e e
+// isso que faz a vista ser fluida em vez de se montar enquanto se roda.
+let TERR = null, VISTA = null, pmTopo = null;
+async function ensureTerreno() {
+  if (!TERR) TERR = loadScript('fonte/terreno.js?v=7');
+  await TERR;
+}
+function caixaDoPercurso(r) {
+  let lo0 = 1e9, la0 = 1e9, lo1 = -1e9, la1 = -1e9;
+  const ps = (r.segs && r.segs.length) ? r.segs.flatMap((s) => segPts(s)) : geo(r).flat();
+  for (const [la, lo] of ps) {
+    if (lo < lo0) lo0 = lo; if (lo > lo1) lo1 = lo;
+    if (la < la0) la0 = la; if (la > la1) la1 = la;
+  }
+  // folga a volta, e limites: abaixo de 3 km nao ha paisagem, acima de 13 km a
+  // semeadura comeca a pesar no telemovel sem se ganhar nada.
+  const mlat = 110540, mlon = 111320 * Math.cos((la0 + la1) / 2 * Math.PI / 180);
+  const cx = (lo0 + lo1) / 2, cy = (la0 + la1) / 2;
+  let w = Math.max((lo1 - lo0) * mlon * 1.35, 3000);
+  let h = Math.max((la1 - la0) * mlat * 1.35, 3000);
+  w = Math.min(w, 13000); h = Math.min(h, 13000);
+  return [cx - w / 2 / mlon, cy - h / 2 / mlat, cx + w / 2 / mlon, cy + h / 2 / mlat];
+}
+async function terreno3D(r) {
+  const box = document.getElementById('v3d'), msg = document.getElementById('v3d-msg');
+  const cvs = document.getElementById('t3'), rot = document.getElementById('t3r');
+  await ensureTerreno();
+  // so e precisa a biblioteca dos azulejos; o MapLibre nao entra nesta vista
+  if (typeof pmtiles === 'undefined') await loadScript('lib/pmtiles.js');
+  if (!pmTopo) pmTopo = new pmtiles.PMTiles(new URL(TOPO_URL, location.href).href);
+  const D0 = await ensureDEM();
+  const kx = (D0.w - 1) / (DEM_B[2] - DEM_B[0]), ky = (D0.h - 1) / (DEM_B[3] - DEM_B[1]);
+  const cotaEmGraus = (lo, la) => {
+    const fx = Math.min(D0.w - 1.001, Math.max(0, (lo - DEM_B[0]) * kx));
+    const fy = Math.min(D0.h - 1.001, Math.max(0, (DEM_B[3] - la) * ky));
+    const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j;
+    const a = D0.z[j*D0.w+i], b = D0.z[j*D0.w+i+1], c = D0.z[(j+1)*D0.w+i], d = D0.z[(j+1)*D0.w+i+1];
+    return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+  };
+  const pedeAzulejo = async (z, x, y) => {
+    const t = await pmTopo.getZxy(z, x, y);
+    return t ? t.data : null;
+  };
+  const caixa = caixaDoPercurso(r);
+  const t0 = performance.now();
+  const PASSOS = { relevo: 'a ler o relevo…', 'carta do solo': 'a ler a carta do solo…',
+                   sombra: 'a calcular a sombra dos montes…' };
+  const T = await cozeCaixa(caixa, { passo: 25, classe: 8, pedeAzulejo, cotaEmGraus,
+    aviso: (q) => { msg.textContent = PASSOS[q] || q; } });
+  msg.textContent = 'a semear a caixa toda, uma vez…';
+  await new Promise((ok) => setTimeout(ok, 0));
+  if (VISTA) { VISTA.desliga(); VISTA = null; }
+  VISTA = abreVista(cvs, T, { camadaRotulos: rot });
+  window.VISTA = VISTA;        // 'let' de topo nao chega ao window, e da jeito ao medir
+  // a camara aponta ao meio do percurso, deitada o suficiente para ver relevo
+  const ps = geo(r).flat();
+  const meio = ps[Math.floor(ps.length / 2)] || [(caixa[1]+caixa[3])/2, (caixa[0]+caixa[2])/2];
+  VISTA.vaiA(meio[1], meio[0], 1800);
+  VISTA.cam.incl = 1.05; VISTA.cam.rumo = 0.7;
+  const agora = new Date();
+  const sl = document.getElementById('t3h');
+  sl.value = agora.getHours() * 60 + agora.getMinutes();
+  horaTerreno();
+  msg.textContent = '';
+  const c = VISTA.conta;
+  console.log('terreno 3D: cozer %d ms, malha %d ms, semear %d ms, %s plantas',
+    Math.round(performance.now() - t0 - c.malha - c.semear),
+    Math.round(c.malha), Math.round(c.semear), c.total.toLocaleString('pt-PT'));
+}
+const RUMO8 = ['N','NE','E','SE','S','SO','O','NO'];
+function horaTerreno() {
+  if (!VISTA) return;
+  const m = +document.getElementById('t3h').value;
+  const q = new Date(); q.setHours(m / 60 | 0, m % 60, 0, 0);
+  const s = VISTA.hora(q);
+  document.getElementById('t3t').textContent =
+    String(m / 60 | 0).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
+    + (s.alt > 0 ? '  ' + s.alt.toFixed(0) + '° ' + RUMO8[Math.round(s.az / 45) % 8] : '  sol posto');
+}
+function fecha3D() {
+  if (VISTA) { VISTA.desliga(); VISTA = null; }
+  document.getElementById('v3d').hidden = true;
+}
+
 async function open3D(r) {
   const box = document.getElementById('v3d'), msg = document.getElementById('v3d-msg');
   box.hidden = false; msg.textContent = 'A carregar o relevo…';
+  // Primeiro o terreno de raiz. Se este aparelho nao o aguentar (sem WebGL2,
+  // por exemplo), cai-se na vista antiga em vez de ficar sem nada.
+  document.getElementById('v3d').classList.add('terr');
+  try {
+    await terreno3D(r);
+    return;
+  } catch (e) {
+    console.warn('terreno 3D nao deu, volta-se a vista antiga:', e);
+    document.getElementById('v3d').classList.remove('terr');
+    if (VISTA) { VISTA.desliga(); VISTA = null; }
+    msg.textContent = 'A carregar o relevo…';
+  }
   try { await ensureML(); } catch (e) { msg.textContent = 'Não foi possível carregar a vista 3D neste dispositivo.'; return; }
   if (!pmProto) {
     try {
@@ -2662,12 +2762,28 @@ function labels3D(r, bb) {
   });
   (r.alt && altShow().ex ? r.alt.ex : []).forEach((x) => { const dp = decodePoly(x.p), e = dp[dp.length - 1], el = document.createElement('div'); el.className = 'alt-lbl m3'; el.innerHTML = `<span>⤳ ${esc(x.n || 'aldeia')}</span>`; marks3.push(new maplibregl.Marker({ element: el, anchor: 'left' }).setLngLat([e[1], e[0]]).addTo(map3)); });
 }
-document.getElementById('x3').onclick = () => { document.getElementById('v3d').hidden = true; };
+document.getElementById('x3').onclick = () => fecha3D();
+document.getElementById('t3h').addEventListener('input', horaTerreno);
+for (const [id, k] of [['t3c', 'curvas'], ['t3n', 'nomes']]) {
+  document.getElementById(id).addEventListener('click', () => {
+    if (!VISTA) return;
+    VISTA.mostrar[k] = !VISTA.mostrar[k];
+    document.getElementById(id).classList.toggle('on', VISTA.mostrar[k]);
+  });
+}
 document.getElementById('fab-3d').onclick = () => selected && open3D(selected);
 document.getElementById('fab-sheet').onclick = () => sheetPeek(false);
 map.on('movestart', () => { if (selected && !$('sheet').classList.contains('peek')) sheetPeek(true); });
-document.getElementById('v3d-tilt').onclick = () => map3 && map3.easeTo({ pitch: map3.getPitch() > 30 ? 0 : 62 });
-document.getElementById('v3d-rot').onclick = () => map3 && map3.easeTo({ bearing: map3.getBearing() - 45 });
+// Os dois botoes servem as duas vistas: a nova quando ela esta ligada, a
+// antiga quando se caiu nela.
+document.getElementById('v3d-tilt').onclick = () => {
+  if (VISTA) { VISTA.cam.incl = VISTA.cam.incl > 0.6 ? 0.12 : 1.15; return; }
+  if (map3) map3.easeTo({ pitch: map3.getPitch() > 30 ? 0 : 62 });
+};
+document.getElementById('v3d-rot').onclick = () => {
+  if (VISTA) { VISTA.roda(Math.PI / 4); return; }
+  if (map3) map3.easeTo({ bearing: map3.getBearing() - 45 });
+};
 // Tocar num caminho: a que percurso(s) pertence
 function nearDist(ll, pts, k) { let best = 1e18; for (let i = 0; i < pts.length; i++) { const dy = (pts[i][0] - ll.lat) * 111320, dx = (pts[i][1] - ll.lng) * 111320 * k, d = dx * dx + dy * dy; if (d < best) best = d; } return Math.sqrt(best); }
 function segDist(ll, a, b, k) { const ax = (a[1] - ll.lng) * 111320 * k, ay = (a[0] - ll.lat) * 111320, bx = (b[1] - ll.lng) * 111320 * k, by = (b[0] - ll.lat) * 111320; const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy; let t = L2 ? -(ax * dx + ay * dy) / L2 : 0; t = Math.max(0, Math.min(1, t)); const x = ax + t * dx, y = ay + t * dy; return Math.sqrt(x * x + y * y); }

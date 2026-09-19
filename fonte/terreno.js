@@ -41,6 +41,7 @@ const CLASSES = {
   7: { cor: [0.84, 0.83, 0.81], tipo: 2, h: 2.0,  k: 0.75, lam: 0.0120 },
   9: { cor: [0.55, 0.75, 0.88] },                                        // agua
 };
+const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
 const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
 
@@ -722,3 +723,703 @@ function passoDoBloco(d, passoMalha, metrosPorPixel) {
 
 if (typeof module !== 'undefined') Object.assign(module.exports,
   { malhaBlocos, passoDoBloco, PASSOS });
+
+// ===========================================================================
+// A VISTA: pega num terreno cozido e num canvas, e desenha.
+// ---------------------------------------------------------------------------
+// Estava tudo na pagina de ensaio. Passa para aqui porque o mapa a serio vai
+// usar exactamente o mesmo motor -- se houvesse duas copias, uma delas ficava
+// para tras no dia seguinte.
+// ===========================================================================
+function abreVista(canvas, T, op) {
+  op = op || {};
+  const gl = canvas.getContext('webgl2', { antialias: op.antialias !== false, alpha: false });
+  if (!gl) throw new Error('este aparelho nao tem WebGL2');
+  const FUNDO = op.fundo || [0.871, 0.851, 0.784];
+  const P = {}, L = {}, A = {};
+  const VERT_MODELO = 108;
+  let M, BLO, S, texClasse, texHori, bufInst, aInst, C = [], vivo = true;
+  const cam = { x: T.larg / 2, y: T.alt / 2, dist: op.dist || 2400,
+                rumo: op.rumo || 0.6, incl: op.incl == null ? 0.95 : op.incl };
+  const mostrar = { curvas: true, nomes: true, plantas: true };
+  const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0 };
+  let solAlt = 30, solAz = 180, solV = [0, 0, 1];
+
+  const unis = (p, ns) => { const o = {}; for (const n of ns) o[n] = gl.getUniformLocation(p, n); return o; };
+  const SOMBRA_U = ['uHori', 'uSol', 'uSolAlt', 'uSolAz', 'uNdir', 'uTemHori'];
+  const vbo = (prog, nome, dados, tam, stride, off) => {
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, dados, gl.STATIC_DRAW);
+    const l = gl.getAttribLocation(prog, nome);
+    gl.enableVertexAttribArray(l);
+    gl.vertexAttribPointer(l, tam, gl.FLOAT, false, stride || 0, off || 0);
+    return b;
+  };
+  function apontaBloco(primeira) {
+    const o = primeira * 12;
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufInst);
+    gl.vertexAttribPointer(aInst.pos, 3, gl.UNSIGNED_SHORT, true, 12, o);
+    gl.vertexAttribPointer(aInst.par, 4, gl.UNSIGNED_BYTE, false, 12, o + 6);
+    gl.vertexAttribPointer(aInst.rot, 2, gl.UNSIGNED_BYTE, true, 12, o + 10);
+  }
+  function paleta() {
+    const im = new Uint8Array(T.mx * T.my * 3), tab = new Float32Array(768);
+    for (const k in CLASSES) { const c = CLASSES[k].cor; tab[k*3]=c[0]; tab[k*3+1]=c[1]; tab[k*3+2]=c[2]; }
+    for (let i = 0; i < T.mx * T.my; i++) {
+      const c = (T.classe[i] & 127) * 3;
+      im[i*3] = tab[c]*255; im[i*3+1] = tab[c+1]*255; im[i*3+2] = tab[c+2]*255;
+    }
+    return im;
+  }
+
+  // ---- construir, uma vez
+  let t = agoraMs();
+  M = malhaTerreno(T); BLO = malhaBlocos(T, 64);
+  conta.malha = agoraMs() - t;
+  t = agoraMs(); S = semeiaTudo(T, op); conta.semear = agoraMs() - t;
+  conta.total = S.total;
+
+  P.chao = prog(gl, VS_CHAO, FS_CHAO);
+  P.planta = prog(gl, VS_PLANTA, FS_PLANTA);
+  P.rota = prog(gl, VS_ROTA, FS_ROTA);
+  P.curva = prog(gl, VS_CURVA, FS_CURVA);
+  L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa'].concat(SOMBRA_U));
+  L.planta = unis(P.planta, ['uMVP','uCam','uCaixa','uZ0','uD0','uTam','uFundo','uNevoa'].concat(SOMBRA_U));
+  L.rota = unis(P.rota, ['uMVP','uCam','uFundo','uNevoa','uCor']);
+  L.curva = unis(P.curva, ['uMVP','uCam','uFundo','uNevoa']);
+
+  A.chao = gl.createVertexArray(); gl.bindVertexArray(A.chao);
+  vbo(P.chao, 'aP', M.pos, 3); vbo(P.chao, 'aN', M.nor, 3);
+  const bi = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bi);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, BLO.idx, gl.STATIC_DRAW);
+
+  texClasse = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, texClasse);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, T.mx, T.my, 0, gl.RGB, gl.UNSIGNED_BYTE, paleta());
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.generateMipmap(gl.TEXTURE_2D);
+
+  if (T.hori) {
+    texHori = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D_ARRAY, texHori);
+    gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.R8, T.hori.nx, T.hori.ny, T.hori.ndir,
+                  0, gl.RED, gl.UNSIGNED_BYTE, T.hori.dados);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  }
+
+  A.planta = gl.createVertexArray(); gl.bindVertexArray(A.planta);
+  vbo(P.planta, 'aV', modeloPlanta(), 4, 20, 0);
+  let l = gl.getAttribLocation(P.planta, 'aBossa'); gl.enableVertexAttribArray(l);
+  gl.vertexAttribPointer(l, 1, gl.FLOAT, false, 20, 16);
+  bufInst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bufInst);
+  gl.bufferData(gl.ARRAY_BUFFER, S.buf, gl.STATIC_DRAW);
+  aInst = { pos: gl.getAttribLocation(P.planta, 'aPos'),
+            par: gl.getAttribLocation(P.planta, 'aPar'),
+            rot: gl.getAttribLocation(P.planta, 'aRot') };
+  for (const k in aInst) { gl.enableVertexAttribArray(aInst[k]); gl.vertexAttribDivisor(aInst[k], 1); }
+  apontaBloco(0);
+
+  A.rota = gl.createVertexArray(); gl.bindVertexArray(A.rota);
+  const fita = fitaRotas(T, op.larguraRota || 7, 1.2); A.nRota = fita.length / 3;
+  if (A.nRota) vbo(P.rota, 'aP', fita, 3);
+
+  A.curva = gl.createVertexArray(); gl.bindVertexArray(A.curva);
+  const cu = linhasCurvas(T, 0.8); A.nCurva = cu.n;
+  if (A.nCurva) { vbo(P.curva, 'aP', cu.pos, 3); vbo(P.curva, 'aM', cu.mestra, 1); }
+  gl.bindVertexArray(null);
+
+  gl.enable(gl.DEPTH_TEST);
+  gl.clearColor(FUNDO[0], FUNDO[1], FUNDO[2], 1);
+
+  // ---- rotulos
+  const ORDEM = { cume: 0, povoacao: 1, aldeia: 1, lagoa: 2, cascata: 2, miradouro: 2 };
+  if (op.rotulos !== false) {
+    // 'info' sao os paineis interpretativos: chamam-se quase todos o mesmo e
+    // empilhavam-se em cima do vale. Nao entram.
+    C = T.pontos.filter((p) => p.nome && p.k !== 'info').map((p) => {
+      const m = T.emM(p.lo, p.la);
+      return Object.assign({}, p, { mx: m[0], my: m[1], mz: T.cotaEm(m[0], m[1]),
+        pri: ORDEM[p.k] === undefined ? 5 : ORDEM[p.k] });
+    }).sort((a, b) => a.pri - b.pri);
+    for (const p of C) {
+      const el = document.createElement('div');
+      el.className = 'r ' + (ORDEM[p.k] === undefined ? 'outro' : p.k);
+      el.innerHTML = (p.k === 'cume' ? '▲ ' : '') + '<b>' + p.nome.replace(/[<&]/g, '') + '</b>'
+        + (p.k === 'cume' && p.alt ? p.alt + ' m' : '');
+      el.style.display = 'none';
+      (op.camadaRotulos || document.body).appendChild(el);
+      p.el = el;
+    }
+  }
+
+  function poeSol(quando) {
+    const s = posicaoSol(quando, (T.la0 + T.la1) / 2, (T.lo0 + T.lo1) / 2);
+    solAlt = s.alt; solAz = s.az; solV = vectorSol(Math.max(s.alt, 0), s.az);
+    return s;
+  }
+  poeSol(op.quando || new Date());
+
+  function poeSombra(u) {
+    if (texHori) { gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D_ARRAY, texHori); }
+    gl.uniform1i(u.uHori, 1);
+    gl.uniform3f(u.uSol, solV[0], solV[1], solV[2]);
+    gl.uniform1f(u.uSolAlt, solAlt);
+    gl.uniform1f(u.uSolAz, ((solAz % 360) + 360) % 360 / 360);
+    gl.uniform1f(u.uNdir, T.hori ? T.hori.ndir : 16);
+    gl.uniform1f(u.uTemHori, T.hori ? 1 : 0);
+  }
+  function coord() {
+    const cz = T.cotaEm(cam.x, cam.y);
+    const h = Math.cos(cam.incl) * cam.dist, r = Math.sin(cam.incl) * cam.dist;
+    const ox = cam.x - Math.sin(cam.rumo) * r, oy = cam.y - Math.cos(cam.rumo) * r;
+    return { olho: [ox, oy, Math.max(cz + h, T.cotaEm(ox, oy) + 25)], alvo: [cam.x, cam.y, cz] };
+  }
+  function naVista(b, M4) {
+    let e = 0x3f;
+    for (let k = 0; k < 8; k++) {
+      const x = (k & 1) ? b.x1 : b.x0, y = (k & 2) ? b.y1 : b.y0, z = (k & 4) ? b.z1 : b.z0;
+      const cx = M4[0]*x + M4[4]*y + M4[8]*z + M4[12];
+      const cy = M4[1]*x + M4[5]*y + M4[9]*z + M4[13];
+      const cz = M4[2]*x + M4[6]*y + M4[10]*z + M4[14];
+      const cw = M4[3]*x + M4[7]*y + M4[11]*z + M4[15];
+      let f = 0;
+      if (cx < -cw) f |= 1; if (cx > cw) f |= 2;
+      if (cy < -cw) f |= 4; if (cy > cw) f |= 8;
+      if (cz < -cw) f |= 16; if (cz > cw) f |= 32;
+      e &= f; if (!e) return true;
+    }
+    return false;
+  }
+  // Ha monte pelo meio? Sem isto os nomes do outro lado da serra flutuam no ar.
+  function tapado(olho, x, y, z) {
+    const n = 16;
+    for (let k = 2; k <= n - 2; k++) {
+      const u = k / n;
+      if (T.cotaEm(olho[0] + (x - olho[0]) * u, olho[1] + (y - olho[1]) * u)
+          > olho[2] + (z - olho[2]) * u + 22) return true;
+    }
+    return false;
+  }
+  function poeRotulos(MVP, olho, W, H) {
+    const caixas = []; let postos = 0;
+    for (const p of C) {
+      const esconde = () => { if (p.el.style.display !== 'none') p.el.style.display = 'none'; };
+      if (!mostrar.nomes || postos >= 30) { esconde(); continue; }
+      const x = p.mx, y = p.my, z = p.mz + 12;
+      const cx = MVP[0]*x + MVP[4]*y + MVP[8]*z + MVP[12];
+      const cy = MVP[1]*x + MVP[5]*y + MVP[9]*z + MVP[13];
+      const cw = MVP[3]*x + MVP[7]*y + MVP[11]*z + MVP[15];
+      const dist = Math.hypot(x - olho[0], y - olho[1], z - olho[2]);
+      if (cw <= 0 || dist > 7000) { esconde(); continue; }
+      const sx = (cx / cw * 0.5 + 0.5) * W, sy = (1 - (cy / cw * 0.5 + 0.5)) * H;
+      if (sx < -40 || sx > W + 40 || sy < 46 || sy > H - 66) { esconde(); continue; }
+      const lg = Math.min(150, 7 + p.nome.length * 6), a = sx - lg / 2, b = sx + lg / 2;
+      let choca = false;
+      for (const q of caixas) if (a < q[1] && b > q[0] && sy - 26 < q[3] && sy > q[2]) { choca = true; break; }
+      if (choca || tapado(olho, x, y, z)) { esconde(); continue; }
+      caixas.push([a, b, sy - 26, sy]);
+      p.el.style.display = '';
+      p.el.style.left = sx.toFixed(0) + 'px';
+      p.el.style.top = sy.toFixed(0) + 'px';
+      p.el.style.opacity = (1 - Math.min(0.7, dist / 9000)).toFixed(2);
+      postos++;
+    }
+  }
+
+  let ultimo = 0; const ritmos = [];
+  function desenha(ts) {
+    if (!vivo) return;
+    requestAnimationFrame(desenha);
+    const dpr = Math.min(devicePixelRatio || 1, op.dprMax || 2);
+    const cw = canvas.clientWidth || innerWidth, ch = canvas.clientHeight || innerHeight;
+    const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+    gl.viewport(0, 0, W, H);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const { olho, alvo } = coord();
+    const longe = Math.max(9000, cam.dist * 6);
+    const MVP = mult(perspetiva(1.0, W / H, Math.max(2, cam.dist * 0.01), longe),
+                     olhar(olho, alvo, [0, 0, 1]));
+    const nevoa = longe * 0.75;
+    const comuns = (u) => {
+      gl.uniformMatrix4fv(u.uMVP, false, MVP);
+      gl.uniform3f(u.uCam, olho[0], olho[1], olho[2]);
+      gl.uniform3f(u.uFundo, FUNDO[0], FUNDO[1], FUNDO[2]);
+      gl.uniform1f(u.uNevoa, nevoa);
+    };
+
+    gl.useProgram(P.chao); comuns(L.chao);
+    gl.uniform2f(L.chao.uTam, T.larg, T.alt);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texClasse);
+    gl.uniform1i(L.chao.uClasse, 0);
+    poeSombra(L.chao);
+    gl.bindVertexArray(A.chao);
+    const mppBase = 2 * Math.tan(0.5) / H;
+    let triChao = 0, blocosChao = 0;
+    for (const b of BLO.partes) {
+      if (!naVista(b, MVP)) continue;
+      const dx = Math.max(b.x0 - olho[0], 0, olho[0] - b.x1);
+      const dy = Math.max(b.y0 - olho[1], 0, olho[1] - b.y1);
+      const dz = Math.max(b.z0 - olho[2], 0, olho[2] - b.z1);
+      const d = Math.max(1, Math.hypot(dx, dy, dz));
+      const nv = b.niveis[passoDoBloco(d, T.passo, mppBase * d)];
+      gl.drawElements(gl.TRIANGLES, nv.n, gl.UNSIGNED_INT, nv.off * 4);
+      triChao += nv.n / 3; blocosChao++;
+    }
+    conta.triChao = triChao; conta.blocosChao = blocosChao;
+
+    if (mostrar.curvas && A.nCurva) {
+      gl.useProgram(P.curva); comuns(L.curva);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.bindVertexArray(A.curva);
+      gl.drawArrays(gl.LINES, 0, A.nCurva);
+      gl.disable(gl.BLEND);
+    }
+    if (A.nRota) {
+      gl.useProgram(P.rota); comuns(L.rota);
+      const c = op.corRota || [0.83, 0.25, 0.18];
+      gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
+      gl.bindVertexArray(A.rota);
+      gl.drawArrays(gl.TRIANGLES, 0, A.nRota);
+    }
+
+    let des = 0;
+    if (mostrar.plantas) {
+      gl.useProgram(P.planta); comuns(L.planta);
+      gl.uniform3f(L.planta.uCaixa, T.larg, T.alt, T.z1 - T.z0);
+      gl.uniform2f(L.planta.uTam, T.larg, T.alt);
+      gl.uniform1f(L.planta.uZ0, T.z0);
+      gl.uniform1f(L.planta.uD0, op.d0 || D0);
+      poeSombra(L.planta);
+      gl.bindVertexArray(A.planta);
+      for (let b = 0; b < S.nB; b++) {
+        const n = S.ini[b + 1] - S.ini[b];
+        if (!n) continue;
+        const bi2 = b % S.bx, bj = (b / S.bx) | 0;
+        const x0 = bi2 * BLOCO, x1 = x0 + BLOCO, y1 = T.alt - bj * BLOCO, y0 = y1 - BLOCO;
+        const dx = Math.max(x0 - olho[0], 0, olho[0] - x1);
+        const dy = Math.max(y0 - olho[1], 0, olho[1] - y1);
+        const d = Math.max(1, Math.hypot(dx, dy));
+        if (d > longe) continue;
+        const dd = (op.d0 || D0) / d;
+        const q = Math.min(n, Math.ceil(n * Math.min(1, dd * dd)) + 1);
+        apontaBloco(S.ini[b]);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, VERT_MODELO, q);
+        des += q;
+      }
+    }
+    conta.desenhadas = des;
+    gl.bindVertexArray(null);
+    poeRotulos(MVP, olho, cw, ch);
+
+    if (ultimo) { ritmos.push(ts - ultimo); if (ritmos.length > 60) ritmos.shift(); }
+    ultimo = ts;
+    if (op.aoDesenhar) op.aoDesenhar(conta);
+  }
+  requestAnimationFrame(desenha);
+
+  const trava = (v, a, b) => Math.max(a, Math.min(b, v));
+  const api = {
+    cam, mostrar, conta, T,
+    ritmo: () => ritmos.length ? ritmos.slice().sort((a, b) => a - b)[ritmos.length >> 1] : 0,
+    hora: (quando) => poeSol(quando),
+    sol: () => ({ alt: solAlt, az: solAz }),
+    anda(dx, dy) {
+      const k = cam.dist * 0.0016, sn = Math.sin(cam.rumo), cs = Math.cos(cam.rumo);
+      cam.x = trava(cam.x - (dx * cs - dy * sn) * k, 0, T.larg);
+      cam.y = trava(cam.y + (dx * sn + dy * cs) * k, 0, T.alt);
+    },
+    roda: (d) => cam.rumo += d,
+    inclina: (d) => cam.incl = trava(cam.incl + d, 0.06, 1.45),
+    aproxima: (f) => cam.dist = trava(cam.dist * f, 40, 20000),
+    vaiA(lo, la, dist) { const m = T.emM(lo, la); cam.x = m[0]; cam.y = m[1];
+                         if (dist) cam.dist = dist; },
+    desliga() {
+      vivo = false;
+      for (const p of C) if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
+      C = [];
+      const ext = gl.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext();
+    },
+  };
+  // gestos, se pedirem
+  if (op.gestos !== false) ligaGestos(canvas, api);
+  return api;
+}
+
+// Um dedo anda. Dois dedos fazem as tres coisas ao mesmo tempo: afastar e
+// juntar da zoom, torcer roda, subir e descer juntos inclina.
+function ligaGestos(cv, v) {
+  const dedos = new Map();
+  let par = null, botao = 0;
+  const estado = () => {
+    const [a, b] = [...dedos.values()];
+    return { d: Math.hypot(b.x - a.x, b.y - a.y), a: Math.atan2(b.y - a.y, b.x - a.x), cy: (a.y + b.y) / 2 };
+  };
+  cv.addEventListener('pointerdown', (e) => {
+    cv.setPointerCapture(e.pointerId);
+    dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    botao = e.button;
+    if (dedos.size === 2) par = estado();
+  });
+  const larga = (e) => { dedos.delete(e.pointerId); par = dedos.size === 2 ? estado() : null; };
+  cv.addEventListener('pointerup', larga);
+  cv.addEventListener('pointercancel', larga);
+  cv.addEventListener('pointerleave', larga);
+  cv.addEventListener('pointermove', (e) => {
+    const p = dedos.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (dedos.size === 1) {
+      if (botao === 2 || e.shiftKey) { v.roda(dx * 0.006); v.inclina(dy * 0.005); }
+      else v.anda(dx, dy);
+    } else if (dedos.size === 2 && par) {
+      const n = estado();
+      if (par.d > 8 && n.d > 8) v.aproxima(par.d / n.d);
+      let da = n.a - par.a;
+      if (da > Math.PI) da -= 2 * Math.PI;
+      if (da < -Math.PI) da += 2 * Math.PI;
+      v.roda(-da); v.inclina((n.cy - par.cy) * 0.004);
+      par = n;
+    }
+  });
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); v.aproxima(Math.exp(e.deltaY * 0.0012)); },
+                      { passive: false });
+}
+
+if (typeof module !== 'undefined') Object.assign(module.exports, { abreVista, ligaGestos });
+
+// ===========================================================================
+// COZER NO NAVEGADOR
+// ---------------------------------------------------------------------------
+// Cozer as 133 caixas dos percursos em terra dava 133 ficheiros de meio MB. Nao
+// e preciso: o telemovel ja tem o dem.webp e os azulejos. Coze-se a caixa do
+// percurso a entrada, com o mesmo formato e o mesmo motor. Nao se descarrega
+// nada de novo, e depois de cozida nao se constroi mais nada.
+// ===========================================================================
+
+// ---- leitor minimo de MVT (o mesmo que o lepmtiles.py faz do lado de la)
+function _varint(b, i) { let r = 0, s = 0, x;
+  do { x = b[i++]; r |= (x & 0x7f) << s; s += 7; } while (x & 0x80);
+  return [r >>> 0, i]; }
+function _salta(b, i, t) {
+  if (t === 0) return _varint(b, i)[1];
+  if (t === 2) { const [n, j] = _varint(b, i); return j + n; }
+  if (t === 5) return i + 4;
+  if (t === 1) return i + 8;
+  throw new Error('tipo ' + t);
+}
+function leMVT(buf) {
+  const b = new Uint8Array(buf), out = {};
+  let i = 0;
+  while (i < b.length) {
+    const [k, j] = _varint(b, i); i = j;
+    if ((k >> 3) === 3 && (k & 7) === 2) {
+      const [n, j2] = _varint(b, i); i = j2;
+      const c = _camada(b.subarray(i, i + n)); i += n;
+      out[c.nome] = c;
+    } else i = _salta(b, i, k & 7);
+  }
+  return out;
+}
+function _camada(b) {
+  let nome = '', ext = 4096; const chaves = [], valores = [], feats = [];
+  let i = 0;
+  while (i < b.length) {
+    const [k, j] = _varint(b, i); i = j;
+    const campo = k >> 3, tipo = k & 7;
+    if (campo === 1 && tipo === 2) { const [n, j2] = _varint(b, i); i = j2;
+      nome = new TextDecoder().decode(b.subarray(i, i + n)); i += n; }
+    else if (campo === 2 && tipo === 2) { const [n, j2] = _varint(b, i); i = j2;
+      feats.push(b.subarray(i, i + n)); i += n; }
+    else if (campo === 3 && tipo === 2) { const [n, j2] = _varint(b, i); i = j2;
+      chaves.push(new TextDecoder().decode(b.subarray(i, i + n))); i += n; }
+    else if (campo === 4 && tipo === 2) { const [n, j2] = _varint(b, i); i = j2;
+      valores.push(_valor(b.subarray(i, i + n))); i += n; }
+    else if (campo === 5) { const [v, j2] = _varint(b, i); ext = v; i = j2; }
+    else i = _salta(b, i, tipo);
+  }
+  return { nome, ext, feicoes: feats.map((f) => _feat(f, chaves, valores)) };
+}
+function _valor(b) {
+  let i = 0;
+  while (i < b.length) {
+    const [k, j] = _varint(b, i); i = j;
+    const campo = k >> 3, tipo = k & 7;
+    if (campo === 1 && tipo === 2) { const [n, j2] = _varint(b, i);
+      return new TextDecoder().decode(b.subarray(j2, j2 + n)); }
+    if ((campo === 4 || campo === 5) && tipo === 0) return _varint(b, i)[0];
+    if (campo === 6 && tipo === 0) { const v = _varint(b, i)[0]; return (v >> 1) ^ -(v & 1); }
+    if (campo === 2 && tipo === 5) return new DataView(b.buffer, b.byteOffset + i, 4).getFloat32(0, true);
+    if (campo === 3 && tipo === 1) return new DataView(b.buffer, b.byteOffset + i, 8).getFloat64(0, true);
+    i = _salta(b, i, tipo);
+  }
+  return null;
+}
+function _feat(b, chaves, valores) {
+  const props = {}; let gtipo = 0; const geom = [];
+  let i = 0;
+  while (i < b.length) {
+    const [k, j] = _varint(b, i); i = j;
+    const campo = k >> 3, tipo = k & 7;
+    if (campo === 2 && tipo === 2) {
+      const [n, j2] = _varint(b, i); i = j2; const fim = i + n; const par = [];
+      while (i < fim) { const [v, j3] = _varint(b, i); par.push(v); i = j3; }
+      for (let q = 0; q + 1 < par.length; q += 2) props[chaves[par[q]]] = valores[par[q + 1]];
+    } else if (campo === 3 && tipo === 0) { const [v, j2] = _varint(b, i); gtipo = v; i = j2; }
+    else if (campo === 4 && tipo === 2) {
+      const [n, j2] = _varint(b, i); i = j2; const fim = i + n;
+      while (i < fim) { const [v, j3] = _varint(b, i); geom.push(v); i = j3; }
+    } else i = _salta(b, i, tipo);
+  }
+  return { props, gtipo, geom };
+}
+function aneisMVT(geom) {
+  const out = []; let cur = [], x = 0, y = 0, i = 0;
+  while (i < geom.length) {
+    const cmd = geom[i++], op = cmd & 7, cnt = cmd >> 3;
+    if (op === 1) for (let k = 0; k < cnt; k++) {
+      const dx = geom[i++], dy = geom[i++];
+      x += (dx >> 1) ^ -(dx & 1); y += (dy >> 1) ^ -(dy & 1);
+      if (cur.length) out.push(cur);
+      cur = [[x, y]];
+    } else if (op === 2) for (let k = 0; k < cnt; k++) {
+      const dx = geom[i++], dy = geom[i++];
+      x += (dx >> 1) ^ -(dx & 1); y += (dy >> 1) ^ -(dy & 1);
+      cur.push([x, y]);
+    } else if (op === 7) { if (cur.length) { out.push(cur); cur = []; } }
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
+
+const TAB_G = { urbano: 1, agricola: 2, floresta: 3, matos: 4, rocha: 5, agua: 6, outro: 7 };
+const lon2x = (lo, z) => Math.floor((lo + 180) / 360 * Math.pow(2, z));
+const lat2y = (la, z) => { const r = la * Math.PI / 180;
+  return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z)); };
+const x2lon = (x, z) => x / Math.pow(2, z) * 360 - 180;
+const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+  return Math.atan(Math.sinh(n)) * 180 / Math.PI; };
+
+// scanline com regra par-impar: os buracos do poligono contam
+function pintaPol(dest, mx, my, caixa, gs, cod) {
+  const [lo0, la0, lo1, la1] = caixa;
+  const kx = mx / (lo1 - lo0), ky = my / (la1 - la0);
+  const A = [];
+  for (const anel of gs) {
+    const n = anel.length;
+    for (let i = 0; i < n; i++) {
+      const a = anel[i], b = anel[(i + 1) % n];
+      if (a[1] === b[1]) continue;
+      A.push([(a[0] - lo0) * kx, (a[1] - la0) * ky, (b[0] - lo0) * kx, (b[1] - la0) * ky]);
+    }
+  }
+  if (!A.length) return;
+  let y0 = 1e9, y1 = -1e9;
+  for (const e of A) { y0 = Math.min(y0, e[1], e[3]); y1 = Math.max(y1, e[1], e[3]); }
+  y0 = Math.max(0, Math.floor(y0)); y1 = Math.min(my - 1, Math.ceil(y1));
+  const xs = [];
+  for (let j = y0; j <= y1; j++) {
+    const yc = j + 0.5; xs.length = 0;
+    for (const e of A) {
+      if ((e[1] <= yc && e[3] > yc) || (e[3] <= yc && e[1] > yc))
+        xs.push(e[0] + (yc - e[1]) / (e[3] - e[1]) * (e[2] - e[0]));
+    }
+    if (xs.length < 2) continue;
+    xs.sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const i0 = Math.max(0, Math.ceil(xs[k] - 0.5)), i1 = Math.min(mx - 1, Math.floor(xs[k + 1] - 0.5));
+      for (let i = i0; i <= i1; i++) dest[j * mx + i] = cod;
+    }
+  }
+}
+
+// Mapa de horizonte, o mesmo que o cozedor em Python faz.
+//
+// Num telemovel isto e a parte cara -- na grelha inteira levava cinco segundos
+// aqui e uns quinze la. Mas o horizonte e um campo LISO: entre dois nos a 25 m
+// um do outro nao muda quase nada. Entao calcula-se numa grelha mais larga (o
+// 'salto') e deixa-se a placa grafica interpolar, que e o que ela faz de
+// borla. Salto 2 e quatro vezes menos trabalho e nao se ve diferenca.
+function mapaHorizonte(Z, nx, ny, px, py, ndir, alcance, salto) {
+  salto = Math.max(1, salto || 1);
+  const hx = Math.max(2, Math.ceil(nx / salto)), hy = Math.max(2, Math.ceil(ny / salto));
+  const kx = px * (nx - 1) / (hx - 1), ky = py * (ny - 1) / (hy - 1);
+  // grelha larga, tirada da fina
+  const G = new Float32Array(hx * hy);
+  for (let j = 0; j < hy; j++) {
+    const sj = Math.min(ny - 1, Math.round(j * (ny - 1) / (hy - 1)));
+    for (let i = 0; i < hx; i++)
+      G[j * hx + i] = Z[sj * nx + Math.min(nx - 1, Math.round(i * (nx - 1) / (hx - 1)))];
+  }
+  const H = new Uint8Array(ndir * hx * hy);
+  const maxang = new Float32Array(hx * hy);
+  for (let d = 0; d < ndir; d++) {
+    maxang.fill(0);
+    const az = 2 * Math.PI * d / ndir;
+    for (let dist = Math.min(kx, ky); dist < alcance; dist *= 1.4) {
+      const di = Math.round(Math.sin(az) * dist / kx);
+      const dj = Math.round(-Math.cos(az) * dist / ky);
+      for (let j = 0; j < hy; j++) {
+        const jj = Math.min(hy - 1, Math.max(0, j + dj)) * hx;
+        const j0 = j * hx;
+        for (let i = 0; i < hx; i++) {
+          const a = (G[jj + Math.min(hx - 1, Math.max(0, i + di))] - G[j0 + i]) / dist;
+          if (a > maxang[j0 + i]) maxang[j0 + i] = a;
+        }
+      }
+    }
+    const base = d * hx * hy;
+    for (let k = 0; k < hx * hy; k++)
+      H[base + k] = Math.min(180, Math.max(0, Math.round(Math.atan(maxang[k]) * 180 / Math.PI * 2)));
+  }
+  return { nx: hx, ny: hy, ndir, dados: H };
+}
+
+// ---- o cozedor
+// pedeAzulejo(z, x, y) -> Promise<ArrayBuffer|null>
+// cotaEmGraus(lon, lat) -> metros
+async function cozeCaixa(caixa, op) {
+  op = op || {};
+  const passo = op.passo || 25, celula = op.classe || 8, zsolo = op.zsolo == null ? 15 : op.zsolo;
+  const [lo0, la0, lo1, la1] = caixa;
+  const mlat = 110540, mlon = 111320 * Math.cos((la0 + la1) / 2 * Math.PI / 180);
+  const larg = (lo1 - lo0) * mlon, alt = (la1 - la0) * mlat;
+  const nx = Math.round(larg / passo) + 1, ny = Math.round(alt / passo) + 1;
+  const mx = Math.round(larg / celula), my = Math.round(alt / celula);
+  const aviso = op.aviso || (() => {});
+
+  aviso('relevo');
+  const Z = new Float32Array(nx * ny);
+  let z0 = 1e9, z1 = -1e9;
+  for (let j = 0; j < ny; j++) {
+    const la = la1 - (la1 - la0) * j / (ny - 1);
+    for (let i = 0; i < nx; i++) {
+      const lo = lo0 + (lo1 - lo0) * i / (nx - 1);
+      const z = op.cotaEmGraus(lo, la);
+      Z[j * nx + i] = z;
+      if (z < z0) z0 = z; if (z > z1) z1 = z;
+    }
+  }
+  if (!(z1 - z0 > 1)) throw new Error('a caixa nao apanhou relevo');
+
+  aviso('carta do solo');
+  const classe = new Uint8Array(mx * my);
+  const rotas = [], curvas = [], curvasAlt = [], pontos = [];
+  const x0 = lon2x(lo0, zsolo), x1 = lon2x(lo1, zsolo);
+  const y0 = lat2y(la1, zsolo), y1 = lat2y(la0, zsolo);
+  const vistos = new Set();
+  for (let tx = x0; tx <= x1; tx++) {
+    for (let ty = y0; ty <= y1; ty++) {
+      let buf;
+      try { buf = await op.pedeAzulejo(zsolo, tx, ty); } catch (e) { buf = null; }
+      if (!buf) continue;
+      let cam;
+      try { cam = leMVT(buf); } catch (e) { continue; }
+      const w = x2lon(tx, zsolo), e = x2lon(tx + 1, zsolo);
+      const n = y2lat(ty, zsolo), s = y2lat(ty + 1, zsolo);
+      const emGraus = (c, ext) => c.map(([px, py]) => [w + px / ext * (e - w), n + py / ext * (s - n)]);
+      const aplica = (nome, fn) => {
+        const c = cam[nome]; if (!c) return;
+        for (const f of c.feicoes) fn(f, c.ext);
+      };
+      aplica('solo', (f, ext) => {
+        if (f.gtipo !== 3) return;
+        const cc = f.props.c;
+        const cod = cc != null ? +cc : (TAB_G[f.props.g] || 0);
+        if (!cod) return;
+        pintaPol(classe, mx, my, caixa, aneisMVT(f.geom).map((a) => emGraus(a, ext)), cod);
+      });
+      aplica('aguaA', (f, ext) => {
+        if (f.gtipo !== 3) return;
+        pintaPol(classe, mx, my, caixa, aneisMVT(f.geom).map((a) => emGraus(a, ext)), 9);
+      });
+      const linhas = (f, ext, destino, extra) => {
+        if (f.gtipo !== 2) return;
+        for (const a of aneisMVT(f.geom)) {
+          if (a.length < 2) continue;
+          const g = emGraus(a, ext);
+          const ch = g[0][0].toFixed(5) + ',' + g[0][1].toFixed(5) + ',' + g.length;
+          if (vistos.has(ch)) continue;
+          vistos.add(ch);
+          const l = new Float32Array(g.length * 2);
+          for (let k = 0; k < g.length; k++) { l[k * 2] = g[k][0]; l[k * 2 + 1] = g[k][1]; }
+          destino.push(l);
+          if (extra) extra.push(+f.props.alt || 0, f.props.g ? 1 : 0);
+        }
+      };
+      aplica('rotas', (f, ext) => linhas(f, ext, rotas, null));
+      aplica('curvas', (f, ext) => linhas(f, ext, curvas, curvasAlt));
+      aplica('pontos', (f, ext) => {
+        if (f.gtipo !== 1) return;
+        const k = f.props.k || 'info', nm = (f.props.n || '').trim();
+        if (!nm) return;
+        for (const a of aneisMVT(f.geom)) for (const g of emGraus(a, ext)) {
+          if (g[0] < lo0 || g[0] > lo1 || g[1] < la0 || g[1] > la1) continue;
+          const ch = 'p' + g[0].toFixed(5) + g[1].toFixed(5) + nm;
+          if (vistos.has(ch)) continue;
+          vistos.add(ch);
+          pontos.push({ k, nome: nm, lo: g[0], la: g[1], alt: +f.props.alt || 0 });
+        }
+      });
+    }
+  }
+
+  // corredor sem vegetacao ao longo do tracado: bit 7, a classe fica
+  const raio = op.corredor == null ? 9 : op.corredor;
+  if (raio > 0) {
+    const kx = mx / (lo1 - lo0), ky = my / (la1 - la0);
+    const rx = Math.max(1, Math.round(raio / (larg / mx))), ry = Math.max(1, Math.round(raio / (alt / my)));
+    for (const l of (op.rotas || rotas)) {
+      const n = l.length / 2;
+      for (let i = 0; i + 1 < n; i++) {
+        const ax = l[i*2], ay = l[i*2+1], bx = l[i*2+2], by = l[i*2+3];
+        const dx = (bx - ax) * kx, dy = (by - ay) * ky;
+        const ps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 2) + 1;
+        for (let k = 0; k <= ps; k++) {
+          const u = k / ps;
+          const cx = Math.round((ax + (bx - ax) * u - lo0) * kx);
+          const cy = Math.round((ay + (by - ay) * u - la0) * ky);
+          for (let jj = Math.max(0, cy - ry); jj <= Math.min(my - 1, cy + ry); jj++)
+            for (let ii = Math.max(0, cx - rx); ii <= Math.min(mx - 1, cx + rx); ii++) {
+              const o = jj * mx + ii;
+              if ((classe[o] & 127) !== 9) classe[o] |= 128;
+            }
+        }
+      }
+    }
+  }
+
+  let hori = null;
+  if (op.horizonte !== false) {
+    aviso('sombra');
+    hori = mapaHorizonte(Z, nx, ny, larg / (nx - 1), alt / (ny - 1),
+                         op.ndir || 16, op.alcance || 4000, op.saltoHorizonte || 2);
+  }
+
+  const cotas = new Uint16Array(nx * ny);
+  for (let k = 0; k < cotas.length; k++) cotas[k] = Math.round((Z[k] - z0) / (z1 - z0) * 65535);
+  const T = { versao: 2, blocos: ['COZIDO'], lo0, la0, lo1, la1, nx, ny, passo, z0, z1,
+              mx, my, passoC: celula, cotas, classe, rotas,
+              curvas, curvasAlt: new Int16Array(curvasAlt), pontos, hori, altv: null,
+              mlat, mlon, larg, alt };
+  T.cota = (i, j) => T.z0 + T.cotas[j * T.nx + i] / 65535 * (T.z1 - T.z0);
+  T.cotaEm = (x, y) => {
+    const fx = Math.min(T.nx - 1.001, Math.max(0, x / T.larg * (T.nx - 1)));
+    const fy = Math.min(T.ny - 1.001, Math.max(0, (T.alt - y) / T.alt * (T.ny - 1)));
+    const i = fx | 0, j = fy | 0, u = fx - i, v = fy - j;
+    const a = T.cota(i, j), b = T.cota(i + 1, j), c = T.cota(i, j + 1), e = T.cota(i + 1, j + 1);
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
+  };
+  T.emM = (lo, la) => [(lo - T.lo0) * T.mlon, (la - T.la0) * T.mlat];
+  return T;
+}
+
+if (typeof module !== 'undefined') Object.assign(module.exports,
+  { cozeCaixa, leMVT, aneisMVT, mapaHorizonte });

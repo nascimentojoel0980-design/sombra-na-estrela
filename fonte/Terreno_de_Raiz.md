@@ -246,11 +246,62 @@ De 428 652 para 19 120 — vinte e duas vezes menos.
   vez, em terra**, não juntar pedaços em andamento. Duas caixas lado a lado
   carregam-se as duas inteiras e ficam as duas residentes — continua a não
   haver construção a andar, mas a memória soma.
-- **Levar isto ao mapa a sério.** O botão 3D de cada percurso continua a abrir
-  a vista antiga. Cozer uma caixa por percurso dava 133 ficheiros de meio MB;
-  o caminho certo é o navegador cozer a caixa do percurso à entrada, a partir
-  do `dem.webp` e dos azulejos que já tem — sem descarregar nada de novo.
+- ~~Levar isto ao mapa a sério.~~ **Feito** — ver secção 9.
 - **Velocidade a sério.** Os fotogramas medidos aqui (≈1,4 s) são do
   SwiftShader, que desenha por software neste contentor. **Não dizem nada**
   sobre o telemóvel. O que se mede daqui com sentido é o número de triângulos
   e o trabalho de CPU — e esses estão acima.
+
+
+---
+
+## 9. No mapa a sério: cozer no navegador
+
+Cozer as 133 caixas dos percursos em terra dava 133 ficheiros de meio MB. Não é
+preciso: o telemóvel **já tem** o `dem.webp` e os azulejos. O botão 3D de cada
+percurso passa a cozer a caixa do percurso à entrada, com o mesmo formato e o
+mesmo motor, sem descarregar nada de novo.
+
+Para isso o `fonte/terreno.js` ganhou um **leitor de MVT em JavaScript** — o
+mesmo que o `lepmtiles.py` faz do lado de lá. E a prova de que é mesmo o
+mesmo, na caixa de Manteigas:
+
+```
+DIFERENÇA nas classes: 0 células de 2 094 560
+```
+
+Zero. Byte a byte, a carta de solo cozida no navegador é a que o Python coze.
+As cotas batem até à sétima casa (é só arredondamento de float32).
+
+### Quanto custa
+
+`Rota do Javali` (11,14 km, 61% de copa), caixa de 3,0 × 4,6 km:
+
+```
+cozer (relevo + solo + sombra)   209 ms
+malha                             11 ms
+semear                           201 ms
+                                 ---
+                                 421 ms
+plantas cozidas   367 200
+a desenhar         16 871 plantas, 22 756 triângulos de chão
+```
+
+O mapa de horizonte é a parte cara. Mas é um campo **liso**: entre dois nós a
+25 m um do outro não muda quase nada. Então calcula-se numa grelha duas vezes
+mais larga e deixa-se a placa gráfica interpolar, que faz isso de borla.
+
+| salto | grelha | tempo | tamanho | horizonte médio |
+|---|---|---|---|---|
+| 1 | 442×487 | 289 ms | 3,44 MB | 12,2° |
+| 2 | 221×244 | **71 ms** | 0,86 MB | 12,1° |
+| 3 | 148×163 | 26 ms | 0,39 MB | 11,8° |
+
+Salto 2: quatro vezes menos trabalho, uma décima de grau de diferença.
+
+### A rede de segurança
+
+Se o terreno de raiz não arrancar — sem WebGL2, azulejo em falta, o que for —
+cai-se na vista antiga do MapLibre em vez de ficar sem nada. Isto não é
+teórico: apanhou um erro meu à primeira (o `terreno3D` mexia no `maplibregl`,
+que nessa via nem chega a ser carregado) e o botão continuou a funcionar.
