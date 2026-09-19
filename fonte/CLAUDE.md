@@ -11,6 +11,16 @@ rodeios. Ele testa tudo no telemóvel (Android, Chrome, DPR 2,75) e apanha
 depressa quando alguma coisa não bate certo — se ele disser que não vê
 diferença, **verifica antes de explicar porquê**. Ver a secção ARMADILHAS.
 
+**Acabar SEMPRE a resposta com o link**, mesmo que ele não peça. Ele lê no
+telemóvel e é assim que abre o que acabou de ser publicado:
+
+```
+https://nascimentojoel0980-design.github.io/sombra-na-estrela/
+```
+
+Quando a mudança for numa página à parte, o link é o dela, com `?v=` a seguir
+para a cache do telemóvel não servir a cópia de ontem.
+
 ---
 
 ## 1. Como está organizado
