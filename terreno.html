@@ -77,6 +77,8 @@
     <label class=int><input type=checkbox data-m=percursos checked><i></i></label></div>
   <div class=lin><span>Caminhos e trilhos<small>estradas, estradões, trilhos</small></span>
     <label class=int><input type=checkbox data-m=caminhos checked><i></i></label></div>
+  <div class=lin><span>Sempre à vista<small>a cor do caminho passa por cima das copas, mas não atravessa os montes</small></span>
+    <label class=int><input type=checkbox data-m=porCima checked><i></i></label></div>
   <div class=lin><span>Árvores, mato e rocha</span>
     <label class=int><input type=checkbox data-m=plantas checked><i></i></label></div>
   <div class=lin><span>Curvas de nível</span>
@@ -112,9 +114,9 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=9"></script>
+<script src="fonte/terreno.js?v=10"></script>
 <script>
-const VER = '9';
+const VER = '10';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
 let V = null, T = null, ZONAS = [], zonaAberta = null;
 

@@ -2624,7 +2624,7 @@ function route3dGeo(r) {
 // isso que faz a vista ser fluida em vez de se montar enquanto se roda.
 let TERR = null, VISTA = null, pmTopo = null;
 async function ensureTerreno() {
-  if (!TERR) TERR = loadScript('fonte/terreno.js?v=7');
+  if (!TERR) TERR = loadScript('fonte/terreno.js?v=10');
   await TERR;
 }
 function caixaDoPercurso(r) {
@@ -2765,7 +2765,8 @@ function labels3D(r, bb) {
 document.getElementById('x3').onclick = () => fecha3D();
 document.getElementById('t3h').addEventListener('input', horaTerreno);
 for (const [id, k] of [['t3c', 'curvas'], ['t3n', 'nomes'],
-                       ['t3k', 'caminhos'], ['t3a', 'plantas'], ['t3s', 'sombra']]) {
+                       ['t3k', 'caminhos'], ['t3a', 'plantas'], ['t3s', 'sombra'],
+                       ['t3v', 'porCima']]) {
   document.getElementById(id).addEventListener('click', () => {
     if (!VISTA) return;
     VISTA.mostrar[k] = !VISTA.mostrar[k];

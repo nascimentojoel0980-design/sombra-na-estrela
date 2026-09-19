@@ -412,3 +412,48 @@ Os caminhos desenham-se por baixo dos percursos e com as cores da carta 2D —
 nacional cor de tijolo, estrada amarela, estradão castanho, caminho cinzento,
 trilho vermelho. Um grupo por género, uma chamada de desenho cada, todos do
 mesmo buffer.
+
+
+---
+
+## 13. O caminho por cima das copas, mas não através dos montes
+
+Ele perguntou se a cor do caminho pode passar por cima de tudo o que esteja em
+cima dele. Pode — mas a maneira fácil está errada.
+
+Desligar o teste de profundidade põe mesmo o caminho por cima de tudo. **De
+tudo**, incluindo das serras: um trilho que se vê do outro lado do vale não é
+um mapa, é um raio-X. Fica bonito num ecrã parado e mente assim que se roda.
+
+O que se faz é separar as duas coisas, porque elas são mesmo duas:
+
+- **as copas** não devem tapar o caminho → desliga-se o teste de profundidade;
+- **o relevo** deve tapá-lo → trata-se dele à mão.
+
+As fitas passam a desenhar-se em último, sem `DEPTH_TEST`, e cada vértice anda
+do olho até si próprio a perguntar à grelha de cotas se o chão passa por cima
+da linha. Se passar, aquele bocado não se desenha (`discard`). Doze amostras
+por vértice, e as pontas não contam — senão a própria encosta onde o caminho
+assenta tapava-o.
+
+Para isso o *shader* precisa de saber o relevo, por isso a grelha de cotas
+sobe também como textura (`R16UI`, `texelFetch`, sem filtragem — é uma pergunta
+ao dado, não uma imagem).
+
+### Visto nas duas pontas
+
+Num sítio com **100% de floresta à volta do percurso**, câmara deitada a 330 m:
+com o interruptor desligado, a metade de baixo do ecrã não tem uma única linha
+— o traçado, o estradão e a estrada estão todos debaixo das copas. Ligado,
+atravessam a mancha inteira.
+
+E na parede do vale, a olhar para o cume: **acima da linha do horizonte não
+aparece nada**. O que está do outro lado continua do outro lado.
+
+(O contador de píxeis que escrevi para medir isto deu zero nos quatro casos:
+lia o `readPixels` fora do fotograma, com o canvas sem `preserveDrawingBuffer`.
+A prova são as imagens, não aquele número.)
+
+Fica no menu como **Sempre à vista**, ligado por defeito. Desligado, as fitas
+voltam a desenhar-se antes das plantas e o z-buffer trata de tudo, que é o
+comportamento honesto de quem quer ver a floresta como ela é.

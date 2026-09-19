@@ -584,14 +584,53 @@ function fitaCaminhos(T, acima) {
   return { pos: new Float32Array(V), grupos };
 }
 
+// CAMINHO SEMPRE A VISTA, MAS SO DO QUE ESTA A FRENTE DELE
+//
+// A maneira facil de por a cor do caminho por cima de tudo e desligar o teste
+// de profundidade. So que ai o caminho tambem aparece ATRAVES dos montes, e um
+// trilho que se ve do outro lado da serra nao e um mapa, e um raio-X.
+//
+// Entao desliga-se o teste (para as copas nao o taparem) e trata-se do relevo
+// a mao: cada vertice da fita anda do olho ate si proprio a ver se o chao
+// passa por cima da linha. Se passar, aquele bocado nao se desenha. Fica
+// exactamente o que se quer -- por cima das arvores, por baixo dos montes.
 const VS_ROTA = `#version 300 es
-in vec3 aP; uniform mat4 uMVP; uniform vec3 uCam; out float vD;
-void main(){ vD = length(aP - uCam); gl_Position = uMVP * vec4(aP, 1.0); }`;
+precision highp float;
+precision highp usampler2D;
+in vec3 aP;
+uniform mat4 uMVP; uniform vec3 uCam;
+uniform usampler2D uCota;
+uniform vec2 uGrelha;      // nos da grelha de cotas
+uniform vec3 uCaixaT;      // largura, altura, (z1-z0)
+uniform float uZ0T;
+uniform float uPorCima;    // 1 = trata do relevo aqui; 0 = deixa ao z-buffer
+out float vD; out float vTapado;
+float cotaEm(vec2 p) {
+  vec2 f = vec2(p.x / uCaixaT.x * (uGrelha.x - 1.0),
+                (uCaixaT.y - p.y) / uCaixaT.y * (uGrelha.y - 1.0));
+  ivec2 i = ivec2(clamp(f, vec2(0.0), uGrelha - vec2(1.0)));
+  return uZ0T + float(texelFetch(uCota, i, 0).r) / 65535.0 * uCaixaT.z;
+}
+void main() {
+  vD = length(aP - uCam);
+  vTapado = 0.0;
+  if (uPorCima > 0.5) {
+    // as pontas nao contam: a propria encosta onde o caminho assenta tapava-o
+    for (int k = 3; k <= 14; k++) {
+      vec3 q = mix(uCam, aP, float(k) / 17.0);
+      if (cotaEm(q.xy) > q.z + 14.0) { vTapado = 1.0; break; }
+    }
+  }
+  gl_Position = uMVP * vec4(aP, 1.0);
+}`;
 const FS_ROTA = `#version 300 es
-precision mediump float; in float vD;
+precision mediump float; in float vD; in float vTapado;
 uniform vec3 uFundo; uniform float uNevoa; uniform vec3 uCor;
 out vec4 oCor;
-void main(){ oCor = vec4(mix(uCor, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0); }`;
+void main(){
+  if (vTapado > 0.5) discard;          // ha monte pelo meio
+  oCor = vec4(mix(uCor, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0);
+}`;
 
 if (typeof module !== 'undefined') Object.assign(module.exports,
   { fitaRotas, fitaCaminhos, fitaLinhas, CAMINHOS, VS_ROTA, FS_ROTA });
@@ -770,11 +809,13 @@ function abreVista(canvas, T, op) {
   const FUNDO = op.fundo || [0.871, 0.851, 0.784];
   const P = {}, L = {}, A = {};
   const VERT_MODELO = 108;
-  let M, BLO, S, texClasse, texHori, bufInst, aInst, C = [], vivo = true;
+  let M, BLO, S, texClasse, texHori, texCota, bufInst, aInst, C = [], vivo = true;
   const cam = { x: T.larg / 2, y: T.alt / 2, dist: op.dist || 2400,
                 rumo: op.rumo || 0.6, incl: op.incl == null ? 0.95 : op.incl };
   const mostrar = { curvas: true, nomes: true, plantas: true,
-                    caminhos: true, percursos: true, sombra: true };
+                    caminhos: true, percursos: true, sombra: true,
+                    // o caminho por cima das copas, mas nao atraves dos montes
+                    porCima: true };
   const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0 };
   let solAlt = 30, solAz = 180, solV = [0, 0, 1];
 
@@ -818,7 +859,8 @@ function abreVista(canvas, T, op) {
   P.curva = prog(gl, VS_CURVA, FS_CURVA);
   L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa'].concat(SOMBRA_U));
   L.planta = unis(P.planta, ['uMVP','uCam','uCaixa','uZ0','uD0','uTam','uFundo','uNevoa'].concat(SOMBRA_U));
-  L.rota = unis(P.rota, ['uMVP','uCam','uFundo','uNevoa','uCor']);
+  L.rota = unis(P.rota, ['uMVP','uCam','uFundo','uNevoa','uCor',
+                         'uCota','uGrelha','uCaixaT','uZ0T','uPorCima']);
   L.curva = unis(P.curva, ['uMVP','uCam','uFundo','uNevoa']);
 
   A.chao = gl.createVertexArray(); gl.bindVertexArray(A.chao);
@@ -844,6 +886,14 @@ function abreVista(canvas, T, op) {
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
+
+  texCota = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, texCota);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R16UI, T.nx, T.ny, 0,
+                gl.RED_INTEGER, gl.UNSIGNED_SHORT, T.cotas);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
   A.planta = gl.createVertexArray(); gl.bindVertexArray(A.planta);
   vbo(P.planta, 'aV', modeloPlanta(), 4, 20, 0);
@@ -1018,25 +1068,6 @@ function abreVista(canvas, T, op) {
       gl.drawArrays(gl.LINES, 0, A.nCurva);
       gl.disable(gl.BLEND);
     }
-    // caminhos primeiro, percursos por cima: a rota e que manda no mapa
-    if (mostrar.caminhos && A.nCam) {
-      gl.useProgram(P.rota); comuns(L.rota);
-      gl.bindVertexArray(A.cam);
-      for (const g of A.grupos) {
-        if (!g.n) continue;
-        const c = CAMINHOS[g.tipo].cor;
-        gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
-        gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
-      }
-    }
-    if (mostrar.percursos && A.nRota) {
-      gl.useProgram(P.rota); comuns(L.rota);
-      const c = op.corRota || [0.83, 0.25, 0.18];
-      gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
-      gl.bindVertexArray(A.rota);
-      gl.drawArrays(gl.TRIANGLES, 0, A.nRota);
-    }
-
     let des = 0;
     if (mostrar.plantas) {
       gl.useProgram(P.planta); comuns(L.planta);
@@ -1063,6 +1094,38 @@ function abreVista(canvas, T, op) {
       }
     }
     conta.desenhadas = des;
+
+    // Por fim os caminhos e os percursos. Com 'porCima' ligado nao ha teste de
+    // profundidade -- por isso nenhuma copa os tapa -- e e o proprio shader que
+    // corta o que tem monte pelo meio. Desligado, ficam onde estavam, debaixo
+    // do que estiver a frente.
+    const desenhaFitas = () => {
+      gl.useProgram(P.rota); comuns(L.rota);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, texCota);
+      gl.uniform1i(L.rota.uCota, 2);
+      gl.uniform2f(L.rota.uGrelha, T.nx, T.ny);
+      gl.uniform3f(L.rota.uCaixaT, T.larg, T.alt, T.z1 - T.z0);
+      gl.uniform1f(L.rota.uZ0T, T.z0);
+      gl.uniform1f(L.rota.uPorCima, mostrar.porCima ? 1 : 0);
+      if (mostrar.porCima) gl.disable(gl.DEPTH_TEST);
+      if (mostrar.caminhos && A.nCam) {
+        gl.bindVertexArray(A.cam);
+        for (const g of A.grupos) {
+          if (!g.n) continue;
+          const c = CAMINHOS[g.tipo].cor;
+          gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
+          gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
+        }
+      }
+      if (mostrar.percursos && A.nRota) {
+        const c = op.corRota || [0.83, 0.25, 0.18];
+        gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
+        gl.bindVertexArray(A.rota);
+        gl.drawArrays(gl.TRIANGLES, 0, A.nRota);
+      }
+      if (mostrar.porCima) gl.enable(gl.DEPTH_TEST);
+    };
+    desenhaFitas();
     gl.bindVertexArray(null);
     poeRotulos(MVP, olho, cw, ch);
 
