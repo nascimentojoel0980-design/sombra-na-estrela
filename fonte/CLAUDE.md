@@ -388,6 +388,10 @@ contornos Microsoft + OSM do repositório privado `sne-dados-fonte`, clonado ao
 lado deste (`--fontes PASTA` para outro sítio). Recortados à **área toda** do
 mapa, em folhas de 0,3°: qualquer `--caixa` dentro de -8.27 39.89 -7.07 40.80
 coze com o mesmo comando. `fonte/scripts-dados/fontes.py` é o único leitor.
+O MDT e o CHM também vêm de lá por omissão (`lidar-derivado/mdt8/`, `chm5/`,
+folhas de 0,3°, int16/uint8 em decímetros, coladas por `fontes.raster_mosaico`);
+`--mdt`/`--chm` a ficheiros soltos continuam a valer e passam à frente. O
+`index.json` regista em `fontes` de onde veio cada coisa.
 
 Porquê: os azulejos antigos tinham 7, 8 e 9 da COS num saco só e não traziam o
 n3. O "7" da COS **não é rocha**: em Manteigas são 31,3 km², dos quais 30,6 são

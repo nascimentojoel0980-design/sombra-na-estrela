@@ -388,13 +388,27 @@ def main():
     print('cotas  %d x %d (passo %.0f m) = %s nos' % (nx, ny, a.passo, f'{nx*ny:,}'))
     print('classe %d x %d (celula %.0f m) = %s celulas' % (mx, my, a.classe, f'{mx*my:,}'))
 
+    # MDT e CHM: por omissao vem das folhas do armazem (lidar-derivado/mdt8 e
+    # chm5), para qualquer caixa da serra cozer com o mesmo comando. --mdt e
+    # --chm apontados a ficheiros soltos continuam a valer e passam a frente.
+    usa_fontes = not a.sem_fontes
+    if usa_fontes and not os.path.isdir(a.fontes):
+        sys.exit('nao encontro o sne-dados-fonte em %s (clona-o ao lado, ou --fontes PASTA; '
+                 '--sem-fontes coze com os azulejos antigos e a zona sai marcada)' % a.fontes)
+    if not a.mdt and usa_fontes and fontes.ha_raster(a.fontes, 'mdt8', a.caixa):
+        a.mdt = 'armazem:mdt8'
+    if not a.chm and usa_fontes and fontes.ha_raster(a.fontes, 'chm5', a.caixa):
+        a.chm = 'armazem:chm5'
     if a.mdt:
-        z, cx = le_mdt(a.mdt); tapa_caixa(cx, a.caixa, 'MDT')
+        if a.mdt == 'armazem:mdt8': z, cx = fontes.raster_mosaico(a.fontes, 'mdt8', a.caixa)
+        else: z, cx = le_mdt(a.mdt)
+        tapa_caixa(cx, a.caixa, 'MDT')
         # Isto aparece no menu ao pe do utilizador ("As cotas vem de ..."),
         # por isso nao leva o nome de um ficheiro do disco de quem cozeu.
         fonte = 'MDT do LiDAR' + (', com copa medida' if a.chm else '')
     else:
         z, cx = le_dem(); fonte = 'Copernicus 30 m'
+    print('MDT: %s   CHM: %s' % (a.mdt or 'Copernicus 30 m', a.chm or 'nenhum (altura modelada)'))
     lons = np.linspace(lo0, lo1, nx); lats = np.linspace(la1, la0, ny)
     Z = amostra(z, cx, lons, lats).astype(np.float32)
     z0, z1 = float(Z.min()), float(Z.max())
@@ -423,10 +437,6 @@ def main():
     C = np.zeros((my, mx), dtype=np.uint8)
     N3 = np.zeros((my, mx), dtype=np.uint16)
     n_sol = 0
-    usa_fontes = not a.sem_fontes
-    if usa_fontes and not os.path.isdir(a.fontes):
-        sys.exit('nao encontro o sne-dados-fonte em %s (clona-o ao lado, ou --fontes PASTA; '
-                 '--sem-fontes coze com os azulejos antigos e a zona sai marcada)' % a.fontes)
     if usa_fontes:
         fonte_cos = 'COS 2025 Serie 2'
         for n1, n3, gs in fontes.cos_poligonos(a.fontes, a.caixa):
@@ -567,7 +577,8 @@ def main():
     # --- altura da vegetacao medida (CHM do LiDAR)
     ALTV = None
     if a.chm:
-        zc, cc = le_mdt(a.chm)
+        if a.chm == 'armazem:chm5': zc, cc = fontes.raster_mosaico(a.fontes, 'chm5', a.caixa)
+        else: zc, cc = le_mdt(a.chm)
         tapa_caixa(cc, a.caixa, 'CHM')
         lonsC = np.linspace(lo0, lo1, mx); latsC = np.linspace(la1, la0, my)
         h = amostra(zc, cc, lonsC, latsC)
@@ -1003,7 +1014,7 @@ def main():
         'passo': a.passo, 'classe': a.classe,
         'cota': [round(z0), round(z1)],
         'fonte': fonte,
-        'fontes': {'classes': fonte_cos,
+        'fontes': {'classes': fonte_cos, 'mdt': a.mdt or 'Copernicus 30 m', 'chm': a.chm,
                    'casas': ' + '.join(sorted(fontes_casas)) or None,
                    'penedos_rejeitados': n_penedo},
         'bytes': os.path.getsize(dest),

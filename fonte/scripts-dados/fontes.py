@@ -132,3 +132,67 @@ def casas_poligonos(pasta, caixa):
                     xs = [x for x, _ in anel]; ys = [y for _, y in anel]
                     if max(xs) < lo0 or min(xs) > lo1 or max(ys) < la0 or min(ys) > la1: continue
                     yield p.get('fonte', '?'), h, [(float(x), float(y)) for x, y in anel]
+
+
+# ------------------------------------------------------------ rasters em folhas
+# Os derivados do LiDAR vivem no armazem em folhas de 0,3 graus (PLANO.md):
+#   lidar-derivado/mdt8/mdt8_<lon>_<lat>.tif   int16 decimetros, nodata -32768
+#   lidar-derivado/chm5/chm5_<lon>_<lat>.tif   uint8  decimetros, 254 = sem dado
+# Isto cola as folhas que tocam a caixa num raster so, em metros, com a mesma
+# saida de le_mdt() do cozedor: (array float32 linha 0 = norte, (l, b, r, t)).
+RASTER = {
+    'mdt8': dict(pasta='lidar-derivado/mdt8', escala=0.1, nodata=(-32768,)),
+    'chm5': dict(pasta='lidar-derivado/chm5', escala=0.1, nodata=(254, 255)),
+}
+
+
+def ha_raster(pasta, produto, caixa):
+    e = RASTER[produto]
+    return bool(folhas(os.path.join(pasta, e['pasta']), produto, 'tif', caixa))
+
+
+def raster_mosaico(pasta, produto, caixa, margem_celulas=3):
+    import rasterio
+    from rasterio.windows import from_bounds as janela
+    e = RASTER[produto]
+    fs = folhas(os.path.join(pasta, e['pasta']), produto, 'tif', caixa)
+    if not fs:
+        raise SystemExit('%s: nenhuma folha em %s toca a caixa' % (produto, pasta))
+    lo0, la0, lo1, la1 = caixa
+    # grelha alvo: a da primeira folha (todas tem de ter o mesmo passo e estar
+    # alinhadas -- e a regra do armazem, e confere-se)
+    with rasterio.open(fs[0]) as r0:
+        dx, dy = r0.transform.a, -r0.transform.e
+        ox, oy = r0.transform.c, r0.transform.f
+        assert r0.crs is None or r0.crs.to_epsg() == 4326, '%s nao esta em graus' % fs[0]
+    m = margem_celulas
+    i0 = int(np.floor((lo0 - ox) / dx)) - m; i1 = int(np.ceil((lo1 - ox) / dx)) + m
+    j0 = int(np.floor((oy - la1) / dy)) - m; j1 = int(np.ceil((oy - la0) / dy)) + m
+    W, H = i1 - i0, j1 - j0
+    Z = np.full((H, W), np.nan, np.float32)
+    l = ox + i0 * dx; t = oy - j0 * dy; r_ = ox + i1 * dx; b = oy - j1 * dy
+    for f in fs:
+        with rasterio.open(f) as r:
+            assert abs(r.transform.a - dx) < 1e-12 and abs(-r.transform.e - dy) < 1e-12, \
+                'passo diferente entre folhas: ' + f
+            # alinhamento: a origem desta folha cai numa celula inteira da grelha alvo
+            kx = (r.transform.c - ox) / dx; ky = (oy - r.transform.f) / dy
+            assert abs(kx - round(kx)) < 1e-6 and abs(ky - round(ky)) < 1e-6, \
+                'folha desalinhada: ' + f
+            # janela desta folha que cai no alvo
+            fl = max(l, r.bounds.left); fr = min(r_, r.bounds.right)
+            fb = max(b, r.bounds.bottom); ft = min(t, r.bounds.top)
+            if fr <= fl or ft <= fb: continue
+            w = janela(fl, fb, fr, ft, r.transform).round_offsets().round_lengths()
+            a = r.read(1, window=w).astype(np.float32)
+            for nd in e['nodata']: a[a == nd] = np.nan
+            if r.nodata is not None: a[a == r.nodata] = np.nan
+            ci = int(round((fl - l) / dx)); cj = int(round((t - ft) / dy))
+            hh, ww = a.shape
+            Z[cj:cj + hh, ci:ci + ww] = np.where(np.isnan(Z[cj:cj + hh, ci:ci + ww]),
+                                                 a * e['escala'], Z[cj:cj + hh, ci:ci + ww])
+    if np.isnan(Z).all():
+        raise SystemExit('%s: as folhas existem mas nao tem dados na caixa' % produto)
+    if np.isnan(Z).any():
+        Z = np.where(np.isnan(Z), np.nanmedian(Z), Z)
+    return Z, (l, b, r_, t)
