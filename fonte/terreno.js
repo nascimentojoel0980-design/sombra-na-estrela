@@ -63,6 +63,15 @@ const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).
 // Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
 // cada lado do eixo, e a sua largura desenhada. Nao e enfeite: e o que faz o
 // caminho ler-se de cima por entre as copas.
+// Os nomes vivem ao pe das cores de proposito: a legenda da pagina e GERADA
+// destas tabelas, nao escrita a mao. Uma legenda escrita a mao mente no dia em
+// que alguem mexe numa cor e se esquece dela.
+const NOME_CLASSE = {
+  0: 'sem dado', 1: 'urbano', 2: 'agrícola', 3: 'pastagem', 4: 'montado',
+  5: 'floresta', 6: 'mato rasteiro', 7: 'rocha com blocos', 8: 'parede de rocha',
+  9: 'água', 10: 'chão nu', 11: 'matagal',
+};
+
 const CAMINHOS = [
   { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.91, 0.51, 0.25] },
   { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.94, 0.74, 0.39] },
@@ -356,6 +365,9 @@ function semeiaTudo(T, op) {
 }
 
 if (typeof module !== 'undefined') module.exports = { carregaTerreno, malhaTerreno, semeiaTudo, CLASSES, BLOCO, D0 };
+// ARMADILHA 11: um const de topo NAO esta no window. A pagina precisa destas
+// tabelas para desenhar a legenda, por isso pendura-se aqui explicitamente.
+if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS };
 
 // ===========================================================================
 // O desenho. WebGL2 directo, sem biblioteca de mapa por baixo.
@@ -569,7 +581,7 @@ if (typeof module !== 'undefined') Object.assign(module.exports,
 // projectada por cima: assim uma lomba tapa mesmo o que esta do outro lado, e
 // o percurso passa por dentro do corredor que ja foi aberto na vegetacao.
 function fitaRotas(T, largura, acima) {
-  return new Float32Array(fitaLinhas(T, T.rotas, largura || 5, acima || 1.2));
+  return new Float32Array(fitaLinhas(T, T.rotas, largura || 2.5, acima || 1.2));
 }
 
 function fitaLinhas(T, linhas, largura, acima) {
@@ -981,7 +993,7 @@ function abreVista(canvas, T, op) {
   apontaBloco(0);
 
   A.rota = gl.createVertexArray(); gl.bindVertexArray(A.rota);
-  const fita = fitaRotas(T, op.larguraRota || 5, 1.2); A.nRota = fita.length / 3;
+  const fita = fitaRotas(T, op.larguraRota || 2.5, 1.2); A.nRota = fita.length / 3;
   if (A.nRota) vbo(P.rota, 'aP', fita, 3);
 
   A.cam = gl.createVertexArray(); gl.bindVertexArray(A.cam);
