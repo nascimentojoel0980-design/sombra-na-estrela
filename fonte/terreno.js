@@ -39,6 +39,12 @@ const CLASSES = {
   5: { cor: [0.77, 0.84, 0.72], tipo: 0, h: 14.0, k: 0.21, lam: 0.0430, conif: 0.62 },
   6: { cor: [0.87, 0.85, 0.74], tipo: 1, h: 1.4,  k: 1.25, lam: 0.0200 },
   7: { cor: [0.84, 0.83, 0.81], tipo: 2, h: 2.0,  k: 0.75, lam: 0.0120 },
+  // Parede e escarpa. Nao leva 'lam', logo nao nasce la nada -- e isso e o
+  // ponto: uma pedra de 2 m espetada para fora de uma parede dos Cantaros nao
+  // e rocha, e um erro. A rocha da classe 7 sao blocos POUSADOS num chao de
+  // declive suave; isto e o proprio terreno de pe. A paleta le as cores de
+  // CLASSES, por isso esta entrada tem de existir ou o chao sai preto.
+  8: { cor: [0.72, 0.70, 0.68] },                                        // parede
   9: { cor: [0.55, 0.75, 0.88] },                                        // agua
 };
 const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();

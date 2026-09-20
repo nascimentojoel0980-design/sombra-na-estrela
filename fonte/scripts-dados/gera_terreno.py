@@ -29,6 +29,7 @@ GeoTIFF do MDT LiDAR em EPSG:4326.
       --caixa -7.62 40.31 -7.49 40.42 --passo 25 --classe 8
 """
 import argparse, gzip, math, os, struct, sys
+import collections
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -44,7 +45,7 @@ DEM_CAIXA = (-8.1, 40.0, -7.15, 40.7)
 TAB_G = {'urbano': 1, 'agricola': 2, 'floresta': 3, 'matos': 4,
          'rocha': 5, 'agua': 6, 'outro': 7}
 NOME = {0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
-        5: 'floresta', 6: 'matos', 7: 'rocha', 9: 'agua'}
+        5: 'floresta', 6: 'matos', 7: 'rocha', 8: 'parede', 9: 'agua'}
 # generos de ponto que valem a pena carregar
 PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
           'parque', 'cascata', 'lagoa']
@@ -274,6 +275,10 @@ def main():
     ap.add_argument('--mdt', default=None)
     ap.add_argument('--chm', default=None,
                     help='GeoTIFF do modelo de altura do coberto (LiDAR), EPSG:4326')
+    ap.add_argument('--parede-graus', type=float, default=45.0,
+                    help='declive a partir do qual a celula e parede de rocha e nao '
+                         'leva vegetacao nenhuma. So com --mdt: num DEM de 30 m o '
+                         'declive nao encontra uma escarpa')
     ap.add_argument('--arvore-min', type=float, default=5.0,
                     help='m de copa medida a partir dos quais a celula e floresta, '
                          'diga a COS o que disser (so faz efeito com --chm)')
@@ -440,6 +445,40 @@ def main():
                 for k in range(10) if cont[k]))
         else:
             print('CHM lido, mas nem a COS nem a medicao acharam arvores na caixa')
+
+    # --- paredes e escarpas: isto nao e uma classe de ocupacao, e geometria
+    # "Rocha" sao duas coisas que o motor tratava como uma so: blocos POUSADOS
+    # num chao de declive suave, e o terreno de pe. Plantar uma pedra de 2 m --
+    # ou um arbusto -- numa parede dos Cantaros nao e rocha, e um erro que se
+    # ve. Medido antes desta regra existir, na caixa de Manteigas: 0,76 km2 de
+    # encosta acima de 50 graus estavam a levar matos, e 0,36 km2 acima de 40
+    # levavam arvores.
+    #
+    # Nao precisa de satelite: o declive chega, e sai do MDT que ja esta aqui.
+    # So com --mdt, porque num DEM de 30 m o declive nao encontra uma escarpa.
+    # E so onde o laser nao ve nada de pe: se o CHM mediu copa naquela celula,
+    # ha mesmo arvore agarrada a encosta e a medicao continua a mandar.
+    if a.mdt:
+        gy, gx = np.gradient(Z, a.passo)
+        graus = np.degrees(np.arctan(np.hypot(gx, gy)))
+        jj = (np.arange(my) / my * ny).astype(int).clip(0, ny - 1)
+        ii = (np.arange(mx) / mx * nx).astype(int).clip(0, nx - 1)
+        dec = graus[np.ix_(jj, ii)]
+        base = C & 127; corr = C & 128
+        # "Sem nada de pe" aqui quer dizer sem ARVORE, nao sem um tufo de urze
+        # agarrado a uma fenda. O limiar e o mesmo --arvore-min do resto: numa
+        # parede a 45 graus, um arbusto desenhado de pe esta tao errado como
+        # uma pedra. Arvore agarrada a encosta, essa fica -- existe mesmo.
+        nu = (ALTV < a.arvore_min * 10) if ALTV is not None else np.ones_like(base, bool)
+        parede = (dec >= a.parede_graus) & nu & (base != 9)
+        C = (np.where(parede, 8, base) | corr).astype(np.uint8)
+        ac = a.classe * a.classe / 1e6
+        print('paredes de rocha (declive >= %.0f graus, sem copa medida): %.2f km2'
+              % (a.parede_graus, parede.sum() * ac))
+        antes = collections.Counter(base[parede].ravel().tolist())
+        if antes:
+            print('   deixaram de ser:  ' + '  '.join(
+                '%s %.2f' % (NOME.get(k, k), n * ac) for k, n in antes.most_common(4)))
 
     # --- curvas de nivel (ja vem dos azulejos: nao ha nada a calcular)
     curvas = []
