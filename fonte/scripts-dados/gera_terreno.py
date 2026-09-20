@@ -282,6 +282,10 @@ def main():
     ap.add_argument('--versao', type=int, default=VERSAO_DADOS,
                     help='vai no NOME do ficheiro: e a unica coisa que a cache do '
                          'telemovel nao sabe ignorar (ver ARMADILHAS 10)')
+    ap.add_argument('--passo-horizonte', type=float, default=None,
+                    help='m entre nos do mapa de horizonte; por defeito e o --passo. '
+                         'Como o horizonte e um campo liso, 25 m chega mesmo com o '
+                         'relevo a 8, e poupa quase todo o peso do ficheiro')
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
     a = ap.parse_args()
@@ -361,7 +365,11 @@ def main():
         h = amostra(zc, cc, lonsC, latsC)
         # o CHM traz lixo: ramos soltos a 60 m e valores negativos
         h = np.clip(h, 0, 25.5)
-        ALTV = np.round(h * 10).astype(np.uint8)
+        # Degraus de 0,5 m. O motor ja sorteia +-28% de altura por planta
+        # (alt = hBase * (0.72 + 0.56*acaso)), por isso a decima de metro nunca
+        # se ve -- mas e ruido do laser que o gzip tem de engolir byte a byte.
+        # Sem isto o bloco ALTV quase duplica o ficheiro.
+        ALTV = (np.round(h * 2) * 5).clip(0, 255).astype(np.uint8)
 
         # --- a medicao manda na carta
         # A COS diz ONDE ha floresta; o CHM diz onde ha mesmo copa. Onde os dois
@@ -412,6 +420,14 @@ def main():
               % ((raso.sum() + rege.sum()) * ac, a.arvore_min,
                  raso.sum() * ac, rege.sum() * ac))
 
+        # O motor so le a altura medida onde nasce alguma coisa (as classes com
+        # lam: montado, floresta, matos, rocha). Fora disso o byte nunca e lido
+        # -- e um byte de ruido do CHM que so estorva o gzip. Zera-se.
+        usa = np.isin(C & 127, [4, 5, 6, 7])
+        ALTV = np.where(usa, ALTV, 0).astype(np.uint8)
+        print('altura guardada so onde nasce alguma coisa: %.0f%% do bloco a zero'
+              % (100.0 * (~usa).sum() / usa.size))
+
         arv = np.isin(C & 127, [4, 5])
         if arv.any():
             print('altura medida onde ha arvores: media %.1f m, maximo %.1f m'
@@ -447,12 +463,26 @@ def main():
                 pontos.append((k, n, lo, la, int(props.get('alt') or 0)))
     print('pontos com nome: %d' % len(pontos))
 
-    # --- horizonte
-    H = None
+    # --- horizonte, na sua propria grelha
+    # O horizonte e um campo LISO: entre dois nos a 25 m o angulo a que o monte
+    # tapa o ceu quase nao muda. A grelha das cotas, essa, quer ser fina -- com
+    # o MDT de 2 m da DGT queremos 8 m. Amarrar as duas custa caro e nao paga:
+    # a 8 m o bloco HORI sozinho sao 33,6 MB por comprimir, contra 3,4 a 25 m.
+    # O motor ja lia nx/ny do cabecalho do proprio bloco e amostra a textura em
+    # coordenadas normalizadas com LINEAR, por isso nada muda do lado de la.
+    H = None; hx = hy = 0
     if not a.sem_horizonte:
-        px = larg_m / (nx - 1); py = alt_m / (ny - 1)
-        H = horizonte(Z, px, py, a.dir, 4000.0)
-        print('mapa de horizonte: %d direccoes, %.2f MB' % (a.dir, H.nbytes / 1e6))
+        ph = a.passo_horizonte or a.passo
+        hx = int(round(larg_m / ph)) + 1
+        hy = int(round(alt_m / ph)) + 1
+        if (hx, hy) == (nx, ny):
+            Zh = Z
+        else:
+            Zh = amostra(z, cx, np.linspace(lo0, lo1, hx),
+                         np.linspace(la1, la0, hy)).astype(np.float32)
+        H = horizonte(Zh, larg_m / (hx - 1), alt_m / (hy - 1), a.dir, 4000.0)
+        print('mapa de horizonte: %d x %d (passo %.0f m), %d direccoes, %.2f MB'
+              % (hx, hy, ph, a.dir, H.nbytes / 1e6))
         print('   horizonte medio %.1f graus, maximo %.1f'
               % (H.mean() / 2, H.max() / 2))
 
@@ -487,7 +517,7 @@ def main():
     if ALTV is not None:
         saida += bloco('ALTV', struct.pack('<HH', mx, my) + ALTV.tobytes())
     if H is not None:
-        saida += bloco('HORI', struct.pack('<HHH', nx, ny, a.dir) + H.tobytes())
+        saida += bloco('HORI', struct.pack('<HHH', hx, hy, a.dir) + H.tobytes())
 
     ficheiro = '%s-v%d.terr.gz' % (a.nome, a.versao)
     pasta = os.path.join(RAIZ, 'dados/terreno')
