@@ -722,9 +722,12 @@ void main() {
   //
   // Fica escrito porque a licao e geral: um instrumento que nao resolve a
   // grandeza nao a mede -- devolve o seu proprio defeito com ar de numero.
-  vec3 cor = mix(vec3(0.86, 0.83, 0.78), vec3(0.72, 0.38, 0.27), teto);
+  // 20/09/2026: ele pediu "blocos laranja". Nao e cor de telha nem de parede:
+  // e um SINAL, para a casa nunca se confundir com copa nem com chao. Paredes
+  // um pouco mais escuras que o tecto so para o volume se ler.
+  vec3 cor = mix(vec3(0.88, 0.42, 0.10), vec3(0.98, 0.55, 0.14), teto);
   float lam = max(0.0, dot(n, uSol));
-  cor *= 0.56 + 0.26 * (0.5 + 0.5 * n.z) + 0.34 * lam;
+  cor *= 0.62 + 0.22 * (0.5 + 0.5 * n.z) + 0.30 * lam;
   oCor = vec4(mix(cor, uFundo, clamp(vD * uNevoa, 0.0, 0.72)), 1.0);
 }`;
 
