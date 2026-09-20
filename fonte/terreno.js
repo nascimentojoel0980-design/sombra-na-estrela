@@ -1370,7 +1370,12 @@ function abreVista(canvas, T, op) {
     // de instancias que se manda desenhar. O buffer nao se toca.
     d0: (v) => { op.d0 = Math.max(60, Math.min(900, v)); return op.d0; },
     inclina: (d) => cam.incl = trava(cam.incl + d, 0.06, 1.45),
-    aproxima: (f) => cam.dist = trava(cam.dist * f, 40, 20000),
+    // O zoom escala tambem a altura do elevador (dz): depois de subir 3 km,
+    // aproximar sem isto ia ao encontro de um alvo que ficou no ar e a altura
+    // fixa dominava tudo -- "o zoom deixou de funcionar". Assim, aproximar
+    // traz-te de volta ao chao e afastar sobe, na mesma proporcao.
+    aproxima: (f) => { const d0 = cam.dist; cam.dist = trava(cam.dist * f, 40, 20000);
+                       if (cam.dz) cam.dz *= cam.dist / d0; },
     // Subir na vertical nao e inclinar. A camara orbita um ponto do chao a
     // distancia 'dist' e inclinacao 'incl'; a altura e h = cos(incl)*dist e o
     // afastamento no plano e r = sin(incl)*dist. Inclinar muda os dois ao
@@ -1382,9 +1387,9 @@ function abreVista(canvas, T, op) {
     // dist e incl -- ou seja, mudava a camara. Ele disse que nao e isso: e
     // subir com a mesma vista. Aqui o olho E o alvo sobem juntos, portanto a
     // direccao de onde se olha nao muda uma virgula.
-    sobe: (d) => { cam.dz = trava((cam.dz || 0) + d * cam.dist * 0.12, -2000, 6000); },
+    sobe: (d) => { cam.dz = trava((cam.dz || 0) + d * cam.dist * 0.12, -3 * cam.dist, 3 * cam.dist); },
     vaiA(lo, la, dist) { const m = T.emM(lo, la); cam.x = m[0]; cam.y = m[1];
-                         if (dist) cam.dist = dist; },
+                         if (dist) cam.dist = dist; cam.dz = 0; },
     // linhas em [lon, lat] achatadas, como as do ficheiro
     destaque(linhas, cor, largura) {
       corDest = cor || [0.10, 0.36, 0.78];
