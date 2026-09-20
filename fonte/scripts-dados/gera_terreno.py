@@ -302,8 +302,10 @@ def main():
     print('classe %d x %d (celula %.0f m) = %s celulas' % (mx, my, a.classe, f'{mx*my:,}'))
 
     if a.mdt:
-        z, cx = le_mdt(a.mdt); fonte = 'MDT ' + os.path.basename(a.mdt)
-        tapa_caixa(cx, a.caixa, 'MDT')
+        z, cx = le_mdt(a.mdt); tapa_caixa(cx, a.caixa, 'MDT')
+        # Isto aparece no menu ao pe do utilizador ("As cotas vem de ..."),
+        # por isso nao leva o nome de um ficheiro do disco de quem cozeu.
+        fonte = 'MDT do LiDAR' + (', com copa medida' if a.chm else '')
     else:
         z, cx = le_dem(); fonte = 'Copernicus 30 m'
     lons = np.linspace(lo0, lo1, nx); lats = np.linspace(la1, la0, ny)

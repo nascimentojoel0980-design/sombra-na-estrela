@@ -86,8 +86,9 @@ O raster pesado **não entra no git**. Só o ficheiro cozido e o índice:
 git add dados/terreno/ && git commit -m "Manteigas com o MDT LiDAR de 2 m" && git push
 ```
 
-Apaga o `manteigas-v3.terr.gz` no mesmo commit e confirma que o `index.json`
-aponta para o v4.
+**Esta parte esta ultrapassada: a publicacao passou a ser o
+`fonte/PUBLICA_TERRENO.md`.** Em especial, NAO apagues o
+`manteigas-v3.terr.gz`: e o recuo se o v4 der problema no telemovel.
 
 ## 5. Medir se aguenta
 
