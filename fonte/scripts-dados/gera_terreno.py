@@ -46,7 +46,7 @@ TAB_G = {'urbano': 1, 'agricola': 2, 'floresta': 3, 'matos': 4,
          'rocha': 5, 'agua': 6, 'outro': 7}
 NOME = {0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
         5: 'floresta', 6: 'matos', 7: 'rocha', 8: 'parede', 9: 'agua',
-        10: 'chao nu'}
+        10: 'chao nu', 11: 'matagal'}
 # generos de ponto que valem a pena carregar
 PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
           'parque', 'cascata', 'lagoa']
@@ -280,6 +280,9 @@ def main():
                     help='GeoTIFF 0/1 em EPSG:4326: agua MEDIDA (Sentinel NDWI '
                          'cruzado com a Copernicus WAW). Ganha a tudo o resto, '
                          'porque e a unica classe que tres fontes confirmaram')
+    ap.add_argument('--matagal-min', type=float, default=1.5,
+                    help='m de copa medida a partir dos quais o mato passa de '
+                         'rasteiro a matagal (so com --chm)')
     ap.add_argument('--parede-graus', type=float, default=45.0,
                     help='declive a partir do qual a celula e parede de rocha e nao '
                          'leva vegetacao nenhuma. So com --mdt: num DEM de 30 m o '
@@ -432,10 +435,26 @@ def main():
               % ((raso.sum() + rege.sum()) * ac, a.arvore_min,
                  raso.sum() * ac, rege.sum() * ac))
 
+        # --- o mato partido em dois pela medicao
+        # Giesta e urze alta de 2 ou 3 m nao se andam como se anda num urzal
+        # rasteiro de meio metro, e ate agora eram a mesma classe, a mesma cor
+        # e a mesma altura desenhada. Nao e uma classe nova da carta: e a mesma
+        # classe 6 partida pelo que o laser mediu.
+        base = C & 127; corr = C & 128
+        alto = (h >= a.matagal_min) & (base == 6)
+        base = np.where(alto, 11, base)
+        C = (base | corr).astype(np.uint8)
+        print('mato partido pela altura medida: %.2f km2 acima de %.1f m (matagal),'
+              ' %.2f km2 abaixo (rasteiro)'
+              % (alto.sum() * ac, a.matagal_min, ((C & 127) == 6).sum() * ac))
+
         # O motor so le a altura medida onde nasce alguma coisa (as classes com
-        # lam: montado, floresta, matos, rocha). Fora disso o byte nunca e lido
+        # lam: montado, floresta, matos, matagal, rocha). Fora disso o byte nunca e lido
         # -- e um byte de ruido do CHM que so estorva o gzip. Zera-se.
-        usa = np.isin(C & 127, [4, 5, 6, 7])
+        # O 11 TEM de estar nesta lista. O motor passou a nao plantar nada onde a
+        # altura medida e zero; se se zerasse o ALTV do matagal aqui, ele
+        # desaparecia todo do desenho -- apagado por uma optimizacao de tamanho.
+        usa = np.isin(C & 127, [4, 5, 6, 7, 11])
         ALTV = np.where(usa, ALTV, 0).astype(np.uint8)
         print('altura guardada so onde nasce alguma coisa: %.0f%% do bloco a zero'
               % (100.0 * (~usa).sum() / usa.size))

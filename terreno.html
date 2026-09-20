@@ -112,7 +112,7 @@
 
   <h3>Densidade</h3>
   <div class=lin><span>Detalhe da vegetação<small id=d0txt></small></span>
-    <input class=esc id=d0 type=range min=120 max=500 step=10></div>
+    <input class=esc id=d0 type=range min=120 max=900 step=10></div>
 
   <h3>Onde estou</h3>
   <div class=lin><span>Localização ao vivo<small id=gpsTxt>desligada</small></span>
@@ -147,8 +147,10 @@
   <button data-a=menos title="afastar">−</button>
   <button data-a=esq title="rodar para a esquerda">⟲</button>
   <button data-a=dir title="rodar para a direita">⟳</button>
-  <button data-a=cima title="levantar a câmara">▲</button>
-  <button data-a=baixo title="deitar a câmara">▼</button>
+  <button data-a=cima title="inclinar para cima">▲</button>
+  <button data-a=baixo title="inclinar para baixo">▼</button>
+  <button data-a=sobe title="subir na vertical">⇧</button>
+  <button data-a=desce title="descer na vertical">⇩</button>
 </div>
 
 <div id=sol class=caixa>
@@ -253,7 +255,7 @@ for (const el of document.querySelectorAll('[data-m]')) {
   el.addEventListener('change', () => { if (V) V.mostrar[el.dataset.m] = el.checked; });
 }
 const d0 = document.getElementById('d0');
-d0.value = 250;
+d0.value = 450;
 const d0txt = () => document.getElementById('d0txt').textContent =
   'densidade cheia até ' + d0.value + ' m; mais longe vai desbastando';
 d0txt();
@@ -287,7 +289,8 @@ for (const b of document.querySelectorAll('#bts button')) {
   const faz = () => { if (!V) return;
     if (a === 'mais') V.aproxima(0.86); else if (a === 'menos') V.aproxima(1.16);
     else if (a === 'esq') V.roda(-0.09); else if (a === 'dir') V.roda(0.09);
-    else if (a === 'cima') V.inclina(-0.06); else if (a === 'baixo') V.inclina(0.06); };
+    else if (a === 'cima') V.inclina(-0.06); else if (a === 'baixo') V.inclina(0.06);
+    else if (a === 'sobe') V.sobe(1.18); else if (a === 'desce') V.sobe(1 / 1.18); };
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); faz();
     t = setInterval(faz, 90); });
   const para = () => { if (t) { clearInterval(t); t = null; } };

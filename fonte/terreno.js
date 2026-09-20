@@ -32,27 +32,32 @@
 const CLASSES = {
   //            cor do chao   o que nasce  altura  raio/altura  por m2
   0: { cor: [0.93, 0.92, 0.87] },                                        // nada
-  1: { cor: [0.90, 0.87, 0.84] },                                        // urbano
-  2: { cor: [0.94, 0.91, 0.82] },                                        // agricola
-  3: { cor: [0.91, 0.92, 0.80] },                                        // pastagens
-  4: { cor: [0.86, 0.89, 0.76], tipo: 0, h: 8.0,  k: 0.70, lam: 0.0045, conif: 0.0 },
-  5: { cor: [0.77, 0.84, 0.72], tipo: 0, h: 14.0, k: 0.21, lam: 0.0430, conif: 0.62 },
-  6: { cor: [0.87, 0.85, 0.74], tipo: 1, h: 1.4,  k: 1.25, lam: 0.0200 },
-  7: { cor: [0.84, 0.83, 0.81], tipo: 2, h: 2.0,  k: 0.75, lam: 0.0120 },
+  1: { cor: [0.84, 0.76, 0.72] },                                        // urbano
+  2: { cor: [0.93, 0.87, 0.65] },                                        // agricola
+  3: { cor: [0.84, 0.89, 0.62] },                                        // pastagens
+  4: { cor: [0.78, 0.84, 0.60], tipo: 0, h: 8.0,  k: 0.70, lam: 0.0045, conif: 0.0 },
+  5: { cor: [0.50, 0.68, 0.48], tipo: 0, h: 14.0, k: 0.21, lam: 0.0430, conif: 0.62 },
+  6: { cor: [0.80, 0.76, 0.52], tipo: 1, h: 1.4,  k: 1.25, lam: 0.0200 },
+  7: { cor: [0.76, 0.75, 0.73], tipo: 2, h: 2.0,  k: 0.75, lam: 0.0120 },
   // Parede e escarpa. Nao leva 'lam', logo nao nasce la nada -- e isso e o
   // ponto: uma pedra de 2 m espetada para fora de uma parede dos Cantaros nao
   // e rocha, e um erro. A rocha da classe 7 sao blocos POUSADOS num chao de
   // declive suave; isto e o proprio terreno de pe. A paleta le as cores de
   // CLASSES, por isso esta entrada tem de existir ou o chao sai preto.
-  8: { cor: [0.72, 0.70, 0.68] },                                        // parede
-  9: { cor: [0.55, 0.75, 0.88] },                                        // agua
+  8: { cor: [0.55, 0.53, 0.51] },                                        // parede
+  9: { cor: [0.38, 0.64, 0.85] },                                        // agua
   // Chao nu. O que o CHM diz que nao tem nada de pe e a COS ainda chama
   // floresta. Ia para pastagens, e no Sentinel de 22/07/2024 e a superficie
   // MAIS BRANCA da caixa -- mais clara que o proprio planalto de rocha. Pintar
   // isso de verde-palha era a unica coisa no mapa que a imagem desmentia a
   // olho. NDVI +0,39, abaixo do matos (+0,47) e da rocha da COS (+0,49): e o
   // menos vegetado que ha aqui. Sem 'lam': nao nasce nada.
-  10: { cor: [0.86, 0.82, 0.77] },                                       // chao nu
+  10: { cor: [0.90, 0.85, 0.76] },                                      // chao nu
+  // Matagal: o mato que o laser mede ACIMA de 1,5 m. Nao e uma classe nova da
+  // carta -- e a mesma classe 6 partida em duas pela medicao. Giesta e urze
+  // alta de 2 ou 3 m nao se andam como se anda num urzal rasteiro, e ate agora
+  // eram a mesma cor e a mesma altura desenhada.
+  11: { cor: [0.66, 0.72, 0.48], tipo: 1, h: 2.4,  k: 1.05, lam: 0.0260 },
 };
 const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
 // Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
@@ -253,9 +258,22 @@ function semeiaTudo(T, op) {
   const cy = (j) => T.alt - (j + 0.5) * (T.alt / my);
   const bloco = (x, y) => Math.min(by - 1, Math.max(0, Math.floor((T.alt - y) / BLOCO))) * bx
                         + Math.min(bx - 1, Math.max(0, Math.floor(x / BLOCO)));
+  // Onde ha altura medida, e ela que manda -- inclusive para dizer que nao ha
+  // nada. Antes o motor so olhava para o ALTV acima de 0,8 m e abaixo disso
+  // caia no valor por defeito da classe: 44% das celulas de "matos" (26,5 km2)
+  // levavam arbustos de 1,4 m onde o laser mede ZERO. Nao e uma regra nova
+  // nem uma inferencia; e parar de escrever por cima da medicao.
+  //
+  // So vale para o que e VEGETAL (tipo 0 arvore, tipo 1 arbusto). O CHM mede
+  // COPA: sobre um penedo da zero porque a pedra e chao, e apagar as pedras da
+  // classe rocha (tipo 2) por causa disso seria o erro simetrico.
+  const MED_MIN = 3;                   // 0,3 m em decimetros
+  const vegetal = (cod) => { const E = CLASSES[cod]; return E && (E.tipo === 0 || E.tipo === 1); };
+  const medido = (i, j) => (T.altv ? T.altv[j * mx + i] : -1);
   const quantos = (i, j, cod) => {
     const m = porCelula[cod];
     if (!m) return 0;
+    if (vegetal(cod)) { const q = medido(i, j); if (q >= 0 && q < MED_MIN) return 0; }
     const n = Math.floor(m);
     return n + (baralha(i, j, 11) < (m - n) ? 1 : 0);
   };
@@ -298,8 +316,10 @@ function semeiaTudo(T, op) {
       const n = quantos(i, j, cod);
       if (!n) continue;
       const E = CLASSES[cod];
-      // altura medida pelo LiDAR quando o ficheiro a traz; senao, a da classe
-      const hBase = (T.altv && T.altv[j * mx + i] > 8) ? T.altv[j * mx + i] / 10 : E.h;
+      // A altura medida manda em tudo o que e vegetal. A da classe so entra
+      // onde nao ha medicao nenhuma -- zonas cozidas sem LiDAR.
+      const q = vegetal(cod) ? medido(i, j) : -1;
+      const hBase = q >= MED_MIN ? q / 10 : E.h;
       for (let k = 0; k < n; k++) {
         const x = (i + baralha(i, j, 20 + k)) * larguraCel;
         const y = T.alt - (j + baralha(i, j, 40 + k)) * alturaCel;
@@ -1192,6 +1212,18 @@ function abreVista(canvas, T, op) {
     d0: (v) => { op.d0 = Math.max(60, Math.min(900, v)); return op.d0; },
     inclina: (d) => cam.incl = trava(cam.incl + d, 0.06, 1.45),
     aproxima: (f) => cam.dist = trava(cam.dist * f, 40, 20000),
+    // Subir na vertical nao e inclinar. A camara orbita um ponto do chao a
+    // distancia 'dist' e inclinacao 'incl'; a altura e h = cos(incl)*dist e o
+    // afastamento no plano e r = sin(incl)*dist. Inclinar muda os dois ao
+    // mesmo tempo -- afasta-te enquanto sobes. Para subir a direito mantem-se
+    // o r e mexe-se so no h, e recalculam-se dist e incl a partir dai. O
+    // ponto do chao debaixo da camara fica onde estava.
+    sobe: (f) => {
+      const h = Math.cos(cam.incl) * cam.dist, r = Math.sin(cam.incl) * cam.dist;
+      const h2 = trava(h * f, 25, 20000);
+      cam.dist = trava(Math.hypot(r, h2), 40, 20000);
+      cam.incl = trava(Math.atan2(r, h2), 0.06, 1.45);
+    },
     vaiA(lo, la, dist) { const m = T.emM(lo, la); cam.x = m[0]; cam.y = m[1];
                          if (dist) cam.dist = dist; },
     // linhas em [lon, lat] achatadas, como as do ficheiro
