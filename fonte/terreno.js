@@ -709,7 +709,11 @@ void main() {
   vec3 n = normalize(cross(dFdx(vP), dFdy(vP)));
   if (n.z < 0.0) n = -n;
   float teto = smoothstep(0.55, 0.9, n.z);
-  vec3 cor = mix(vec3(0.84, 0.80, 0.75), vec3(0.63, 0.32, 0.25), teto);
+  // Cor MEDIDA no ortofoto por cima de 400 telhados desta vila: RGB 138/120/118,
+  // um cinzento acastanhado, e so 1,15x mais claro que o chao a volta. O
+  // terracota que aqui estava era gosto meu e estava muito longe -- os telhados
+  // da serra sao lousa e telha velha, nao telha nova de aldeia do sul.
+  vec3 cor = mix(vec3(0.82, 0.79, 0.76), vec3(0.60, 0.52, 0.51), teto);
   float lam = max(0.0, dot(n, uSol));
   cor *= 0.56 + 0.26 * (0.5 + 0.5 * n.z) + 0.34 * lam;
   oCor = vec4(mix(cor, uFundo, clamp(vD * uNevoa, 0.0, 0.72)), 1.0);

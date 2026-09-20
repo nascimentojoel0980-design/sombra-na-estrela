@@ -610,6 +610,7 @@ def main():
         alt_casa = lambda m2: 3.0 if m2 < 40 else (6.5 if m2 < 200 else 8.0)
         V = []
         n_casa = 0
+        vistas = set()
         for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
             if gt != 3 or not gs: continue
             anel = gs[0]
@@ -617,7 +618,17 @@ def main():
             P = [((lo - lo0) * mlon, (la - la0) * mlat) for lo, la in anel]
             if P[0] == P[-1]: P.pop()
             if len(P) < 3: continue
-            if not all(0 <= x <= larg_m and 0 <= y <= alt_m for x, y in P): continue
+            # O varre() le azulejos INTEIROS, e um edificio a cavalo de dois
+            # aparece nos dois. Sem isto desenhavam-se 58 casas duas vezes, uma
+            # dentro da outra, a brigar pelo z-buffer.
+            ch = (round(P[0][0], 1), round(P[0][1], 1), len(P))
+            if ch in vistas: continue
+            vistas.add(ch)
+            # Pelo CENTRO, nao por todos os cantos: uma casa a cavalo da borda
+            # da caixa e uma casa, e antes caia fora inteira.
+            cxm = sum(x for x, _ in P) / len(P); cym = sum(y for _, y in P) / len(P)
+            if not (0 <= cxm <= larg_m and 0 <= cym <= alt_m): continue
+            P = [(min(larg_m, max(0.0, x)), min(alt_m, max(0.0, y))) for x, y in P]
             # area por formula do laco
             k = len(P)
             m2 = abs(sum(P[i][0] * P[(i + 1) % k][1] - P[(i + 1) % k][0] * P[i][1]
@@ -648,7 +659,8 @@ def main():
             zc0 = float(A3[:, 2].min()); zc1 = float(A3[:, 2].max())
             q[:, 2] = np.clip((A3[:, 2] - zc0) / max(1e-6, zc1 - zc0), 0, 1) * 65535
             CASA = struct.pack('<Iff', len(q), zc0, zc1) + q.tobytes()
-            print('casas: %d edificios, %s vertices, %.2f MB (altura MODELADA)'
+            print('casas: %d edificios, %s vertices, %.2f MB'
+                  ' (contorno OSM, altura MODELADA)'
                   % (n_casa, f'{len(q):,}', len(CASA) / 1e6))
         else:
             print('casas: nenhuma dentro da caixa')
