@@ -95,6 +95,7 @@
   #solTxt{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
   #estado{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;
     padding:14px 18px;text-align:center;max-width:82%}
+#versao{font-size:11px;opacity:.55;margin-left:8px;white-space:nowrap;font-variant-numeric:tabular-nums}
 </style>
 
 <canvas id=c></canvas>
@@ -176,11 +177,11 @@
 </div>
 
 <div id=sol class=caixa>
-  <span>☀</span><input id=hora type=range min=0 max=1439 step=5><span id=solTxt></span>
+  <span>☀</span><input id=hora type=range min=0 max=1439 step=5><span id=solTxt></span><span id=versao title="ficheiro de terreno carregado"></span>
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=22"></script>
+<script src="fonte/terreno.js?v=23"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -231,6 +232,9 @@ async function abreZona(z) {
   for (const el of document.querySelectorAll('[data-m]')) V.mostrar[el.dataset.m] = el.checked;
   mudaHora();
   actualizaExtras();
+  // a versao dos dados a vista, ao pe do sol: para se saber, ao olhar, que
+  // terreno e este (ha-de haver sempre a duvida "ja recarregou?")
+  document.getElementById('versao').textContent = (z.ficheiro || '').replace(/\.terr\.gz$/, '');
   mostraInfo(z, ler);
   diz('');
   const av = document.getElementById('aviso');
