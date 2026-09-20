@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ficha do trilho — Sombra na Estrela</title>
+<style>
+  :root{--fundo:#FFFDF6;--tinta:#2B2620;--fraco:#8A8270;--linha:#E8E2D2;--laranja:#D8792B;--azul:#1E5BD8}
+  body{margin:0;background:var(--fundo);color:var(--tinta);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  main{max-width:720px;margin:0 auto;padding:18px 16px 40px}
+  h1{font-size:22px;margin:6px 0 2px}
+  .sub{color:var(--fraco);font-size:13px;margin-bottom:14px}
+  .bts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
+  .bt{border:1px solid var(--linha);background:#fff;border-radius:10px;padding:9px 13px;font:600 14px system-ui;color:var(--tinta);text-decoration:none;cursor:pointer}
+  .bt.p{background:var(--laranja);border-color:var(--laranja);color:#fff}
+  .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:8px 0 16px}
+  .c{border:1px solid var(--linha);border-radius:12px;padding:10px 12px;background:#fff}
+  .c b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+  .c i{font-style:normal;color:var(--fraco);font-size:12px}
+  h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--fraco);margin:18px 0 8px}
+  svg{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--linha);border-radius:12px}
+  .barra{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:6px 0 4px}
+  .barra i{flex:1}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  td,th{padding:5px 6px;border-bottom:1px solid var(--linha);text-align:left}
+  th{color:var(--fraco);font-weight:600}
+  .nota{color:var(--fraco);font-size:12px}
+  #estado{color:var(--fraco);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <div id=estado>a ler…</div>
+  <h1 id=nome></h1>
+  <div class=sub id=sub></div>
+  <div class=bts>
+    <a class="bt p" id=mapa href="#">Mostrar no mapa 3D</a>
+    <a class=bt id=gpx href="#" download>Descarregar GPX</a>
+    <a class=bt id=kml href="#" download>Descarregar KML</a>
+    <a class=bt id=earth href="#" target=_blank>Google Earth</a>
+  </div>
+  <div class=grade id=cartoes></div>
+  <h2>Perfil de altitude</h2>
+  <div id=perfil></div>
+  <h2>Sol ao longo do dia <span class=nota id=solNota></span></h2>
+  <div id=sol></div>
+  <h2>Zonas do terreno usadas</h2>
+  <div id=zonas class=nota></div>
+</main>
+<script src="fonte/terreno.js?v=34"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const km1 = (v) => v.toFixed(v < 10 ? 1 : 0) + ' km';
+const hm = (s) => s == null ? '—' : (s / 3600 | 0) + 'h' + String(Math.round(s / 60) % 60).padStart(2, '0');
+const q = new URLSearchParams(location.search);
+
+async function carregaBD() {
+  await new Promise((ok, ko) => { const sc = document.createElement('script'); sc.src = 'dados/dados.js'; sc.onload = ok; sc.onerror = ko; document.head.appendChild(sc); });
+  return (window.__DATA__ && window.__DATA__.routes) || [];
+}
+
+async function trilho() {
+  if (q.get('meu')) {
+    let M = []; try { M = JSON.parse(localStorage.getItem('sne-meus-trilhos') || '[]'); } catch (e) {}
+    const m = M.find((x) => x.id === +q.get('meu'));
+    if (!m) throw new Error('este trilho não está neste telemóvel (os teus trilhos ficam guardados no aparelho onde os importaste)');
+    return { nome: m.nome, sub: new Date(m.quando).toLocaleDateString('pt-PT') + ' · ' + m.origem, pts: m.pts, chave: 'meu:' + m.id, meu: true };
+  }
+  if (q.get('bd')) {
+    const BD = await carregaBD();
+    const r = BD.find((x) => String(x.id) === q.get('bd'));
+    if (!r) throw new Error('percurso não encontrado');
+    const partes = (r.geoe || []).map(descodificaPoly);
+    const pts = partes.flat().map(([la, lo]) => ({ la, lo, z: null, t: null }));
+    return { nome: r.nome, sub: (r.ref ? r.ref + ' · ' : '') + 'percurso da base de dados', pts, chave: 'bd:' + r.id, r };
+  }
+  throw new Error('falta ?meu=ID ou ?bd=ID');
+}
+
+// Um objecto "terreno" feito de varias zonas: cada ponto pergunta a zona que o
+// contem. Serve para medeTrilho (cotas) e para somar sol e copa por zona.
+function compoe(zs) {
+  const lo0 = Math.min(...zs.map((z) => z.lo0)), la0 = Math.min(...zs.map((z) => z.la0));
+  const lo1 = Math.max(...zs.map((z) => z.lo1)), la1 = Math.max(...zs.map((z) => z.la1));
+  const mlon = zs[0].mlon, mlat = zs[0].mlat;
+  const C = { lo0, la0, lo1, la1, mlon, mlat, zonas: zs };
+  C.emM = (lo, la) => [(lo - lo0) * mlon, (la - la0) * mlat];
+  C.emLL = (x, y) => [lo0 + x / mlon, la0 + y / mlat];
+  C.cotaEm = (x, y) => {
+    const [lo, la] = C.emLL(x, y);
+    const z = zs.find((zz) => lo >= zz.lo0 && lo <= zz.lo1 && la >= zz.la0 && la <= zz.la1) || zs[0];
+    const m = z.emM(lo, la); return z.cotaEm(m[0], m[1]);
+  };
+  return C;
+}
+
+(async () => {
+  try {
+    const t = await trilho();
+    $('nome').textContent = t.nome; $('sub').textContent = t.sub; document.title = t.nome + ' — ficha';
+    $('mapa').href = 'terreno.html?trilho=' + t.chave;
+    // ficheiros
+    const gpx = ['<?xml version="1.0" encoding="UTF-8"?>', '<gpx version="1.1" creator="Sombra na Estrela" xmlns="http://www.topografix.com/GPX/1/1">',
+      '<trk><name>' + esc(t.nome) + '</name><trkseg>']
+      .concat(t.pts.map((p) => '<trkpt lat="' + p.la.toFixed(6) + '" lon="' + p.lo.toFixed(6) + '">' + (p.z != null ? '<ele>' + p.z + '</ele>' : '') + (p.t ? '<time>' + new Date(p.t).toISOString() + '</time>' : '') + '</trkpt>'))
+      .concat(['</trkseg></trk></gpx>']).join('\n');
+    const kml = ['<?xml version="1.0" encoding="UTF-8"?>', '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>' + esc(t.nome) + '</name>',
+      '<Style id="t"><LineStyle><color>ff2b2bd8</color><width>4</width></LineStyle></Style>',
+      '<Placemark><name>' + esc(t.nome) + '</name><styleUrl>#t</styleUrl><LineString><tessellate>1</tessellate><coordinates>',
+      t.pts.map((p) => p.lo.toFixed(6) + ',' + p.la.toFixed(6) + (p.z != null ? ',' + p.z : '')).join(' '),
+      '</coordinates></LineString></Placemark></Document></kml>'].join('\n');
+    const nomeF = t.nome.replace(/[^\w\-]+/g, '_').slice(0, 40) || 'trilho';
+    $('gpx').href = URL.createObjectURL(new Blob([gpx], { type: 'application/gpx+xml' })); $('gpx').download = nomeF + '.gpx';
+    $('kml').href = URL.createObjectURL(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' })); $('kml').download = nomeF + '.kml';
+    const meio = t.pts[Math.floor(t.pts.length / 2)];
+    $('earth').href = 'https://earth.google.com/web/@' + meio.la.toFixed(6) + ',' + meio.lo.toFixed(6) + ',0a,6000d,35y,0h,55t,0r';
+
+    // zonas que o trilho toca: finas primeiro; a geral so onde nao ha fina
+    $('estado').textContent = 'a ler as zonas do terreno…';
+    const idx = await (await fetch('dados/terreno/index.json')).json();
+    const toca = (z) => t.pts.some((p) => p.lo >= z.caixa[0] && p.lo <= z.caixa[2] && p.la >= z.caixa[1] && p.la <= z.caixa[3]);
+    const finas = idx.zonas.filter((z) => z.classe < 20 && toca(z));
+    const cobre = (p) => finas.some((z) => p.lo >= z.caixa[0] && p.lo <= z.caixa[2] && p.la >= z.caixa[1] && p.la <= z.caixa[3]);
+    const faltam = t.pts.filter((p) => !cobre(p)).length;
+    const usar = finas.slice();
+    if (faltam) for (const z of idx.zonas) if (z.classe >= 20 && toca(z)) usar.push(z);
+    if (!usar.length) throw new Error('nenhuma zona cozida cobre este trilho');
+    const Ts = [];
+    for (const z of usar) { $('estado').textContent = 'a ler ' + z.titulo + '…'; Ts.push(Object.assign(await carregaTerreno('dados/terreno/' + z.ficheiro), { zona: z })); }
+    $('zonas').innerHTML = usar.map((z) => esc(z.titulo) + ' (' + z.ficheiro.replace('.terr.gz', '') + ', células de ' + z.classe + ' m)').join(' · ')
+      + (faltam ? '<br>' + faltam + ' pontos só têm a vista geral (50 m): cotas menos finas aí.' : '');
+    const TC = compoe(Ts);
+    const e = medeTrilho(TC, t.pts, { cotaDoGPS: !!t.meu });
+    // copa e sol: por zona, somados
+    let sob = 0, den = 0; for (const Z of Ts) { const c = copaNoTrilho(Z, t.pts); if (c) { sob += c.pct / 100 * c.dentro; den += c.dentro; } }
+    const cartoes = [
+      [km1(e.km), 'distância'], ['↗ ' + e.sobe + ' m', 'subida'], ['↘ ' + e.desce + ' m', 'descida'],
+      [e.zmin + '–' + e.zmax + ' m', 'cotas (' + e.cotaDe + ')'], [hm(e.dur), 'duração'],
+      [e.vel ? e.vel.toFixed(1) + ' km/h' : '—', 'velocidade média'],
+      [den ? Math.round(100 * sob / den) + ' %' : '—', 'debaixo de árvores (copa ≥ 5 m)'],
+      [e.pontos.toLocaleString('pt-PT'), 'pontos'],
+    ];
+    $('cartoes').innerHTML = cartoes.map(([v, l]) => '<div class=c><b>' + esc(v) + '</b><i>' + esc(l) + '</i></div>').join('');
+    // perfil
+    const W = 700, H = 220, m = { l: 44, r: 10, t: 10, b: 26 };
+    const zs = e.z, ac = e.acum, n = zs.length, zmin = e.zmin - 20, zmax = e.zmax + 20;
+    const X = (i) => m.l + ac[i] / ac[n - 1] * (W - m.l - m.r), Y = (z) => m.t + (1 - (z - zmin) / (zmax - zmin)) * (H - m.t - m.b);
+    let d = 'M' + X(0) + ',' + Y(zs[0]); for (let i = 1; i < n; i++) d += 'L' + X(i).toFixed(1) + ',' + Y(zs[i]).toFixed(1);
+    let eixos = '';
+    for (let z = Math.ceil(zmin / 100) * 100; z <= zmax; z += 100) eixos += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(z) + '" y2="' + Y(z) + '" stroke="#eee"/><text x="4" y="' + (Y(z) + 4) + '" font-size="11" fill="#8A8270">' + z + '</text>';
+    for (let k = 0; k <= Math.floor(ac[n - 1] / 1000); k++) { const x = m.l + k * 1000 / ac[n - 1] * (W - m.l - m.r); eixos += '<text x="' + x + '" y="' + (H - 8) + '" font-size="11" fill="#8A8270" text-anchor="middle">' + k + '</text>'; }
+    $('perfil').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + eixos + '<path d="' + d + 'L' + X(n - 1) + ',' + Y(zmin) + 'L' + X(0) + ',' + Y(zmin) + 'Z" fill="#E8DFC8"/><path d="' + d + '" fill="none" stroke="#A0522D" stroke-width="2"/></svg>';
+    // sol por hora (sombra do monte), com a data de hoje ou a do trilho
+    const dia = t.pts.find((p) => p.t) ? new Date(t.pts.find((p) => p.t).t) : new Date();
+    let tab = '<table><tr><th>hora</th><th>ao sol (monte)</th><th></th></tr>';
+    for (let h = 6; h <= 20; h++) {
+      const qd = new Date(dia); qd.setHours(h, 0, 0, 0);
+      let ao = 0, dn = 0;
+      for (const Z of Ts) { const s = solNoTrilho(Z, t.pts, qd); if (s && s.dentro) { ao += s.pct / 100 * s.dentro; dn += s.dentro; } }
+      const pct = dn ? 100 * ao / dn : null;
+      tab += '<tr><td>' + String(h).padStart(2, '0') + ':00</td><td>' + (pct == null ? '—' : pct.toFixed(0) + ' %') + '</td><td style="width:50%"><div class=barra style="margin:0"><i style="flex:' + (pct || 0) + ';background:#E8A33D"></i><i style="flex:' + (pct == null ? 0 : 100 - pct) + ';background:#6E7A86"></i></div></td></tr>';
+    }
+    tab += '</table>';
+    let andou = '';
+    if (t.pts.some((p) => p.t)) {
+      let ao = 0, dn = 0; for (const Z of Ts) { const s = solNoTrilho(Z, t.pts, dia, { horaPropria: true }); if (s && s.dentro) { ao += s.pct / 100 * s.dentro; dn += s.dentro; } }
+      if (dn) andou = '<p><b>' + (100 * ao / dn).toFixed(0) + ' % ao sol quando o andaste</b> (cada ponto à sua hora, sombra do monte).</p>';
+    }
+    $('solNota').textContent = '(' + dia.toLocaleDateString('pt-PT') + ', sombra do monte; a copa é à parte)';
+    $('sol').innerHTML = andou + tab;
+    $('estado').textContent = '';
+  } catch (err) { $('estado').textContent = 'Não deu: ' + err.message; }
+})();
+</script>
+</body>
+</html>

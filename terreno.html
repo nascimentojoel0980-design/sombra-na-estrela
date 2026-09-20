@@ -99,6 +99,7 @@
   #estado{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;
     padding:14px 18px;text-align:center;max-width:82%}
 #versao{font-size:11px;opacity:.55;margin-left:8px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  a.ficha{color:#1E5BD8;text-decoration:none;font-weight:600}
 </style>
 
 <canvas id=c></canvas>
@@ -110,6 +111,9 @@
 </div>
 
 <div id=menu class=caixa>
+  <div class=lin><span>Troca de zona automática<small>ao aproximar entra na zona fina; ao afastar volta à geral</small></span>
+    <label class=int><input type=checkbox id=autoZona checked><i></i></label></div>
+  <div class=lin><button class=bt id=earth type=button>Abrir esta vista no Google Earth</button></div>
   <h3>O que se vê</h3>
   <div class=lin><span>Percursos<small>as rotas marcadas</small></span>
     <label class=int><input type=checkbox data-m=percursos checked><i></i></label></div>
@@ -189,7 +193,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=33"></script>
+<script src="fonte/terreno.js?v=34"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -217,12 +221,67 @@ async function arranca() {
   sel.addEventListener('change', () => abreZona(ZONAS[+sel.value]));
   const guardada = ZONAS.findIndex((z) => z.nome === localStorage.getItem('sne-zona'));
   sel.value = String(guardada >= 0 ? guardada : 0);
+  // vindo da ficha de um trilho ("mostrar no mapa") ou com um sitio pedido
+  const q = new URLSearchParams(location.search);
+  let pedido = null;
+  if (q.get('trilho')) {
+    const [fonte, id] = q.get('trilho').split(':');
+    leMeus(); await carregaBD();
+    const t = trilhoDe({ fonte, id: fonte === 'meu' ? +id : id });
+    if (t && t.centro) {
+      const z = zonaFinaEm(t.centro[0], t.centro[1]) || zonaGeralEm(t.centro[0], t.centro[1]);
+      if (z) { sel.value = String(ZONAS.indexOf(z)); }
+      pedido = () => escolhe({ fonte, id: fonte === 'meu' ? +id : id });
+    }
+  } else if (q.get('ir')) {
+    const [lo, la, d] = q.get('ir').split(',').map(Number);
+    const z = zonaFinaEm(lo, la) || zonaGeralEm(lo, la);
+    if (z) sel.value = String(ZONAS.indexOf(z));
+    pedido = () => V && V.poeCamara({ lo, la, dist: d || 1500 });
+  }
   await abreZona(ZONAS[+sel.value]);
+  if (pedido) pedido();
 }
 
-async function abreZona(z) {
+// Google Earth na mesma vista: latitude, longitude, altitude do alvo, distancia,
+// campo de visao, rumo, inclinacao. Abre a app no telemovel e o site no PC.
+$('earth').addEventListener('click', () => {
+  if (!V || !T) return;
+  const c = V.camara(); const m = T.emM(c.lo, c.la); const alt = Math.round(T.cotaEm(m[0], m[1]));
+  const rumo = ((c.rumo * 180 / Math.PI) % 360 + 360) % 360, tilt = Math.round(c.incl * 180 / Math.PI);
+  window.open('https://earth.google.com/web/@' + c.la.toFixed(6) + ',' + c.lo.toFixed(6) + ',' + alt + 'a,'
+              + Math.round(c.dist) + 'd,35y,' + rumo.toFixed(1) + 'h,' + tilt + 't,0r', '_blank');
+});
+
+// troca de zona a pedido da camara: ao aproximar entra-se na zona fina que
+// esta por baixo; ao afastar volta-se a geral; ao sair da caixa passa-se a
+// vizinha. Hysterese (6 km / 9 km) para nao andar a saltar na fronteira.
+let aTrocar = false, zonaObj = null;
+const dentroDe = (z, lo, la) => lo >= z.caixa[0] && lo <= z.caixa[2] && la >= z.caixa[1] && la <= z.caixa[3];
+const fina = (z) => z.classe < 20;
+function zonaFinaEm(lo, la) { return ZONAS.find((z) => fina(z) && dentroDe(z, lo, la)); }
+function zonaGeralEm(lo, la) { return ZONAS.find((z) => !fina(z) && dentroDe(z, lo, la)); }
+function vigiaZona() {
+  if (!V || !T || !zonaObj || aTrocar || !$('autoZona').checked) return;
+  const c = V.camara();
+  let alvo = null;
+  if (!fina(zonaObj)) {
+    if (c.dist < 6000) alvo = zonaFinaEm(c.lo, c.la);
+  } else if (c.dist > 9000) {
+    alvo = zonaGeralEm(c.lo, c.la);
+  } else if (!dentroDe(zonaObj, c.lo, c.la)) {
+    alvo = zonaFinaEm(c.lo, c.la) || zonaGeralEm(c.lo, c.la);
+  }
+  if (alvo && alvo.nome !== zonaObj.nome) {
+    aTrocar = true;
+    $('zona').value = String(ZONAS.indexOf(alvo));
+    abreZona(alvo, c).finally(() => { aTrocar = false; });
+  }
+}
+
+async function abreZona(z, camIni) {
   if (!z || zonaAberta === z.nome) return;
-  zonaAberta = z.nome;
+  zonaAberta = z.nome; zonaObj = z;
   try { localStorage.setItem('sne-zona', z.nome); } catch (e) {}
   if (V) { V.desliga(); V = null; }
   diz('a ler ' + z.titulo + '… (' + (z.bytes / 1e6).toFixed(1) + ' MB)');
@@ -236,8 +295,10 @@ async function abreZona(z) {
   V = abreVista(cv, T, { camadaRotulos: document.getElementById('rotulos'),
                          d0: +document.getElementById('d0').value || 250,
                          densidade: z.tem && z.tem.plantas === false ? 0 : 1,
-                         aoDesenhar: () => { if ((++nF & 7) === 0) mostraInfo(z, ler); } });
+                         aoDesenhar: () => { if ((++nF & 7) === 0) { mostraInfo(z, ler); vigiaZona(); } } });
   window.V = V; window.T = T;
+  if (camIni) V.poeCamara(camIni);
+  if (escolhido) { const t = trilhoDe(escolhido); if (t) { V.destaque(t.fita, t.cor, 10); mostraEstat(t); } }
   for (const el of document.querySelectorAll('[data-m]')) V.mostrar[el.dataset.m] = el.checked;
   mudaHora();
   actualizaExtras();
@@ -457,7 +518,8 @@ function pintaLista() {
       + (r.ref ? '<span class=ref>' + esc(r.ref) + '</span>' : '')
       + '<b>' + esc(r.nome || 'sem nome') + '</b>'
       + '<i>' + km1(r.km || 0) + ' · ' + (r.el ? '↗ ' + r.el.up + ' m · ' : '')
-      + (r.zmin != null ? r.zmin + '–' + r.zmax + ' m' : '') + '</i></div></div>';
+      + (r.zmin != null ? r.zmin + '–' + r.zmax + ' m' : '')
+      + ' · <a class=ficha href="trilho.html?bd=' + encodeURIComponent(r.id) + '" target=_blank>ficha ↗</a></i></div></div>';
   }
   el.innerHTML = html || '<div class=vazio>Nenhum trilho com esse nome' + (so ? ' nesta zona.' : '.') + '</div>';
   $('nTrilhos').textContent = n > 60 ? '(' + n + ', a mostrar 60)' : '(' + n + ')';
@@ -470,7 +532,7 @@ $('lista').addEventListener('click', (e) => {
   escolhe({ fonte: 'bd', id: r.id });
 });
 
-function escolhe(q) {
+async function escolhe(q) {
   const igual = escolhido && q && escolhido.fonte === q.fonte && escolhido.id === q.id;
   escolhido = igual ? null : q;
   pintaLista(); pintaMeus();
@@ -478,8 +540,16 @@ function escolhe(q) {
   if (!escolhido) { V.destaque([]); $('estat').innerHTML = ''; return; }
   const t = trilhoDe(escolhido);
   if (!t) return;
+  const dist = Math.max(700, Math.min(4000, (t.km || 3) * 320));
+  // o trilho esta noutra zona? vai-se la (fina se houver, senao a geral)
+  if (t.centro && zonaObj && !dentroDe(zonaObj, t.centro[0], t.centro[1]) && $('autoZona').checked) {
+    const z = zonaFinaEm(t.centro[0], t.centro[1]) || zonaGeralEm(t.centro[0], t.centro[1]);
+    if (z) { aTrocar = true; $('zona').value = String(ZONAS.indexOf(z));
+             try { await abreZona(z, { lo: t.centro[0], la: t.centro[1], dist }); } finally { aTrocar = false; }
+             return; }          // o abreZona volta a destacar o escolhido
+  }
   V.destaque(t.fita, t.cor, 10);
-  if (t.centro) V.vaiA(t.centro[0], t.centro[1], Math.max(700, Math.min(4000, (t.km || 3) * 320)));
+  if (t.centro) V.vaiA(t.centro[0], t.centro[1], dist);
   mostraEstat(t);
 }
 
@@ -603,6 +673,7 @@ function pintaMeus() {
       + km1(e.km || 0) + ' · ↗ ' + (e.sobe || 0) + ' m · ' + (e.zmin || 0) + '–' + (e.zmax || 0) + ' m'
       + (e.dur ? ' · ' + hm(e.dur) : '')
       + '<br>' + new Date(m.quando).toLocaleDateString('pt-PT') + ' · ' + esc(m.origem)
+      + ' · <a class=ficha href="trilho.html?meu=' + m.id + '" target=_blank>ficha ↗</a>'
       + '<br><label data-ver="' + m.id + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px">'
       + '<input type=checkbox' + (m.ver ? ' checked' : '') + '> ver no terreno</label>'
       + '</i></div><div class=x data-apaga="' + m.id + '">✕</div></div>';
@@ -622,7 +693,7 @@ $('meus').addEventListener('change', (e) => {
   m.ver = e.target.checked; guardaMeus(); actualizaExtras();
 });
 $('meus').addEventListener('click', (e) => {
-  if (e.target.closest('[data-ver]')) return;
+  if (e.target.closest('[data-ver]') || e.target.closest('a.ficha')) return;
   const ap = e.target.closest('[data-apaga]');
   if (ap) {
     const m = MEUS.find((x) => x.id === +ap.dataset.apaga);

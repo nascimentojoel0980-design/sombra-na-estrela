@@ -771,6 +771,35 @@ function suaviza(T, linhas, desvioMax, raioMax) {
   return out;
 }
 
+// Setas de sentido ao longo de um trilho: um triangulo a cada `passo` m,
+// apontado no sentido em que os pontos vem (num GPX e o sentido em que se
+// andou; num percurso, o da ficha). Assentam um pouco acima da fita.
+function setasLinhas(T, linhas, largura, acima, passo) {
+  passo = passo || 120;
+  const V = [], L2 = largura * 1.1, W2 = largura * 0.9;
+  for (const l of suaviza(T, linhas || [])) {
+    const n = l.length / 2;
+    let prox = passo * 0.5;
+    for (let i = 0; i + 1 < n; i++) {
+      const a = T.emM(l[i * 2], l[i * 2 + 1]), b = T.emM(l[i * 2 + 2], l[i * 2 + 3]);
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+      if (len < 0.01) continue;
+      while (prox <= len) {
+        const cx = a[0] + dx * prox / len, cy = a[1] + dy * prox / len;
+        const ux = dx / len, uy = dy / len;                    // sentido
+        const z = T.cotaEm(cx, cy) + acima;
+        // ponta a frente, base atras com duas abas
+        V.push(cx + ux * L2, cy + uy * L2, z,
+               cx - ux * L2 * 0.4 - uy * W2, cy - uy * L2 * 0.4 + ux * W2, z,
+               cx - ux * L2 * 0.4 + uy * W2, cy - uy * L2 * 0.4 - ux * W2, z);
+        prox += passo;
+      }
+      prox -= len;
+    }
+  }
+  return V;
+}
+
 function fitaLinhas(T, linhas, largura, acima) {
   // Uma fita continua, nao um rectangulo por troco.
   //
@@ -1285,6 +1314,15 @@ function abreVista(canvas, T, op) {
   gl.bindVertexArray(A.dest); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
   { const l2 = gl.getAttribLocation(P.rota, 'aP');
     gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
+  // setas de sentido do trilho em destaque e dos extras
+  A.seta = gl.createVertexArray(); A.bufSeta = gl.createBuffer(); A.nSeta = 0;
+  gl.bindVertexArray(A.seta); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufSeta);
+  { const l2 = gl.getAttribLocation(P.rota, 'aP');
+    gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
+  A.setaExtra = gl.createVertexArray(); A.bufSetaExtra = gl.createBuffer(); A.nSetaExtra = 0;
+  gl.bindVertexArray(A.setaExtra); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufSetaExtra);
+  { const l2 = gl.getAttribLocation(P.rota, 'aP');
+    gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
   // "ver no terreno": os trilhos do utilizador que ele quer sempre a vista,
   // cada um com a sua cor, num VAO refeito so quando a lista muda
   A.extra = gl.createVertexArray(); A.bufExtra = gl.createBuffer(); A.gruposExtra = [];
@@ -1533,6 +1571,16 @@ function abreVista(canvas, T, op) {
         gl.bindVertexArray(A.dest);
         gl.drawArrays(gl.TRIANGLES, 0, A.nDest);
       }
+      if (A.nSetaExtra) {
+        gl.uniform3f(L.rota.uCor, 1.0, 0.98, 0.92);
+        gl.bindVertexArray(A.setaExtra);
+        gl.drawArrays(gl.TRIANGLES, 0, A.nSetaExtra);
+      }
+      if (A.nSeta) {
+        gl.uniform3f(L.rota.uCor, 1.0, 0.98, 0.92);
+        gl.bindVertexArray(A.seta);
+        gl.drawArrays(gl.TRIANGLES, 0, A.nSeta);
+      }
       // a marca de "estou aqui" nunca se esconde, nem atras do monte: quem
       // esta a andar precisa de se ver, mesmo que o relevo diga que nao.
       if (A.nMarca) {
@@ -1596,7 +1644,17 @@ function abreVista(canvas, T, op) {
       A.nDest = v.length / 3;
       gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+      const st = setasLinhas(T, linhas || [], (largura || 9) * 0.5, 1.75, 120);
+      A.nSeta = st.length / 3;
+      gl.bindBuffer(gl.ARRAY_BUFFER, A.bufSeta);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(st), gl.DYNAMIC_DRAW);
     },
+    // a camara como um todo, para trocar de zona sem perder o sitio
+    camara() { const ll = T.emLL(cam.x, cam.y); return { lo: ll[0], la: ll[1], dist: cam.dist, rumo: cam.rumo, incl: cam.incl }; },
+    poeCamara(c) { if (!c) return; const m = T.emM(c.lo, c.la);
+      cam.x = trava(m[0], 0, T.larg); cam.y = trava(m[1], 0, T.alt);
+      if (c.dist) cam.dist = trava(c.dist, 40, 20000);
+      if (c.rumo != null) cam.rumo = c.rumo; if (c.incl != null) cam.incl = trava(c.incl, 0.06, 1.45); cam.dz = 0; },
     // lista de { linhas, cor, largura }: os trilhos a manter a vista
     extras(lista) {
       const V = [], grupos = [];
@@ -1608,6 +1666,11 @@ function abreVista(canvas, T, op) {
       A.gruposExtra = grupos;
       gl.bindBuffer(gl.ARRAY_BUFFER, A.bufExtra);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.DYNAMIC_DRAW);
+      const S = [];
+      for (const e of lista || []) { const st = setasLinhas(T, e.linhas || [], (e.largura || 6) * 0.5, 1.55, 120); for (let k = 0; k < st.length; k++) S.push(st[k]); }
+      A.nSetaExtra = S.length / 3;
+      gl.bindBuffer(gl.ARRAY_BUFFER, A.bufSetaExtra);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(S), gl.DYNAMIC_DRAW);
     },
     // onde estou: um anel no chao e um pau a apontar ao ceu
     marca(lo, la, raio) {
@@ -2225,4 +2288,4 @@ function copaNoTrilho(T, pts) {
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports,
-  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, copaNoTrilho, simplificaTrilho, metros });
+  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, copaNoTrilho, simplificaTrilho, metros, setasLinhas });
