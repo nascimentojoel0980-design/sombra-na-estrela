@@ -46,6 +46,13 @@ const CLASSES = {
   // CLASSES, por isso esta entrada tem de existir ou o chao sai preto.
   8: { cor: [0.72, 0.70, 0.68] },                                        // parede
   9: { cor: [0.55, 0.75, 0.88] },                                        // agua
+  // Chao nu. O que o CHM diz que nao tem nada de pe e a COS ainda chama
+  // floresta. Ia para pastagens, e no Sentinel de 22/07/2024 e a superficie
+  // MAIS BRANCA da caixa -- mais clara que o proprio planalto de rocha. Pintar
+  // isso de verde-palha era a unica coisa no mapa que a imagem desmentia a
+  // olho. NDVI +0,39, abaixo do matos (+0,47) e da rocha da COS (+0,49): e o
+  // menos vegetado que ha aqui. Sem 'lam': nao nasce nada.
+  10: { cor: [0.86, 0.82, 0.77] },                                       // chao nu
 };
 const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
 // Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de

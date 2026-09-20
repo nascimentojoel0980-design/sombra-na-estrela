@@ -45,7 +45,8 @@ DEM_CAIXA = (-8.1, 40.0, -7.15, 40.7)
 TAB_G = {'urbano': 1, 'agricola': 2, 'floresta': 3, 'matos': 4,
          'rocha': 5, 'agua': 6, 'outro': 7}
 NOME = {0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
-        5: 'floresta', 6: 'matos', 7: 'rocha', 8: 'parede', 9: 'agua'}
+        5: 'floresta', 6: 'matos', 7: 'rocha', 8: 'parede', 9: 'agua',
+        10: 'chao nu'}
 # generos de ponto que valem a pena carregar
 PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
           'parque', 'cascata', 'lagoa']
@@ -416,11 +417,11 @@ def main():
         # pinhal ardido continua a ser um pinhal. O laser responde a outra
         # pergunta, "o que esta ca hoje", e e essa que faz falta a quem anda la.
         arde = np.isin(base, [4, 5])
-        raso = (h < 0.5) & arde                    # cinza, rocha, chao nu
+        raso = (h < 0.5) & arde                    # chao nu: ver classe 10
         rege = (h >= 0.5) & (h < a.arvore_min) & arde   # regeneracao baixa
         base = np.where(subiu, 5, base)
         base = np.where(rege, 6, base)
-        base = np.where(raso, 3, base)
+        base = np.where(raso, 10, base)    # chao nu, nao pastagens: ver CLASSES
         C = (base | corr).astype(np.uint8)
         ac = a.classe * a.classe / 1e6
         print('casas protegidas da promocao: %d poligonos' % ncasa)
