@@ -32,13 +32,6 @@
   },
   {
    "tipo": "NAO VERIFICADO",
-   "nome": "floresta",
-   "passa": null,
-   "texto": "nao ha ortofoto em dados/det",
-   "valor": null
-  },
-  {
-   "tipo": "NAO VERIFICADO",
    "nome": "rocha / chao nu / mato",
    "passa": null,
    "texto": "quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); vem da COS e nao esta verificada",
@@ -48,7 +41,7 @@
    "tipo": "NAO VERIFICADO",
    "nome": "altura da vegetacao",
    "passa": null,
-   "texto": "a zona foi cozida sem --chm: as alturas sao da classe",
+   "texto": "vista geral sem plantas: a altura medida nao se guarda",
    "valor": null
   },
   {

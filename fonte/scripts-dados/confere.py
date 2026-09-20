@@ -265,7 +265,7 @@ def main():
         B.ver('cobertura do ortofoto', bool(cob > 20),
               '%.0f%% da caixa tem ortofoto de detalhe (faixa dos percursos)' % (cob / 2),
               {'pct': cob / 2})
-    else:
+    elif not grossa:
         B.nao('floresta', 'nao ha ortofoto em %s' % a.ortos)
 
     # ---- 3. rocha: declarar que nao ha como verificar
@@ -288,7 +288,10 @@ def main():
             p = float((ALTV[n] < 5).mean())
             B.cons('chao nu esta nu', bool(p > 0.98), '%.1f%% do chao nu mede < 0,5 m' % (100 * p))
     else:
-        B.nao('altura da vegetacao', 'a zona foi cozida sem --chm: as alturas sao da classe')
+        if T['pc'] >= 20:
+            B.nao('altura da vegetacao', 'vista geral sem plantas: a altura medida nao se guarda')
+        else:
+            B.nao('altura da vegetacao', 'a zona foi cozida sem --chm: as alturas sao da classe')
 
     gy, gx = np.gradient(T['Z'], T['passo'])
     dec = np.degrees(np.arctan(np.hypot(gx, gy)))
