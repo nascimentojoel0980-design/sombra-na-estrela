@@ -238,7 +238,12 @@ self.addEventListener('fetch', (e) => {
   const semprePelaRede = u.pathname.endsWith('/') || u.pathname.endsWith('index.html')
     || u.pathname.endsWith('manifest.json') || u.pathname.endsWith('sw.js')
     || /terreno\.html$/.test(u.pathname) || /\/fonte\//.test(u.pathname)
-    || /\/dados\/terreno\//.test(u.pathname)
+    // Do terreno, so o indice: o nome dele nunca muda, por isso tem de vir
+    // sempre da rede. Os .terr.gz levam a versao NO NOME (manteigas-v4...),
+    // portanto caminho novo = ficheiro novo, e podem ficar em cache. Sem esta
+    // distincao o telemovel descarregava 8,3 MB de cada vez que abrias a
+    // pagina -- e no monte isso e a diferenca entre ter mapa e nao ter.
+    || /\/dados\/terreno\/[^/]*\.json$/.test(u.pathname)
     || /\/dados\/(rede|osm)\.json$/.test(u.pathname);
   if (semprePelaRede) {
     e.respondWith(fetch(req, { cache: 'no-store' }).then((r) => {
