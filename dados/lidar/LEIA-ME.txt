@@ -5,8 +5,32 @@ chm_5m.tif     altura do coberto (m, float32) a 5 m = media de (MDS-2m - MDT-2m)
 agua.tif       0/1 uint8 a 5 m: INTERSECCAO de Sentinel-2 NDWI>0 (22/07/2024) com Copernicus WAW 2018 classes 1 e 2
 ndvi2024.tif   uint8 a 5 m: NDVI de S2B_29TPE_20240722_0_L2A;  NDVI = valor/127.5 - 1  (255 = nodata)
 ndvi2021.tif   uint8 a 5 m: NDVI de S2B_29TPE_20210728_1_L2A;  NDVI = valor/127.5 - 1  (255 = nodata)
-painel_manteigas.png   cor verdadeira 2024 | CHM | classes finais, lado a lado
+painel_manteigas.jpg   cor verdadeira 2024 | CHM | classes finais, lado a lado
 
 Sentinel: reflectancia = DN/10000 (os COG do Element84 ja vem sem o BOA_ADD_OFFSET -- medido, ver O_Satelite_Nao_Separa_Rocha.md).
 Amostragem para a grelha de 5 m: vizinho mais proximo (Sentinel 10 m, WAW 10 m). mdt_8m/chm_5m: media (prepara_lidar.py --para-repo).
 agua.tif, ndvi*.tif e a mesma transformacao e tamanho que chm_5m.tif (verificado ao escrever).
+
+
+PROVA CEGA -- ha duas, e a CANONICA e a do WMS (20/09/2026)
+
+prova_cega_wms.jpg + prova_cega_wms_chave.csv   <- CANONICA
+   fonte/scripts-dados/prova_cega_wms.py. 20 celulas AO ACASO por classe (8 classes, 160
+   quadrados), semente 20260920, ortofoto DGT 2025 pelo WMS a 25 cm, quadrado de 60 m
+   centrado na celula. SEM filtro de pureza: a celula e a que saiu, esteja no miolo da
+   mancha ou na borda. Precisa de rede (a DGT esta bloqueada no ambiente da nuvem; corre-se
+   no PC). Corredores de caminho (bit 7) ficam de fora da amostra.
+   E a canonica porque: 25 cm mostra o que 0,62 m nao mostra, e porque nao filtrar torna a
+   pergunta igual a realidade -- "a celula que o mapa pinta de X e X?", bordas incluidas.
+   Exigir pureza tornava a pergunta mais facil do que o terreno.
+
+prova_cega.jpg + prova_cega_chave.csv   <- variante "mancha pura", NAO e a canonica
+   fonte/scripts-dados/prova_cega.py. 6 por classe (48 quadrados), ortofoto de 0,62 m que ja
+   esta em dados/det, e exige que a classe domine 70% da janela. Responde a outra pergunta:
+   "quando o mapa diz X numa mancha inteira de 60 m, e X?" -- mede a classe sem o erro de
+   posicao. Fica, porque a pergunta tambem interessa; nao se confunde com a de cima.
+
+Como se usa qualquer das duas: olha-se para a folha SEM abrir a chave, escreve-se o que se ve
+em cada numero, e SO DEPOIS se abre o CSV e se conta. Quem ve a etiqueta primeiro concorda com
+ela sem querer, e o numero deixa de valer nada. A pontuacao e sobre os numeros que se olhou; nao
+se escolhem quadrados a posteriori.
