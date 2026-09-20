@@ -709,11 +709,17 @@ void main() {
   vec3 n = normalize(cross(dFdx(vP), dFdy(vP)));
   if (n.z < 0.0) n = -n;
   float teto = smoothstep(0.55, 0.9, n.z);
-  // Cor MEDIDA no ortofoto por cima de 400 telhados desta vila: RGB 138/120/118,
-  // um cinzento acastanhado, e so 1,15x mais claro que o chao a volta. O
-  // terracota que aqui estava era gosto meu e estava muito longe -- os telhados
-  // da serra sao lousa e telha velha, nao telha nova de aldeia do sul.
-  vec3 cor = mix(vec3(0.82, 0.79, 0.76), vec3(0.60, 0.52, 0.51), teto);
+  // Telha, e nao cinzento. Isto ja esteve cinzento durante uma versao porque
+  // eu "medi" 400 telhados no nosso ortofoto e deu RGB 138/120/118. O que medi
+  // foi a DESSATURACAO DO FICHEIRO -- aquele ortofoto tem saturacao media de
+  // 0,057, esta praticamente a cinzento -- e nao a cor dos telhados. Uma
+  // fotografia aerea de Manteigas mostra telha laranja em toda a vila, e o
+  // proprio ortofoto confirma a DIRECCAO (o telhado e 12% mais vermelho que o
+  // chao a volta); o que ele nao consegue dar e quanto.
+  //
+  // Fica escrito porque a licao e geral: um instrumento que nao resolve a
+  // grandeza nao a mede -- devolve o seu proprio defeito com ar de numero.
+  vec3 cor = mix(vec3(0.86, 0.83, 0.78), vec3(0.72, 0.38, 0.27), teto);
   float lam = max(0.0, dot(n, uSol));
   cor *= 0.56 + 0.26 * (0.5 + 0.5 * n.z) + 0.34 * lam;
   oCor = vec4(mix(cor, uFundo, clamp(vD * uNevoa, 0.0, 0.72)), 1.0);
