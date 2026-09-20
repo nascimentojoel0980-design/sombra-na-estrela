@@ -189,7 +189,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=27"></script>
+<script src="fonte/terreno.js?v=28"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -310,7 +310,10 @@ const d0 = document.getElementById('d0');
   h += '</div><div class=g><div class=t>Caminhos e água</div>';
   for (const c of L.CAMINHOS) {
     const nome = c.n === 'estradao' ? 'estradão' : c.n;
-    h += '<div class=it><i class=ln style="background:' + hex(c.cor)
+    const fundo = c.eixo
+      ? 'linear-gradient(' + hex(c.cor) + ' 40%, #f4f0db 40%, #f4f0db 60%, ' + hex(c.cor) + ' 60%)'
+      : hex(c.cor);
+    h += '<div class=it><i class=ln style="background:' + fundo
        + ';width:' + Math.round(6 + c.larg * 2.2) + 'px"></i>'
        + esc(nome) + '<span class=md>' + c.larg.toFixed(1).replace('.', ',') + ' m</span></div>';
   }

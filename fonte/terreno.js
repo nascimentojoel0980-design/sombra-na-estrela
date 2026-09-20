@@ -79,8 +79,10 @@ const CAMINHOS = [
   // 20/09/2026: cores mais afastadas umas das outras, a pedido -- laranja
   // forte, amarelo, castanho, cinzento claro, vermelho escuro; as larguras
   // ja eram diferentes (9 / 7 / 4,5 / 3 / 2,2 m)
-  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.88, 0.36, 0.10] },
-  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.97, 0.80, 0.30] },
+  // Estradas alcatroadas: cinzento escuro com o eixo pintado por cima
+  // (eixo: true desenha uma segunda fita fina, clara, ao centro).
+  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.27, 0.27, 0.29], eixo: true },
+  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.36, 0.36, 0.38], eixo: true },
   { n: 'estradao', limpo:  6, larg: 4.5, cor: [0.50, 0.34, 0.16] },
   { n: 'caminho',  limpo:  5, larg: 3.0, cor: [0.78, 0.76, 0.72] },
   { n: 'trilho',   limpo:  4, larg: 2.2, cor: [0.58, 0.14, 0.12] },
@@ -108,6 +110,7 @@ const PONTOS_LEGENDA = [
   { g: 'agua',       nome: 'nascente, lagoa, cascata', cor: '#2A5A79' },
   { g: 'outro',      nome: 'comer, WC, estacionamento', cor: '#7A7268' },
 ];
+const COR_EIXO = [0.96, 0.94, 0.86];   // a risca do meio das estradas
 const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
 
@@ -705,11 +708,20 @@ function fitaCaminhos(T, acima) {
     (porTipo[t] || porTipo[3]).push(T.caminhos[i]);
   }
   const V = [], grupos = [];
+  const alt = acima == null ? 0.9 : acima;
   for (let t = 0; t < CAMINHOS.length; t++) {
     const ini = V.length / 3;
-    const f = fitaLinhas(T, porTipo[t], CAMINHOS[t].larg, acima == null ? 0.9 : acima);
+    const f = fitaLinhas(T, porTipo[t], CAMINHOS[t].larg, alt);
     for (let k = 0; k < f.length; k++) V.push(f[k]);
     grupos.push({ tipo: t, ini, n: V.length / 3 - ini });
+  }
+  // o eixo das estradas: uma fita de 0,5 m um nadinha acima da fita larga
+  for (let t = 0; t < CAMINHOS.length; t++) {
+    if (!CAMINHOS[t].eixo) continue;
+    const ini = V.length / 3;
+    const f = fitaLinhas(T, porTipo[t], 0.5, alt + 0.08);
+    for (let k = 0; k < f.length; k++) V.push(f[k]);
+    grupos.push({ tipo: t, eixo: true, ini, n: V.length / 3 - ini });
   }
   return { pos: new Float32Array(V), grupos };
 }
@@ -1331,7 +1343,7 @@ function abreVista(canvas, T, op) {
         gl.bindVertexArray(A.cam);
         for (const g of A.grupos) {
           if (!g.n) continue;
-          const c = CAMINHOS[g.tipo].cor;
+          const c = g.eixo ? COR_EIXO : CAMINHOS[g.tipo].cor;
           gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
           gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
         }
