@@ -170,6 +170,18 @@ async function carregaTerreno(url) {
 
   // Altura da vegetacao medida por LiDAR, quando existe. Sem ela, cada classe
   // usa a sua altura por defeito e a legenda tem de dizer "modelado".
+  // Casas: contorno real do OSM, altura MODELADA (ver o cozedor). Vem ja
+  // triangulado de la -- paredes e telhado -- porque triangular poligonos
+  // em L no telemovel era trabalho por fotograma, que e o que este motor
+  // nao faz.
+  T.casas = null; T.nCasas = 0;
+  if (B.CASA) {
+    const q = B.CASA.o;
+    T.nCasas = d.getUint32(q, true);
+    T.casaZ0 = d.getFloat32(q + 4, true); T.casaZ1 = d.getFloat32(q + 8, true);
+    T.casas = new Uint16Array(buf.slice(q + 12, q + 12 + T.nCasas * 6));
+  }
+
   T.altv = null;
   if (B.ALTV) {
     const q = B.ALTV.o;
@@ -678,6 +690,31 @@ function fitaCaminhos(T, acima) {
 // a mao: cada vertice da fita anda do olho ate si proprio a ver se o chao
 // passa por cima da linha. Se passar, aquele bocado nao se desenha. Fica
 // exactamente o que se quer -- por cima das arvores, por baixo dos montes.
+// As casas: um prisma por edificio, cor por orientacao da face. A normal sai
+// das derivadas do fragmento -- nao ha atributo de normal, e por isso o buffer
+// e so posicao e cabe em 6 bytes por vertice.
+const VS_CASA = `#version 300 es
+precision highp float;
+in vec3 aP;
+uniform mat4 uMVP; uniform vec3 uCam;
+out vec3 vP; out float vD;
+void main() { vP = aP; vD = length(aP - uCam); gl_Position = uMVP * vec4(aP, 1.0); }`;
+
+const FS_CASA = `#version 300 es
+precision highp float;
+in vec3 vP; in float vD;
+uniform vec3 uSol; uniform vec3 uFundo; uniform float uNevoa;
+out vec4 oCor;
+void main() {
+  vec3 n = normalize(cross(dFdx(vP), dFdy(vP)));
+  if (n.z < 0.0) n = -n;
+  float teto = smoothstep(0.55, 0.9, n.z);
+  vec3 cor = mix(vec3(0.84, 0.80, 0.75), vec3(0.63, 0.32, 0.25), teto);
+  float lam = max(0.0, dot(n, uSol));
+  cor *= 0.56 + 0.26 * (0.5 + 0.5 * n.z) + 0.34 * lam;
+  oCor = vec4(mix(cor, uFundo, clamp(vD * uNevoa, 0.0, 0.72)), 1.0);
+}`;
+
 const VS_ROTA = `#version 300 es
 precision highp float;
 precision highp usampler2D;
@@ -942,11 +979,27 @@ function abreVista(canvas, T, op) {
   P.planta = prog(gl, VS_PLANTA, FS_PLANTA);
   P.rota = prog(gl, VS_ROTA, FS_ROTA);
   P.curva = prog(gl, VS_CURVA, FS_CURVA);
+  P.casa = T.casas ? prog(gl, VS_CASA, FS_CASA) : null;
   L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa'].concat(SOMBRA_U));
   L.planta = unis(P.planta, ['uMVP','uCam','uCaixa','uZ0','uD0','uTam','uFundo','uNevoa'].concat(SOMBRA_U));
   L.rota = unis(P.rota, ['uMVP','uCam','uFundo','uNevoa','uCor',
                          'uCota','uGrelha','uCaixaT','uZ0T','uPorCima']);
   L.curva = unis(P.curva, ['uMVP','uCam','uFundo','uNevoa']);
+  if (P.casa) L.casa = unis(P.casa, ['uMVP','uCam','uSol','uFundo','uNevoa']);
+
+  if (P.casa) {
+    // os uint16 do ficheiro voltam a metros aqui, uma vez so
+    const u = T.casas, f = new Float32Array(T.nCasas * 3);
+    const kx = T.larg / 65535, ky = T.alt / 65535;
+    const kz = (T.casaZ1 - T.casaZ0) / 65535;
+    for (let i = 0; i < T.nCasas; i++) {
+      f[i*3] = u[i*3] * kx; f[i*3+1] = u[i*3+1] * ky;
+      f[i*3+2] = T.casaZ0 + u[i*3+2] * kz;
+    }
+    A.casa = gl.createVertexArray(); gl.bindVertexArray(A.casa);
+    vbo(P.casa, 'aP', f, 3);
+    A.nCasa = T.nCasas;
+  }
 
   A.chao = gl.createVertexArray(); gl.bindVertexArray(A.chao);
   vbo(P.chao, 'aP', M.pos, 3); vbo(P.chao, 'aN', M.nor, 3);
@@ -1164,6 +1217,15 @@ function abreVista(canvas, T, op) {
       gl.drawArrays(gl.LINES, 0, A.nCurva);
       gl.disable(gl.BLEND);
     }
+    // As casas antes das plantas: sao opacas e poucas, e preenchem o z-buffer
+    // cedo, o que poupa as arvores que ficam atras delas.
+    if (P.casa && mostrar.casas !== false) {
+      gl.useProgram(P.casa); comuns(L.casa);
+      gl.uniform3f(L.casa.uSol, solV[0], solV[1], solV[2]);
+      gl.bindVertexArray(A.casa);
+      gl.drawArrays(gl.TRIANGLES, 0, A.nCasa);
+    }
+
     let des = 0;
     if (mostrar.plantas) {
       gl.useProgram(P.planta); comuns(L.planta);

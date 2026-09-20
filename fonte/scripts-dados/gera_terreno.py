@@ -153,6 +153,40 @@ def sem_repetir(it):
 
 
 # ----------------------------------------------------------- rasterizar
+def orelhas(P):
+    """Triangula um poligono simples por corte de orelhas.
+
+    Um leque a partir do centroide chegava para rectangulos e mentia em todos os
+    L -- e meia Manteigas sao Ls. Isto nao e rapido, mas corre uma vez aqui e
+    nunca no telemovel, que e o padrao de todo este cozedor.
+    """
+    n = len(P)
+    if n < 3: return []
+    # area assinada: garantir sentido anti-horario
+    a2 = sum(P[i][0] * P[(i + 1) % n][1] - P[(i + 1) % n][0] * P[i][1] for i in range(n))
+    idx = list(range(n)) if a2 > 0 else list(range(n - 1, -1, -1))
+    def cruz(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    def dentro(p, a, b, c):
+        d1, d2, d3 = cruz(a, b, p), cruz(b, c, p), cruz(c, a, p)
+        return not ((d1 < 0 or d2 < 0 or d3 < 0) and (d1 > 0 or d2 > 0 or d3 > 0))
+    tri, guarda = [], 0
+    while len(idx) > 3 and guarda < 4 * n:
+        guarda += 1
+        for k in range(len(idx)):
+            i0, i1, i2 = idx[k - 1], idx[k], idx[(k + 1) % len(idx)]
+            a, b, c = P[i0], P[i1], P[i2]
+            if cruz(a, b, c) <= 0: continue                 # reflexo, nao e orelha
+            if any(dentro(P[j], a, b, c) for j in idx if j not in (i0, i1, i2)):
+                continue
+            tri.append((i0, i1, i2)); idx.pop(k); guarda = 0
+            break
+        else:
+            break
+    if len(idx) == 3: tri.append(tuple(idx))
+    return tri
+
+
 def dilata(m, n):
     """alarga a mascara n celulas para cada lado (sem scipy: so np.maximum)"""
     if n <= 0: return m
@@ -301,6 +335,7 @@ def main():
                          'relevo a 8, e poupa quase todo o peso do ficheiro')
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
+    ap.add_argument('--sem-casas', action='store_true')
     a = ap.parse_args()
 
     lo0, la0, lo1, la1 = a.caixa
@@ -409,11 +444,12 @@ def main():
         for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
             if gt != 3: continue
             pinta(CASA, gs, 1, a.caixa, mx, my); ncasa += 1
-        CASA = dilata(CASA, int(math.ceil(12.0 / a.classe)))   # beirados e quintal
+        CASA_LARGA = dilata(CASA, int(math.ceil(12.0 / a.classe)))  # beirados e quintal
+        CASA_JUSTA = dilata(CASA, 1)                                # so o edificio
 
         base = C & 127
         corr = C & 128
-        livre = (CASA == 0) & ~np.isin(base, [1, 2])
+        livre = (CASA_LARGA == 0) & ~np.isin(base, [1, 2])
         subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 3, 6, 7])
         # e ao contrario: a COS diz floresta e o laser nao encontra nada de pe.
         # Nao e engano da COS -- ela responde a "que povoamento e este", e um
@@ -454,6 +490,17 @@ def main():
         # O 11 TEM de estar nesta lista. O motor passou a nao plantar nada onde a
         # altura medida e zero; se se zerasse o ALTV do matagal aqui, ele
         # desaparecia todo do desenho -- apagado por uma optimizacao de tamanho.
+        # O CHM mede COPA, e um telhado de 6 m e, para o laser, 6 m de coisa
+        # acima do chao. Ate aqui as casas so estavam protegidas da PROMOCAO a
+        # floresta; a ALTURA continuava a vir do telhado. Numa celula de matos
+        # isso dava um arbusto de 6 m em cima da casa -- e desde que a medicao
+        # passou a mandar, ficou pior, porque a altura do telhado passou a ser
+        # respeitada. Zera-se o ALTV sobre o edificio: la nao ha planta nenhuma,
+        # ha uma casa, e a casa desenha-se como casa.
+        ALTV = np.where(CASA_JUSTA > 0, 0, ALTV).astype(np.uint8)
+        print('altura zerada sobre %d celulas de casa (o laser via telhados como copa)'
+              % int((CASA_JUSTA > 0).sum()))
+
         usa = np.isin(C & 127, [4, 5, 6, 7, 11])
         ALTV = np.where(usa, ALTV, 0).astype(np.uint8)
         print('altura guardada so onde nasce alguma coisa: %.0f%% do bloco a zero'
@@ -549,6 +596,63 @@ def main():
                 pontos.append((k, n, lo, la, int(props.get('alt') or 0)))
     print('pontos com nome: %d' % len(pontos))
 
+    # --- casas
+    # Ele disse que as casas se confundiam com as arvores, e confundiam-se
+    # porque nao existiam: o urbano era so uma cor no chao. Os contornos sao
+    # reais, do OSM. A ALTURA E MODELADA e diz-se que e.
+    #
+    # Tentou-se medi-la no CHM e nao da: a casa mediana tem 75 m2, ou seja tres
+    # celulas de 5 m, e a reamostragem por media dilui o telhado contra o chao
+    # a volta -- 90% das casas sairam com 0 a 2 m. O instrumento e grosso demais
+    # para o objecto. Com um CHM a 2 m mediam-se de verdade; fica anotado.
+    CASA = None
+    if not a.sem_casas:
+        alt_casa = lambda m2: 3.0 if m2 < 40 else (6.5 if m2 < 200 else 8.0)
+        V = []
+        n_casa = 0
+        for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
+            if gt != 3 or not gs: continue
+            anel = gs[0]
+            if len(anel) < 4: continue
+            P = [((lo - lo0) * mlon, (la - la0) * mlat) for lo, la in anel]
+            if P[0] == P[-1]: P.pop()
+            if len(P) < 3: continue
+            if not all(0 <= x <= larg_m and 0 <= y <= alt_m for x, y in P): continue
+            # area por formula do laco
+            k = len(P)
+            m2 = abs(sum(P[i][0] * P[(i + 1) % k][1] - P[(i + 1) % k][0] * P[i][1]
+                         for i in range(k))) / 2
+            if m2 < 8 or m2 > 20000: continue
+            # assenta no ponto MAIS BAIXO do contorno: numa encosta, se cada
+            # canto seguisse a sua cota o edificio saia torcido, e se seguisse o
+            # mais alto ficava a flutuar de um lado
+            cot = [float(Z[min(ny - 1, max(0, int(round((alt_m - y) / alt_m * (ny - 1))))),
+                           min(nx - 1, max(0, int(round(x / larg_m * (nx - 1)))))]) for x, y in P]
+            base = min(cot)
+            topo = base + alt_casa(m2)
+            for i in range(k):                                    # paredes
+                x0, y0 = P[i]; x1, y1 = P[(i + 1) % k]
+                V += [x0, y0, base, x1, y1, base, x0, y0, topo,
+                      x0, y0, topo, x1, y1, base, x1, y1, topo]
+            for i0, i1, i2 in orelhas(P):                         # telhado
+                for ii in (i0, i1, i2): V += [P[ii][0], P[ii][1], topo]
+            n_casa += 1
+        if V:
+            A3 = np.array(V, dtype=np.float32).reshape(-1, 3)
+            q = np.empty(A3.shape, dtype=np.uint16)
+            q[:, 0] = np.clip(A3[:, 0] / larg_m, 0, 1) * 65535
+            q[:, 1] = np.clip(A3[:, 1] / alt_m, 0, 1) * 65535
+            # escala em z PROPRIA, nao a do terreno: um telhado na Torre fica
+            # acima da cota mais alta da caixa, e com a escala do terreno era
+            # cortado rente -- as casas mais altas perdiam a altura toda.
+            zc0 = float(A3[:, 2].min()); zc1 = float(A3[:, 2].max())
+            q[:, 2] = np.clip((A3[:, 2] - zc0) / max(1e-6, zc1 - zc0), 0, 1) * 65535
+            CASA = struct.pack('<Iff', len(q), zc0, zc1) + q.tobytes()
+            print('casas: %d edificios, %s vertices, %.2f MB (altura MODELADA)'
+                  % (n_casa, f'{len(q):,}', len(CASA) / 1e6))
+        else:
+            print('casas: nenhuma dentro da caixa')
+
     # --- horizonte, na sua propria grelha
     # O horizonte e um campo LISO: entre dois nos a 25 m o angulo a que o monte
     # tapa o ceu quase nao muda. A grelha das cotas, essa, quer ser fina -- com
@@ -602,6 +706,8 @@ def main():
     saida += bloco('PONT', corpo)
     if ALTV is not None:
         saida += bloco('ALTV', struct.pack('<HH', mx, my) + ALTV.tobytes())
+    if CASA is not None:
+        saida += bloco('CASA', CASA)
     if H is not None:
         saida += bloco('HORI', struct.pack('<HHH', hx, hy, a.dir) + H.tobytes())
 
@@ -636,6 +742,7 @@ def main():
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,
+                'casas': CASA is not None,
                 'altura_medida': ALTV is not None},
     })
     zonas.sort(key=lambda z: z['titulo'])
