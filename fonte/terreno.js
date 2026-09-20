@@ -58,6 +58,9 @@ const CLASSES = {
   // alta de 2 ou 3 m nao se andam como se anda num urzal rasteiro, e ate agora
   // eram a mesma cor e a mesma altura desenhada.
   11: { cor: [0.66, 0.72, 0.48], tipo: 1, h: 2.4,  k: 1.05, lam: 0.0260 },
+  // Zonas humidas da COS 2025 (classe 8 da COS; 8 no motor ja era 'parede').
+  // Nao nasce nada: turfeira e lameiro encharcado, nao mato.
+  12: { cor: [0.62, 0.76, 0.70] },
 };
 const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
 // Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
@@ -69,7 +72,7 @@ const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).
 const NOME_CLASSE = {
   0: 'sem dado', 1: 'urbano', 2: 'agrícola', 3: 'pastagem', 4: 'montado',
   5: 'floresta', 6: 'mato rasteiro', 7: 'rocha com blocos', 8: 'parede de rocha',
-  9: 'água', 10: 'chão nu', 11: 'matagal',
+  9: 'água', 10: 'chão nu', 11: 'matagal', 12: 'zona húmida',
 };
 
 const CAMINHOS = [

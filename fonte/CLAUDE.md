@@ -363,3 +363,19 @@ Na primeira vez que correu apanhou **duas falhas**:
   polígonos `aguaA` do OSM incluem ribeiras desenhadas como área em encostas
   de 17°. Uma superfície de água não fica de pé numa encosta. Passaram a ser
   recusadas — 0,19 km² fora — e a água ficou 100% plana.
+
+### As classes e as casas vêm do `sne-dados-fonte`, não dos azulejos (20/09/2026)
+
+O `gera_terreno.py` lê a COS 2025 Série 2 (GeoPackage, com o nível 3) e os
+contornos Microsoft + OSM do repositório privado `sne-dados-fonte`, clonado ao
+lado deste (`--fontes PASTA` para outro sítio). Recortados à **área toda** do
+mapa, em folhas de 0,3°: qualquer `--caixa` dentro de -8.27 39.89 -7.07 40.80
+coze com o mesmo comando. `fonte/scripts-dados/fontes.py` é o único leitor.
+
+Porquê: os azulejos antigos tinham 7, 8 e 9 da COS num saco só e não traziam o
+n3. O "7" da COS **não é rocha**: em Manteigas são 31,3 km², dos quais 30,6 são
+713 "Vegetação esparsa" e 0,7 são 712 "Espaços rochosos". Era daí que vinha "a
+zona baixa de Manteigas é pedra". Agora: 712 → rocha; 711/713 → chão nu
+provisório que a altura medida promove (≥0,5 m mato, ≥1,5 matagal, ≥5 árvore).
+Cursos de água (911) em declive ≥ 12° são margem e seguem o mesmo caminho.
+`--sem-fontes` ainda coze com os azulejos, mas a zona sai marcada no boletim.

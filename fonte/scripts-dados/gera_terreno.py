@@ -34,6 +34,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lepmtiles import PM, mvt_camadas, aneis
+import fontes
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Sobe sempre que o CONTEUDO mudar. Vai no nome do ficheiro, nao numa query:
@@ -46,7 +47,10 @@ TAB_G = {'urbano': 1, 'agricola': 2, 'floresta': 3, 'matos': 4,
          'rocha': 5, 'agua': 6, 'outro': 7}
 NOME = {0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
         5: 'floresta', 6: 'matos', 7: 'rocha', 8: 'parede', 9: 'agua',
-        10: 'chao nu', 11: 'matagal'}
+        10: 'chao nu', 11: 'matagal', 12: 'zona humida'}
+# COS 2025 nivel 1 -> classe do motor. Igual excepto o 8: no motor o 8 e
+# 'parede' (declive medido), e as zonas humidas da COS vao para o 12.
+COS_N1 = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 12, 9: 9}
 # generos de ponto que valem a pena carregar
 PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
           'parque', 'cascata', 'lagoa']
@@ -339,6 +343,12 @@ def main():
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
     ap.add_argument('--sem-casas', action='store_true')
+    ap.add_argument('--fontes', default=os.path.join(RAIZ, '..', 'sne-dados-fonte'),
+                    help='pasta do repositorio sne-dados-fonte (COS 2025 Serie 2 e '
+                         'contornos Microsoft + OSM, recortados a area toda do mapa)')
+    ap.add_argument('--sem-fontes', action='store_true',
+                    help='cozer com os azulejos antigos (COS com 7, 8 e 9 num saco so; '
+                         'casas so do OSM). So para comparar; a zona sai marcada.')
     ap.add_argument('--sem-boletim', action='store_true',
                     help='escreve o indice mesmo que o boletim falhe. So com '
                          'motivo escrito: e esta guarda que impede uma zona '
@@ -369,23 +379,101 @@ def main():
     print('cotas de %.1f a %.1f m   (%s)' % (z0, z1, fonte))
     if z1 - z0 < 1: sys.exit('a caixa nao apanhou relevo nenhum')
 
+    # declive na grelha das classes, calculado uma vez: serve a agua (uma
+    # superficie de agua nao fica de pe), as paredes e a leitura da COS
+    if a.mdt:
+        gy0, gx0 = np.gradient(Z, a.passo)
+        gr0 = np.degrees(np.arctan(np.hypot(gx0, gy0)))
+        jj0 = (np.arange(my) / my * ny).astype(int).clip(0, ny - 1)
+        ii0 = (np.arange(mx) / mx * nx).astype(int).clip(0, nx - 1)
+        DEC = gr0[np.ix_(jj0, ii0)]
+    else:
+        DEC = np.zeros((my, mx), np.float32)   # num DEM de 30 m o declive nao vale
+
     pm = PM(os.path.join(RAIZ, 'dados/topo.pmtiles'))
 
     # --- classes
+    # A COS vem do GeoPackage da Serie 2 guardado no sne-dados-fonte, com o
+    # digito de nivel 1 verdadeiro: 7, 8 e 9 separados. Os azulejos antigos
+    # tinham os tres num saco 'outro' e foi isso que pos a zona baixa de
+    # Manteigas a "rocha" (20/09/2026). Fica tambem a grelha N3 (codigo de
+    # nivel 3), para o boletim poder dizer o que a COS chama a cada mancha.
     C = np.zeros((my, mx), dtype=np.uint8)
+    N3 = np.zeros((my, mx), dtype=np.uint16)
     n_sol = 0
-    for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'solo'):
-        if gt != 3: continue
-        c = props.get('c')
-        cod = int(c) if c is not None else TAB_G.get(props.get('g'), 0)
-        if not cod: continue
-        pinta(C, gs, cod, a.caixa, mx, my); n_sol += 1
+    usa_fontes = not a.sem_fontes
+    if usa_fontes and not os.path.isdir(a.fontes):
+        sys.exit('nao encontro o sne-dados-fonte em %s (clona-o ao lado, ou --fontes PASTA; '
+                 '--sem-fontes coze com os azulejos antigos e a zona sai marcada)' % a.fontes)
+    if usa_fontes:
+        fonte_cos = 'COS 2025 Serie 2'
+        for n1, n3, gs in fontes.cos_poligonos(a.fontes, a.caixa):
+            pinta(C, gs, COS_N1[n1], a.caixa, mx, my)
+            pinta(N3, gs, n3, a.caixa, mx, my); n_sol += 1
+        # O nivel 1 "7" da COS NAO e rocha: em Manteigas sao 31 km2, e destes
+        # 30,6 sao 713 "Vegetacao esparsa" e so 0,7 sao 712 "Espacos rochosos".
+        # Os azulejos antigos nao traziam o n3 e pintavam tudo de pedra -- era
+        # daqui que vinha "a zona baixa de Manteigas e rocha". Com o n3 a mao:
+        #   712 espacos rochosos      -> 7  rocha
+        #   711 praias, dunas, areais -> 10 chao nu
+        #   713 vegetacao esparsa     -> 10 chao nu PROVISORIO: o que la
+        #       cresce decide-se pela altura medida, mais abaixo (>= 0,5 m
+        #       mato, >= 1,5 matagal, >= 5 arvore). Sem CHM fica chao nu, que
+        #       e o que "espacos descobertos" quer dizer.
+        esparsa = (N3 == 713) | (N3 == 711)
+        C = np.where(esparsa, 10, C).astype(np.uint8)
+        # Cursos de agua (911) sao poligonos com metros de largura em encostas.
+        # Onde o declive nao deixa existir uma superficie de agua, a celula e
+        # margem, e segue o mesmo caminho da vegetacao esparsa.
+        rio = (C == 9) & (DEC >= a.agua_graus)
+        C = np.where(rio, 10, C).astype(np.uint8)
+        esparsa |= rio
+        if rio.any():
+            print('agua da COS em declive >= %.0f graus: %.2f km2 passam a margem'
+                  % (a.agua_graus, rio.sum() * (a.classe * a.classe) / 1e6))
+    else:
+        fonte_cos = 'azulejos antigos (7/8/9 num saco)'
+        esparsa = np.zeros((my, mx), bool)
+        print('AVISO: --sem-fontes: classes dos azulejos antigos, com 7, 8 e 9 num saco so')
+        for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'solo'):
+            if gt != 3: continue
+            c = props.get('c')
+            cod = int(c) if c is not None else TAB_G.get(props.get('g'), 0)
+            if not cod: continue
+            pinta(C, gs, cod, a.caixa, mx, my); n_sol += 1
+    ac_ = (a.classe * a.classe) / 1e6
+    print('COS (%s), antes de qualquer medicao:' % fonte_cos)
+    for k in sorted(set(C.ravel().tolist())):
+        if k: print('   %-12s %7.2f km2' % (NOME.get(k, k), (C == k).sum() * ac_))
+    if usa_fontes and (N3 // 100 == 7).any():
+        print('   o "7" da COS, por n3 (712 e rocha; 711 e 713 nao):')
+        for k3 in sorted(set(N3[N3 // 100 == 7].ravel().tolist())):
+            print('      %d  %7.2f km2' % (k3, (N3 == k3).sum() * ac_))
     n_ag = 0
     AGUA_OSM = np.zeros((my, mx), dtype=np.uint8)
     for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'aguaA'):
         if gt != 3: continue
         pinta(AGUA_OSM, gs, 1, a.caixa, mx, my); n_ag += 1
     print('poligonos: solo %d, agua %d' % (n_sol, n_ag))
+
+    # --- contornos dos edificios, lidos UMA vez: servem para proteger a copa
+    # medida da promocao (telhado nao e arvore) e para os extrudir no fim.
+    # Microsoft + OSM do sne-dados-fonte; o OSM sozinho tinha 1 casa em 5.
+    contornos_casas = []          # aneis em graus
+    alturas_casas = []            # m medidos pela fonte, ou None
+    fontes_casas = {}
+    if not a.sem_casas:
+        if usa_fontes:
+            for fo, h, anel in fontes.casas_poligonos(a.fontes, a.caixa):
+                contornos_casas.append(anel); alturas_casas.append(h)
+                fontes_casas[fo] = fontes_casas.get(fo, 0) + 1
+        else:
+            for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
+                if gt != 3 or not gs: continue
+                contornos_casas.append(gs[0]); alturas_casas.append(None)
+                fontes_casas['osm'] = fontes_casas.get('osm', 0) + 1
+        print('contornos de edificios: %d  %s' % (len(contornos_casas),
+              ' '.join('%s %d' % kv for kv in sorted(fontes_casas.items()))))
 
     # --- percursos
     rotas = [g for props, g in sem_repetir(
@@ -449,16 +537,18 @@ def main():
         # estao dentro de nenhum poligono urbano.
         CASA = np.zeros((my, mx), dtype=np.uint8)
         ncasa = 0
-        for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
-            if gt != 3: continue
-            pinta(CASA, gs, 1, a.caixa, mx, my); ncasa += 1
+        for anel in contornos_casas:
+            pinta(CASA, [anel], 1, a.caixa, mx, my); ncasa += 1
         CASA_LARGA = dilata(CASA, int(math.ceil(12.0 / a.classe)))  # beirados e quintal
         CASA_JUSTA = dilata(CASA, 1)                                # so o edificio
 
         base = C & 127
         corr = C & 128
         livre = (CASA_LARGA == 0) & ~np.isin(base, [1, 2])
-        subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 3, 6, 7])
+        subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 3, 6, 7, 10])
+        # a vegetacao esparsa da COS (chao nu provisorio) ganha mato onde o
+        # laser mede mato; o matagal parte-se logo a seguir como o resto
+        cresce = esparsa & (base == 10) & (h >= 0.5) & (h < a.arvore_min)
         # e ao contrario: a COS diz floresta e o laser nao encontra nada de pe.
         # Nao e engano da COS -- ela responde a "que povoamento e este", e um
         # pinhal ardido continua a ser um pinhal. O laser responde a outra
@@ -467,6 +557,7 @@ def main():
         raso = (h < 0.5) & arde                    # chao nu: ver classe 10
         rege = (h >= 0.5) & (h < a.arvore_min) & arde   # regeneracao baixa
         base = np.where(subiu, 5, base)
+        base = np.where(cresce, 6, base)
         base = np.where(rege, 6, base)
         base = np.where(raso, 10, base)    # chao nu, nao pastagens: ver CLASSES
         C = (base | corr).astype(np.uint8)
@@ -478,6 +569,10 @@ def main():
               '  (%.2f raso, %.2f regeneracao)'
               % ((raso.sum() + rege.sum()) * ac, a.arvore_min,
                  raso.sum() * ac, rege.sum() * ac))
+        if esparsa.any():
+            ce = collections.Counter((base[esparsa]).ravel().tolist())
+            print('   vegetacao esparsa da COS (%.2f km2) medida: ' % (esparsa.sum() * ac)
+                  + '  '.join('%s %.2f' % (NOME.get(k, k), n * ac) for k, n in ce.most_common(5)))
 
         # --- o mato partido em dois pela medicao
         # Giesta e urze alta de 2 ou 3 m nao se andam como se anda num urzal
@@ -531,14 +626,7 @@ def main():
     # nao fica de pe numa encosta: ou e um lago e e plana, ou e uma linha de
     # agua e nao e uma superficie. O boletim apanhou isto -- 24% da agua da
     # versao anterior estava em declive acima de 12 graus.
-    if a.mdt:
-        gy0, gx0 = np.gradient(Z, a.passo)
-        gr = np.degrees(np.arctan(np.hypot(gx0, gy0)))
-        jj0 = (np.arange(my) / my * ny).astype(int).clip(0, ny - 1)
-        ii0 = (np.arange(mx) / mx * nx).astype(int).clip(0, nx - 1)
-        plano = gr[np.ix_(jj0, ii0)] < a.agua_graus
-    else:
-        plano = np.ones((my, mx), bool)
+    plano = DEC < a.agua_graus if a.mdt else np.ones((my, mx), bool)
     vale = (AGUA_OSM > 0) & plano
     C = np.where(vale, 9, C).astype(np.uint8)
     ac0 = a.classe * a.classe / 1e6
@@ -559,11 +647,7 @@ def main():
     # E so onde o laser nao ve nada de pe: se o CHM mediu copa naquela celula,
     # ha mesmo arvore agarrada a encosta e a medicao continua a mandar.
     if a.mdt:
-        gy, gx = np.gradient(Z, a.passo)
-        graus = np.degrees(np.arctan(np.hypot(gx, gy)))
-        jj = (np.arange(my) / my * ny).astype(int).clip(0, ny - 1)
-        ii = (np.arange(mx) / mx * nx).astype(int).clip(0, nx - 1)
-        dec = graus[np.ix_(jj, ii)]
+        dec = DEC
         base = C & 127; corr = C & 128
         # "Sem nada de pe" aqui quer dizer sem ARVORE, nao sem um tufo de urze
         # agarrado a uma fenda. O limiar e o mesmo --arvore-min do resto: numa
@@ -638,11 +722,9 @@ def main():
     if not a.sem_casas:
         alt_casa = lambda m2: 3.0 if m2 < 40 else (6.5 if m2 < 200 else 8.0)
         V = []
-        n_casa = 0
+        n_casa = 0; n_med = 0
         vistas = set()
-        for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
-            if gt != 3 or not gs: continue
-            anel = gs[0]
+        for anel, h_med in zip(contornos_casas, alturas_casas):
             if len(anel) < 4: continue
             P = [((lo - lo0) * mlon, (la - la0) * mlat) for lo, la in anel]
             if P[0] == P[-1]: P.pop()
@@ -669,7 +751,10 @@ def main():
             cot = [float(Z[min(ny - 1, max(0, int(round((alt_m - y) / alt_m * (ny - 1))))),
                            min(nx - 1, max(0, int(round(x / larg_m * (nx - 1)))))]) for x, y in P]
             base = min(cot)
-            topo = base + alt_casa(m2)
+            # altura medida pela fonte quando a traz (Microsoft, onde tem);
+            # senao MODELADA pela area, e o boletim diz que e
+            topo = base + (h_med if h_med else alt_casa(m2))
+            n_med += 1 if h_med else 0
             for i in range(k):                                    # paredes
                 x0, y0 = P[i]; x1, y1 = P[(i + 1) % k]
                 V += [x0, y0, base, x1, y1, base, x0, y0, topo,
@@ -689,8 +774,9 @@ def main():
             q[:, 2] = np.clip((A3[:, 2] - zc0) / max(1e-6, zc1 - zc0), 0, 1) * 65535
             CASA = struct.pack('<Iff', len(q), zc0, zc1) + q.tobytes()
             print('casas: %d edificios, %s vertices, %.2f MB'
-                  ' (contorno OSM, altura MODELADA)'
-                  % (n_casa, f'{len(q):,}', len(CASA) / 1e6))
+                  ' (contornos %s; altura medida em %d, MODELADA nas outras)'
+                  % (n_casa, f'{len(q):,}', len(CASA) / 1e6,
+                     ' + '.join(sorted(fontes_casas)) or 'nenhum', n_med))
         else:
             print('casas: nenhuma dentro da caixa')
 
@@ -774,7 +860,9 @@ def main():
     import subprocess
     print()
     bol = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                       'confere.py'), dest],
+                                                       'confere.py'), dest,
+                          '--casas-fonte', ' + '.join(sorted(fontes_casas)) or 'nenhuma',
+                          '--classes-fonte', fonte_cos],
                          capture_output=True, text=True)
     print(bol.stdout, end='')
     if bol.stderr.strip(): print(bol.stderr.strip())
@@ -803,6 +891,8 @@ def main():
         'passo': a.passo, 'classe': a.classe,
         'cota': [round(z0), round(z1)],
         'fonte': fonte,
+        'fontes': {'classes': fonte_cos,
+                   'casas': ' + '.join(sorted(fontes_casas)) or None},
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,

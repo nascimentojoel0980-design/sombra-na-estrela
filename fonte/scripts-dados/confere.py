@@ -28,7 +28,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 R = 6378137.0
 NOME = {0: 'sem dado', 1: 'urbano', 2: 'agricola', 3: 'pastagem', 4: 'montado',
         5: 'floresta', 6: 'mato rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua',
-        10: 'chao nu', 11: 'matagal'}
+        10: 'chao nu', 11: 'matagal', 12: 'zona humida'}
 
 
 def le(f):
@@ -127,6 +127,10 @@ def main():
     ap.add_argument('--amostra', type=int, default=300)
     ap.add_argument('--semente', type=int, default=20260920)
     ap.add_argument('--json', default=None)
+    ap.add_argument('--casas-fonte', default='OSM',
+                    help='de onde vieram os contornos (o cozedor passa-o); so para o texto')
+    ap.add_argument('--classes-fonte', default='azulejos antigos',
+                    help='de onde veio a carta de classes (o cozedor passa-o)')
     a = ap.parse_args()
 
     T = le(os.path.join(RAIZ, a.terreno) if not os.path.isabs(a.terreno) else a.terreno)
@@ -244,14 +248,17 @@ def main():
     # ---- 5. casas
     urb = float((C == 1).sum()) * ac
     if T['temCasas']:
-        B.ver('casas', True, '%s vertices de contorno OSM; %.2f km2 de urbano na carta. '
-              'O OSM e incompleto em vilas serranas -- densidade NAO verificada'
-              % (f"{T['nVertCasa']:,}", urb), {'urbano_km2': urb})
+        B.ver('casas', True, '%s vertices de contorno (%s); %.2f km2 de urbano na carta. '
+              'Densidade NAO verificada contra o ortofoto; alturas modeladas onde a fonte nao mede'
+              % (f"{T['nVertCasa']:,}", a.casas_fonte, urb), {'urbano_km2': urb})
     else:
         B.nao('casas', 'a zona foi cozida sem contornos de edificios')
 
+    if 'saco' in a.classes_fonte or 'azulejos' in a.classes_fonte:
+        B.nao('carta de classes', 'cozida com %s: 7, 8 e 9 da COS num saco so' % a.classes_fonte)
+
     # ---- 6. o que a zona tem, para ninguem lhe pedir o que ela nao pode dar
-    print('classes:')
+    print('classes (%s):' % a.classes_fonte)
     for k in sorted(set(C.ravel().tolist())):
         print('   %-15s %7.2f km2' % (NOME.get(k, k), (C == k).sum() * ac))
     print()
