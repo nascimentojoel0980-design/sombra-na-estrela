@@ -687,8 +687,44 @@ function fitaRotas(T, largura, acima) {
 // mais do que `desvioMax` m (2 m, abaixo da tolerancia do proprio OSM), nem
 // comer mais de 45% de cada troco vizinho. Um canto de 90 graus fica com
 // raio 4,8 m; um de 30 graus, com 12 m (o tecto).
+// Os azulejos partem cada via nas suas bordas; os pedacos encostam ponta com
+// ponta mas sao linhas separadas -- o canto entre eles nunca era arredondado
+// e cada ponta levava a sua tampa. Isto cose de novo pontas que coincidem
+// (a menos de 0,3 m) e onde SO se encontram duas linhas: num cruzamento a
+// serio (3 ou mais) nao se junta nada, que isso seria escolher um caminho.
+function juntaLinhas(T, linhas) {
+  const chave = (lo, la) => Math.round(lo * 3e5) + ',' + Math.round(la * 3e5);   // ~0,3 m
+  const pontas = new Map();
+  const L = linhas.map((l) => Array.from(l));
+  const usada = new Array(L.length).fill(false);
+  const add = (k, i, fim) => { if (!pontas.has(k)) pontas.set(k, []); pontas.get(k).push([i, fim]); };
+  L.forEach((l, i) => { if (l.length >= 4) { add(chave(l[0], l[1]), i, 0); add(chave(l[l.length - 2], l[l.length - 1]), i, 1); } });
+  const grau2 = (k) => pontas.has(k) && pontas.get(k).length === 2;
+  const out = [];
+  for (let i = 0; i < L.length; i++) {
+    if (usada[i] || L[i].length < 4) { if (!usada[i]) { out.push(linhas[i]); usada[i] = true; } continue; }
+    let cur = L[i].slice(); usada[i] = true;
+    for (const lado of [1, 0]) {                       // primeiro para a frente, depois para tras
+      for (let passos = 0; passos < 5000; passos++) {
+        const k = lado ? chave(cur[cur.length - 2], cur[cur.length - 1]) : chave(cur[0], cur[1]);
+        if (!grau2(k)) break;
+        const outra = pontas.get(k).find(([j]) => !usada[j]);
+        if (!outra) break;
+        const [j, fim] = outra; let seg = L[j].slice(); usada[j] = true;
+        // orientar o pedaco para continuar cur
+        if (lado) { if (fim === 1) seg = inverte(seg); cur = cur.concat(seg.slice(2)); }
+        else { if (fim === 0) seg = inverte(seg); cur = seg.slice(0, -2).concat(cur); }
+      }
+    }
+    out.push(new Float32Array(cur));
+  }
+  return out;
+}
+function inverte(l) { const r = []; for (let i = l.length - 2; i >= 0; i -= 2) r.push(l[i], l[i + 1]); return r; }
+
 function suaviza(T, linhas, desvioMax, raioMax) {
   desvioMax = desvioMax || 2.0; raioMax = raioMax || 12;
+  linhas = juntaLinhas(T, linhas || []);
   const out = [];
   for (const L of linhas) {
     const n = L.length / 2;
@@ -794,6 +830,21 @@ function fitaLinhas(T, linhas, largura, acima) {
         const a0 = [a[0] - oa[0], a[1] - oa[1], za], a1 = [a[0] + oa[0], a[1] + oa[1], za];
         const b0 = [b[0] - ob[0], b[1] - ob[1], zb], b1 = [b[0] + ob[0], b[1] + ob[1], zb];
         for (const q of [a0, b0, a1, a1, b0, b1]) V.push(q[0], q[1], q[2]);
+      }
+      // Tampas redondas nas duas pontas. Uma via que acaba numa outra (T) ou
+      // numa borda de azulejo acabava a direito, meio metro antes ou depois,
+      // e via-se a fenda; o semicirculo de raio h fecha a juncao.
+      if (h >= 0.6) {
+        for (const [p, d] of [[P[0], [-D[0][0], -D[0][1]]], [P[m - 1], D[m - 2]]]) {
+          const z = cotaEm(p[0], p[1]) + acima, n = h < 2 ? 5 : 8;
+          const a0 = Math.atan2(d[1], d[0]) - Math.PI / 2;
+          for (let s = 0; s < n; s++) {
+            const t0 = a0 + Math.PI * s / n, t1 = a0 + Math.PI * (s + 1) / n;
+            V.push(p[0], p[1], z,
+                   p[0] + Math.cos(t0) * h, p[1] + Math.sin(t0) * h, z,
+                   p[0] + Math.cos(t1) * h, p[1] + Math.sin(t1) * h, z);
+          }
+        }
       }
     }
   }
