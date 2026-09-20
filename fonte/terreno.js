@@ -569,30 +569,69 @@ if (typeof module !== 'undefined') Object.assign(module.exports,
 // projectada por cima: assim uma lomba tapa mesmo o que esta do outro lado, e
 // o percurso passa por dentro do corredor que ja foi aberto na vegetacao.
 function fitaRotas(T, largura, acima) {
-  return new Float32Array(fitaLinhas(T, T.rotas, largura || 7, acima || 1.2));
+  return new Float32Array(fitaLinhas(T, T.rotas, largura || 5, acima || 1.2));
 }
 
 function fitaLinhas(T, linhas, largura, acima) {
+  // Uma fita continua, nao um rectangulo por troco.
+  //
+  // A versao anterior desenhava cada troco com a SUA perpendicular. Numa curva
+  // as duas perpendiculares sao diferentes, os rectangulos nao encostam, e fica
+  // um entalhe triangular por fora de cada cotovelo e uma sobreposicao por
+  // dentro. De perto le-se como uma tira de poligonos soltos, que foi o que ele
+  // viu.
+  //
+  // A costura e a classica: em cada NO, em vez da perpendicular de um dos
+  // trocos, usa-se a BISSECTRIZ dos dois, esticada por 1/cos(metade do angulo)
+  // -- e o esticao exacto para que as duas bordas se encontrem no mesmo ponto.
+  // Em curvas muito fechadas esse factor dispara, por isso leva tecto: prefere-
+  // se um bisel pequeno a uma bicuda de dezenas de metros.
   const cotaEm = (x, y) => T.cotaEm(x, y);
   const emM = (lo, la) => [(lo - T.lo0) * T.mlon, (la - T.la0) * T.mlat];
   const V = [];
-  const h = largura / 2;
+  const h = largura / 2, MITRA = 3.0;
   for (const l of (linhas || [])) {
-    const n = l.length / 2;
-    if (n < 2) continue;
-    const P = new Array(n);
-    for (let i = 0; i < n; i++) P[i] = emM(l[i * 2], l[i * 2 + 1]);
-    for (let i = 0; i + 1 < n; i++) {
-      const a = P[i], b = P[i + 1];
-      let dx = b[0] - a[0], dy = b[1] - a[1];
-      const L = Math.hypot(dx, dy);
-      if (L < 0.5 || L > 400) continue;            // salta saltos de azulejo
-      dx /= L; dy /= L;
-      const px = -dy * h, py = dx * h;
-      const za = cotaEm(a[0], a[1]) + acima, zb = cotaEm(b[0], b[1]) + acima;
-      const a0 = [a[0] - px, a[1] - py, za], a1 = [a[0] + px, a[1] + py, za];
-      const b0 = [b[0] - px, b[1] - py, zb], b1 = [b[0] + px, b[1] + py, zb];
-      for (const q of [a0, b0, a1, a1, b0, b1]) V.push(q[0], q[1], q[2]);
+    if (l.length < 4) continue;
+    // Partir em tracos continuos. Um salto de azulejo corta a fita em vez de
+    // ser saltado no meio dela -- senao costurava-se por cima do buraco.
+    const tracos = []; let cur = [];
+    for (let i = 0; i < l.length / 2; i++) {
+      const p = emM(l[i * 2], l[i * 2 + 1]);
+      if (cur.length) {
+        const q = cur[cur.length - 1];
+        const L = Math.hypot(p[0] - q[0], p[1] - q[1]);
+        if (L < 0.5) continue;
+        if (L > 400) { if (cur.length > 1) tracos.push(cur); cur = []; }
+      }
+      cur.push(p);
+    }
+    if (cur.length > 1) tracos.push(cur);
+
+    for (const P of tracos) {
+      const m = P.length, D = new Array(m - 1);
+      for (let i = 0; i + 1 < m; i++) {
+        const dx = P[i + 1][0] - P[i][0], dy = P[i + 1][1] - P[i][1];
+        const L = Math.hypot(dx, dy) || 1;
+        D[i] = [dx / L, dy / L];
+      }
+      const O = new Array(m);
+      for (let i = 0; i < m; i++) {
+        const dp = D[i - 1] || D[i], dn = D[i] || D[i - 1];
+        let nx = -(dp[1] + dn[1]), ny = dp[0] + dn[0];
+        const L = Math.hypot(nx, ny);
+        if (L < 1e-6) { O[i] = [-dn[1] * h, dn[0] * h]; continue; }  // inversao
+        nx /= L; ny /= L;
+        let k = nx * -dn[1] + ny * dn[0];                 // cos(metade do angulo)
+        k = Math.abs(k) < 1e-3 ? MITRA : Math.min(MITRA, Math.abs(1 / k));
+        O[i] = [nx * h * k, ny * h * k];
+      }
+      for (let i = 0; i + 1 < m; i++) {
+        const a = P[i], b = P[i + 1], oa = O[i], ob = O[i + 1];
+        const za = cotaEm(a[0], a[1]) + acima, zb = cotaEm(b[0], b[1]) + acima;
+        const a0 = [a[0] - oa[0], a[1] - oa[1], za], a1 = [a[0] + oa[0], a[1] + oa[1], za];
+        const b0 = [b[0] - ob[0], b[1] - ob[1], zb], b1 = [b[0] + ob[0], b[1] + ob[1], zb];
+        for (const q of [a0, b0, a1, a1, b0, b1]) V.push(q[0], q[1], q[2]);
+      }
     }
   }
   return V;
@@ -942,7 +981,7 @@ function abreVista(canvas, T, op) {
   apontaBloco(0);
 
   A.rota = gl.createVertexArray(); gl.bindVertexArray(A.rota);
-  const fita = fitaRotas(T, op.larguraRota || 7, 1.2); A.nRota = fita.length / 3;
+  const fita = fitaRotas(T, op.larguraRota || 5, 1.2); A.nRota = fita.length / 3;
   if (A.nRota) vbo(P.rota, 'aP', fita, 3);
 
   A.cam = gl.createVertexArray(); gl.bindVertexArray(A.cam);
