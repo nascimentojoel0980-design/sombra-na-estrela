@@ -673,7 +673,48 @@ if (typeof module !== 'undefined') Object.assign(module.exports,
 // projectada por cima: assim uma lomba tapa mesmo o que esta do outro lado, e
 // o percurso passa por dentro do corredor que ja foi aberto na vegetacao.
 function fitaRotas(T, largura, acima) {
-  return new Float32Array(fitaLinhas(T, T.rotas, largura || 2.5, acima || 1.2));
+  return new Float32Array(fitaLinhas(T, suaviza(T, T.rotas), largura || 2.5, acima || 1.2));
+}
+
+// Curvas em vez de cotovelos, sem inventar tracado. Os vertices do OSM estao
+// a 18 m uns dos outros (mediana) e viram 17 graus (mediana) em cada um; a
+// fita de segmentos rectos le-se como uma cobra de cartao. Isto passa uma
+// Catmull-Rom POR TODOS os vertices originais (nenhum se move) e so
+// acrescenta pontos entre eles; e o desvio do arco em relacao a corda fica
+// preso a `desvioMax` m (1,5) -- se a curva quiser afastar-se mais do que
+// isso da linha do OSM, encosta-se a linha. Fiel ao mesmo tracado, mais
+// pontos, e nada fora da tolerancia com que o proprio OSM foi desenhado.
+function suaviza(T, linhas, desvioMax, passoM) {
+  desvioMax = desvioMax || 1.5; passoM = passoM || 4;
+  const out = [];
+  for (const L of linhas) {
+    const n = L.length / 2;
+    if (n < 3) { out.push(L); continue; }
+    const P = new Array(n);
+    for (let i = 0; i < n; i++) P[i] = T.emM(L[i * 2], L[i * 2 + 1]);
+    const R = [P[0][0], P[0][1]];
+    for (let i = 0; i + 1 < n; i++) {
+      const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n - 1, i + 2)];
+      const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      const k = Math.max(1, Math.min(8, Math.round(len / passoM)));
+      for (let j = 1; j <= k; j++) {
+        const t = j / k, t2 = t * t, t3 = t2 * t;
+        let x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+        let y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+        if (j < k) {
+          // desvio em relacao a corda p1-p2: se passar do limite, encosta
+          const cx = p1[0] + (p2[0] - p1[0]) * t, cy = p1[1] + (p2[1] - p1[1]) * t;
+          const d = Math.hypot(x - cx, y - cy);
+          if (d > desvioMax) { const f = desvioMax / d; x = cx + (x - cx) * f; y = cy + (y - cy) * f; }
+        } else { x = p2[0]; y = p2[1]; }         // o vertice original, exacto
+        R.push(x, y);
+      }
+    }
+    const F = new Float32Array(R.length);
+    for (let i = 0; i < R.length; i += 2) { const ll = T.emLL(R[i], R[i + 1]); F[i] = ll[0]; F[i + 1] = ll[1]; }
+    out.push(F);
+  }
+  return out;
 }
 
 function fitaLinhas(T, linhas, largura, acima) {
@@ -761,7 +802,7 @@ function fitaCaminhos(T, acima) {
     for (let p = 0; p < PISOS.length; p++) {
       if (!porTP[t][p].length) continue;
       const ini = V.length / 3;
-      const f = fitaLinhas(T, porTP[t][p], CAMINHOS[t].larg, alt);
+      const f = fitaLinhas(T, suaviza(T, porTP[t][p]), CAMINHOS[t].larg, alt);
       for (let k = 0; k < f.length; k++) V.push(f[k]);
       grupos.push({ tipo: t, piso: p, ini, n: V.length / 3 - ini });
     }
@@ -771,7 +812,7 @@ function fitaCaminhos(T, acima) {
   for (let t = 0; t < CAMINHOS.length; t++) {
     if (!CAMINHOS[t].eixo) continue;
     const ini = V.length / 3;
-    const f = fitaLinhas(T, tracos(T, porTipo[t], 4, 6), 0.5, alt + 0.08);
+    const f = fitaLinhas(T, tracos(T, suaviza(T, porTipo[t]), 4, 6), 0.5, alt + 0.08);
     for (let k = 0; k < f.length; k++) V.push(f[k]);
     grupos.push({ tipo: t, eixo: true, ini, n: V.length / 3 - ini });
   }
@@ -1482,7 +1523,7 @@ function abreVista(canvas, T, op) {
     // linhas em [lon, lat] achatadas, como as do ficheiro
     destaque(linhas, cor, largura) {
       corDest = cor || [0.10, 0.36, 0.78];
-      const v = fitaLinhas(T, linhas || [], largura || 9, 1.6);
+      const v = fitaLinhas(T, suaviza(T, linhas || []), largura || 9, 1.6);
       A.nDest = v.length / 3;
       gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
@@ -1491,7 +1532,7 @@ function abreVista(canvas, T, op) {
     extras(lista) {
       const V = [], grupos = [];
       for (const e of lista || []) {
-        const v = fitaLinhas(T, e.linhas || [], e.largura || 6, 1.4);
+        const v = fitaLinhas(T, suaviza(T, e.linhas || []), e.largura || 6, 1.4);
         grupos.push({ ini: V.length / 3, n: v.length / 3, cor: e.cor || [0.72, 0.30, 0.66] });
         for (let k = 0; k < v.length; k++) V.push(v[k]);
       }
