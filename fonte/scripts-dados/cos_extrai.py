@@ -60,16 +60,29 @@ GRUPO = {
 # Palavras que so aparecem no rotulo de um grupo. Servem de contraprova ao
 # numero: se o texto diz "pinheiro" e o numero levou a mancha para 'rocha',
 # alguem se enganou -- e este ficheiro nao continua a correr.
+#
+# 20/09/2026: corrida sobre a COS 2025 Serie 2 (area toda, 158 925 poligonos)
+# apanhou 7 falsos positivos, todos da lista e nenhum dos dados:
+#   'agricol' -> "Instalacoes agricolas, pecuarias e aquicolas" (n1=1, urbano)
+#   'hortas'  -> "Espacos verdes e hortas comunitarias"          (n1=1, urbano)
+#   'cultur'  -> "Aquicultura"                                   (n1=9, agua)
+#   'folhos', 'resinos' -> "Superficies agrossilvicolas/silvopastoris de
+#                           folhosas/resinosas"                  (n1=4, montado)
+# Sairam 'agricol' (fica 'agricultura'), 'hortas', 'cultur' (fica 'culturas'),
+# 'folhos' e 'resinos'. A prova definitiva para o gpkg e outra e nao precisa de
+# palavras: codigo e rotulo bijectivos em n3/n4 e os 9 rotulos de n1 da Serie 2
+# (4 = "Superficies agroflorestais (SAF)", 9 = "Massas de agua superficiais";
+# os outros 7 iguais a Serie 1). Esta lista fica como segunda rede.
 PALAVRAS = {
     'urbano':   ('tecido', 'industri', 'comerci', 'equipament', 'infraestrutur',
                  'extrac', 'inert', 'deposit', 'constru', 'urban', 'aeropor',
                  'portuar', 'rede viaria', 'ferroviar', 'desport', 'vazadour'),
-    'agricola': ('cultur', 'cereais', 'arroz', 'horticol', 'vinha', 'pomar',
-                 'olival', 'agricol', 'temporari', 'hortas', 'estufas'),
+    'agricola': ('culturas', 'cereais', 'arroz', 'horticol', 'vinha', 'pomar',
+                 'olival', 'agricultura', 'temporari', 'estufas'),
     'erva':     ('pastagem', 'pastagens'),
     'montado':  ('agro-florest', 'agroflorest', 'sistemas agro', 'montado'),
     'floresta': ('florest', 'sobreiro', 'azinheira', 'eucalipto', 'pinheiro',
-                 'carvalh', 'castanheir', 'acacia', 'resinos', 'folhos'),
+                 'carvalh', 'castanheir', 'acacia'),
     'matos':    ('matos', 'matagal', 'esclerofit'),
     'rocha':    ('rocha', 'rochos', 'praia', 'duna', 'areal', 'sem vegetacao',
                  'vegetacao esparsa', 'escassa', 'descobert', 'ardid'),
