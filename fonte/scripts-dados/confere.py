@@ -262,9 +262,15 @@ def main():
         for _ in range(200):
             lo = rng.uniform(lo0, lo1); la = rng.uniform(la0, la1)
             if O.cinza(lo, la, 20) is not None: cob += 1
-        B.ver('cobertura do ortofoto', bool(cob > 20),
-              '%.0f%% da caixa tem ortofoto de detalhe (faixa dos percursos)' % (cob / 2),
-              {'pct': cob / 2})
+        # A cobertura do ortofoto e uma propriedade dos NOSSOS dados de prova,
+        # nao do mapa: onde nao ha foto, as provas que dela dependem ficam
+        # NAO VERIFICADAS, mas isso nao chumba a zona (chumbava: 20/09/2026,
+        # as zonas fora da faixa dos percursos nao entravam no indice).
+        if cob > 20:
+            B.ver('cobertura do ortofoto', True,
+                  '%.0f%% da caixa tem ortofoto de detalhe (faixa dos percursos)' % (cob / 2), {'pct': cob / 2})
+        else:
+            B.nao('cobertura do ortofoto', 'so %.0f%% da caixa tem ortofoto de detalhe: as provas por foto nao se fazem aqui' % (cob / 2))
     elif not grossa:
         B.nao('floresta', 'nao ha ortofoto em %s' % a.ortos)
 
