@@ -171,6 +171,7 @@
   <button data-a=baixo title="inclinar para baixo">▼</button>
   <button data-a=sobe title="subir na vertical">⇧</button>
   <button data-a=desce title="descer na vertical">⇩</button>
+  <button id=ecra title="ecrã inteiro">⛶</button>
 </div>
 
 <div id=legBox class=caixa>
@@ -188,7 +189,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=26"></script>
+<script src="fonte/terreno.js?v=27"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -358,7 +359,18 @@ addEventListener('keydown', (e) => {
   else return;
   e.preventDefault();
 });
-for (const b of document.querySelectorAll('#bts button')) {
+// ecra inteiro: a pagina toda, para o telemovel nao gastar um terco com a barra
+document.getElementById('ecra').addEventListener('click', () => {
+  const d = document;
+  if (d.fullscreenElement || d.webkitFullscreenElement) {
+    (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+  } else {
+    const e = d.documentElement;
+    const f = e.requestFullscreen || e.webkitRequestFullscreen;
+    if (f) f.call(e, { navigationUI: 'hide' }); else alert('Este navegador não deixa pôr a página em ecrã inteiro.');
+  }
+});
+for (const b of document.querySelectorAll('#bts button[data-a]')) {
   const a = b.dataset.a;
   let t = null;
   const faz = () => { if (!V) return;

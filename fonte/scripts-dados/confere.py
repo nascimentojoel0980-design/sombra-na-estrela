@@ -21,7 +21,7 @@ causa de um ficheiro dessaturado.
 E o que NAO se consegue verificar aparece como NAO VERIFICADO, com o nome da
 razao. Uma classe sem verificacao possivel nao e uma classe boa por defeito.
 """
-import argparse, glob, gzip, json, math, os, re, struct, sys
+import json, argparse, glob, gzip, json, math, os, re, struct, sys
 import numpy as np
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -188,8 +188,55 @@ def main():
         B.nao('cotas', 'nao ha %s para comparar' % a.dem)
 
     # ---- 2. floresta contra o ortofoto (fonte independente do LiDAR)
+    # So faz sentido com celulas finas: a 50 m uma celula e uma mistura e a
+    # textura de um recorte nao a classifica (medido: d=0,7 numa carta que
+    # concorda a 86% com a zona fina verificada). Para celulas grossas a prova
+    # e outra, a 2b: coerencia com as zonas finas ja aprovadas.
     O = Ortos(os.path.join(RAIZ, a.ortos))
-    if O.tem:
+    grossa = T['pc'] >= 20
+    if grossa:
+        B.nao('floresta', 'textura do ortofoto nao se aplica a celulas de %.0f m; ver coerencia com zonas finas' % T['pc'])
+        pasta = os.path.dirname(os.path.abspath(a.terreno if os.path.isabs(a.terreno) else os.path.join(RAIZ, a.terreno)))
+        finas = []
+        try:
+            idx = json.load(open(os.path.join(pasta, 'index.json'), encoding='utf-8'))
+            for zf in idx.get('zonas', []):
+                if zf.get('classe', 99) >= 20: continue
+                bj = os.path.join(pasta, zf['ficheiro'].replace('.terr.gz', '.boletim.json'))
+                if not os.path.exists(bj): continue
+                bol = json.load(open(bj, encoding='utf-8'))
+                if any(l.get('passa') is False for l in bol.get('linhas', [])): continue
+                zlo0, zla0, zlo1, zla1 = zf['caixa']
+                if zlo1 <= lo0 or zlo0 >= lo1 or zla1 <= la0 or zla0 >= la1: continue
+                finas.append((zf, os.path.join(pasta, zf['ficheiro'])))
+        except Exception as e:
+            finas = []
+        res = []
+        for zf, ff in finas:
+            F = le(ff); CF = F['C']; fy, fx = CF.shape; zlo0, zla0, zlo1, zla1 = F['caixa']
+            r = max(1, int(round(T['pc'] / F['pc'] / 2)))
+            tot = 0; ok = 0
+            for j in range(my):
+                la = la1 - (j + 0.5) / my * (la1 - la0)
+                if not (zla0 < la < zla1): continue
+                for i in range(mx):
+                    if C[j, i] != 5: continue
+                    lo = lo0 + (i + 0.5) / mx * (lo1 - lo0)
+                    if not (zlo0 < lo < zlo1): continue
+                    i0 = int((lo - zlo0) / (zlo1 - zlo0) * fx); j0 = int((zla1 - la) / (zla1 - zla0) * fy)
+                    w = CF[max(0, j0 - r):j0 + r, max(0, i0 - r):i0 + r]
+                    if not w.size: continue
+                    tot += 1; ok += int(np.bincount(w.ravel(), minlength=13).argmax() == 5)
+            if tot >= 100: res.append((zf['nome'], ok / tot, tot))
+        if res:
+            pior = min(p for _, p, _ in res)
+            B.ver('coerencia com zonas finas', bool(pior >= 0.7),
+                  'floresta grossa e floresta na zona fina verificada: ' +
+                  ', '.join('%s %.0f%% (%d celulas)' % (n, 100 * p, t) for n, p, t in res),
+                  {'zonas': {n: p for n, p, _ in res}})
+        else:
+            B.nao('coerencia com zonas finas', 'nenhuma zona fina aprovada dentro desta caixa')
+    if O.tem and not grossa:
         def amostra(masc, n):
             cand = np.argwhere(masc)
             if not len(cand): return np.array([]), 0

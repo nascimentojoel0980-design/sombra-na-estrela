@@ -1,6 +1,48 @@
 {
  "zonas": [
   {
+   "nome": "serra",
+   "titulo": "Serra da Estrela (vista geral)",
+   "ficheiro": "serra-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.0,
+    -7.15,
+    40.7
+   ],
+   "km": [
+    80.6,
+    77.4
+   ],
+   "passo": 50.0,
+   "classe": 50.0,
+   "cota": [
+    51,
+    1993
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": null,
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7943036,
+   "tem": {
+    "curvas": false,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": false,
+    "plantas": false,
+    "altura_medida": true
+   }
+  },
+  {
    "nome": "torre",
    "titulo": "Torre e Lagoa Comprida",
    "ficheiro": "torre-v1.terr.gz",

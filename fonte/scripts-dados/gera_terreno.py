@@ -95,6 +95,22 @@ def le_mdt(caminho):
         return z, (b.left, b.bottom, b.right, b.top)
 
 
+def amostra_grossa(z, cx, lons, lats, k, modo):
+    """Para celulas muito maiores do que o raster (vista geral a 50 m sobre um
+    CHM de 5 m): k x k sub-amostras por celula e um resumo. Amostrar por
+    PONTO deixava a floresta ao acaso -- o ponto caia numa clareira e a celula
+    inteira deixava de ser floresta (2 690 km2 da COS -> 701).
+      modo 'p75'   3.o quartil: a copa dominante da celula
+      modo 'media' fraccao/media (agua: celula e agua se metade for)"""
+    def fino(v):
+        d = (v[1] - v[0]) if len(v) > 1 else 0
+        return (v[:, None] + d * (np.arange(k) + 0.5) / k - d / 2).ravel()
+    A = amostra(z, cx, fino(lons), fino(lats))
+    A = A.reshape(len(lats), k, len(lons), k).transpose(0, 2, 1, 3).reshape(len(lats), len(lons), k * k)
+    if modo == 'p75': return np.percentile(A, 75, axis=2).astype(np.float32)
+    return A.mean(axis=2).astype(np.float32)
+
+
 def tapa_caixa(cx, caixa, quem):
     """amostra() faz clip: um raster que nao tape a caixa nao rebenta, esborrata
     o valor da borda para dentro em silencio. Mais vale morrer aqui."""
@@ -599,7 +615,13 @@ def main():
         else: zc, cc = le_mdt(a.chm)
         tapa_caixa(cc, a.caixa, 'CHM')
         lonsC = np.linspace(lo0, lo1, mx); latsC = np.linspace(la1, la0, my)
-        h = amostra(zc, cc, lonsC, latsC)
+        passo_chm = abs(cc[2] - cc[0]) / zc.shape[1] * mlon
+        if a.classe >= 4 * passo_chm:
+            h = amostra_grossa(zc, cc, lonsC, latsC, 4, 'p75')
+            print('CHM agregado: celula de %.0f m sobre copa de %.0f m, 4x4 sub-amostras, 3.o quartil'
+                  % (a.classe, passo_chm))
+        else:
+            h = amostra(zc, cc, lonsC, latsC)
         # o CHM traz lixo: ramos soltos a 60 m e valores negativos
         h = np.clip(h, 0, 25.5)
         # Degraus de 0,5 m. O motor ja sorteia +-28% de altura por planta
@@ -642,7 +664,12 @@ def main():
         # vidoeiros de 12 m que saiam apagados. O agricola continua de fora:
         # um olival mede 5 m e nao e floresta.
         livre = (CASA_LARGA == 0) & (base != 2)
-        subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 1, 3, 6, 7, 10])
+        # ... mas so ha urbano promovivel quando os telhados estao mascarados.
+        # Sem contornos (--sem-casas, vista geral) o MDS le telhado como copa e
+        # as vilas saiam floresta: 4 em 12 celulas "floresta" da serra eram
+        # telhados vermelhos no ortofoto (20/09/2026).
+        promoviveis = [0, 3, 6, 7, 10] + ([1] if contornos_casas else [])
+        subiu = (h >= a.arvore_min) & livre & np.isin(base, promoviveis)
         # a vegetacao esparsa da COS (chao nu provisorio) ganha mato onde o
         # laser mede mato; o matagal parte-se logo a seguir como o resto
         cresce = esparsa & (base == 10) & (h >= 0.5) & (h < a.arvore_min)
@@ -826,7 +853,11 @@ def main():
             za, ca = le_mdt(a.agua)
         tapa_caixa(ca, a.caixa, 'mapa de agua')
         lonsA = np.linspace(lo0, lo1, mx); latsA = np.linspace(la1, la0, my)
-        mask = amostra(za, ca, lonsA, latsA) > 0.5
+        passo_ag = abs(ca[2] - ca[0]) / za.shape[1] * mlon
+        if a.classe >= 4 * passo_ag:
+            mask = amostra_grossa(za, ca, lonsA, latsA, 4, 'media') >= 0.5
+        else:
+            mask = amostra(za, ca, lonsA, latsA) > 0.5
         base = C & 127; corr = C & 128
         novo_ag = mask & (base != 9)
         C = (np.where(mask, 9, base) | corr).astype(np.uint8)
@@ -1009,7 +1040,8 @@ def main():
         corpo += struct.pack('<ffHBB', lo, la, alt, len(kb), len(nb)) + kb + nb
     saida += bloco('PONT', corpo)
     if ALTV is not None:
-        saida += bloco('ALTV', struct.pack('<HH', mx, my) + ALTV.tobytes())
+        if not a.sem_plantas:     # sem plantas ninguem le a altura; 2,5 MB a menos
+            saida += bloco('ALTV', struct.pack('<HH', mx, my) + ALTV.tobytes())
     if CASA is not None:
         saida += bloco('CASA', CASA)
     if H is not None:
