@@ -180,7 +180,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=21"></script>
+<script src="fonte/terreno.js?v=22"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -230,6 +230,7 @@ async function abreZona(z) {
   window.V = V; window.T = T;
   for (const el of document.querySelectorAll('[data-m]')) V.mostrar[el.dataset.m] = el.checked;
   mudaHora();
+  actualizaExtras();
   mostraInfo(z, ler);
   diz('');
   const av = document.getElementById('aviso');
@@ -463,6 +464,8 @@ function mostraEstat(t) {
   const q = new Date();
   const m = +$('hora').value; q.setHours(m / 60 | 0, m % 60, 0, 0);
   const sol = solNoTrilho(T, t.pts, q);
+  const andou = t.meu ? solNoTrilho(T, t.pts, q, { horaPropria: true }) : null;
+  const copa = copaNoTrilho(T, t.pts);
 
   // Um percurso que so tem uma ponta dentro desta caixa NAO pode ter a subida
   // medida neste relevo: a grelha de cotas encosta o que esta fora a borda, e
@@ -486,6 +489,19 @@ function mostraEstat(t) {
     + (e.dur ? ' · ' + hm(e.dur) + ' · ' + e.vel.toFixed(1) + ' km/h' : '')
     + (t.r && t.r.arv != null ? '<br>copa ' + t.r.arv.toFixed(0) + '%' : '')
     + '</i>';
+  const hhmm = (ms) => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  if (andou && andou.porPonto && andou.dentro) {
+    // o que interessa num trilho gravado: quanto dele se andou ao sol, a hora
+    // a que se andou -- nao a hora do cursor
+    html += '<div class=barra>' + barraSol(andou) + '</div>'
+      + '<i><b>' + andou.pct.toFixed(0) + '% ao sol quando o andaste</b> ('
+      + hhmm(andou.t0) + '–' + hhmm(andou.t1) + ', sombra do monte)</i>';
+  }
+  if (copa && copa.dentro) {
+    html += '<i>' + copa.pct.toFixed(0) + '% debaixo de árvores'
+      + (copa.medida ? ' (copa medida ≥ 5 m)' : ' (pela carta)')
+      + ' — o monte não é a única sombra</i>';
+  }
   if (sol && sol.dentro) {
     html += '<div class=barra>' + barraSol(sol) + '</div>'
       + '<i>' + sol.pct.toFixed(0) + '% ao sol às '
@@ -547,17 +563,33 @@ function pintaMeus() {
       + km1(e.km || 0) + ' · ↗ ' + (e.sobe || 0) + ' m · ' + (e.zmin || 0) + '–' + (e.zmax || 0) + ' m'
       + (e.dur ? ' · ' + hm(e.dur) : '')
       + '<br>' + new Date(m.quando).toLocaleDateString('pt-PT') + ' · ' + esc(m.origem)
+      + '<br><label data-ver="' + m.id + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px">'
+      + '<input type=checkbox' + (m.ver ? ' checked' : '') + '> ver no terreno</label>'
       + '</i></div><div class=x data-apaga="' + m.id + '">✕</div></div>';
   }).join('');
 }
+// os trilhos com "ver no terreno" ficam sempre desenhados, cada um na sua cor
+const CORES_MEUS = [[0.72, 0.30, 0.66], [0.15, 0.55, 0.55], [0.85, 0.55, 0.10], [0.35, 0.35, 0.80]];
+function actualizaExtras() {
+  if (!V) return;
+  const lista = MEUS.filter((m) => m.ver).map((m, k) => ({
+    linhas: paraFita([m.pts.map((p) => [p.la, p.lo])]), cor: CORES_MEUS[k % CORES_MEUS.length], largura: 6 }));
+  V.extras(lista);
+}
+$('meus').addEventListener('change', (e) => {
+  const lb = e.target.closest('[data-ver]'); if (!lb) return;
+  const m = MEUS.find((x) => x.id === +lb.dataset.ver); if (!m) return;
+  m.ver = e.target.checked; guardaMeus(); actualizaExtras();
+});
 $('meus').addEventListener('click', (e) => {
+  if (e.target.closest('[data-ver]')) return;
   const ap = e.target.closest('[data-apaga]');
   if (ap) {
     const m = MEUS.find((x) => x.id === +ap.dataset.apaga);
     if (m && confirm('Apagar “' + m.nome + '”? Não há como voltar atrás.')) {
       MEUS = MEUS.filter((x) => x.id !== m.id);
       if (escolhido && escolhido.fonte === 'meu' && escolhido.id === m.id) escolhe(null);
-      guardaMeus(); pintaMeus();
+      guardaMeus(); pintaMeus(); actualizaExtras();
     }
     return;
   }
@@ -567,6 +599,9 @@ $('meus').addEventListener('click', (e) => {
 
 function acrescenta(nome, pts, origem) {
   const est = medeTrilho(T, pts, { cotaDoGPS: true });
+  // um ponto por segundo e 20 000 pontos e 1 MB no telemovel; a 5 m sao 2 600
+  // e a distancia e a certa (ver simplificaTrilho)
+  pts = simplificaTrilho(pts, 5);
   // arredondar antes de guardar: cinco casas sao 1 m, e o resto e peso a mais
   const leves = pts.map((p) => ({ la: +p.la.toFixed(5), lo: +p.lo.toFixed(5),
     z: p.z == null ? null : Math.round(p.z), t: p.t || null }));

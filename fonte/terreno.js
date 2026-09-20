@@ -1088,6 +1088,12 @@ function abreVista(canvas, T, op) {
   gl.bindVertexArray(A.dest); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
   { const l2 = gl.getAttribLocation(P.rota, 'aP');
     gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
+  // "ver no terreno": os trilhos do utilizador que ele quer sempre a vista,
+  // cada um com a sua cor, num VAO refeito so quando a lista muda
+  A.extra = gl.createVertexArray(); A.bufExtra = gl.createBuffer(); A.gruposExtra = [];
+  gl.bindVertexArray(A.extra); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufExtra);
+  { const l2 = gl.getAttribLocation(P.rota, 'aP');
+    gl.enableVertexAttribArray(l2); gl.vertexAttribPointer(l2, 3, gl.FLOAT, false, 0, 0); }
   A.marca = gl.createVertexArray(); A.bufMarca = gl.createBuffer(); A.nMarca = 0;
   gl.bindVertexArray(A.marca); gl.bindBuffer(gl.ARRAY_BUFFER, A.bufMarca);
   { const l2 = gl.getAttribLocation(P.rota, 'aP');
@@ -1313,6 +1319,14 @@ function abreVista(canvas, T, op) {
         gl.bindVertexArray(A.rota);
         gl.drawArrays(gl.TRIANGLES, 0, A.nRota);
       }
+      if (A.gruposExtra.length) {
+        gl.bindVertexArray(A.extra);
+        for (const g of A.gruposExtra) {
+          if (!g.n) continue;
+          gl.uniform3f(L.rota.uCor, g.cor[0], g.cor[1], g.cor[2]);
+          gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
+        }
+      }
       // o trilho escolhido por cima dos outros, mais grosso e mais vivo
       if (A.nDest) {
         const c = corDest;
@@ -1378,6 +1392,18 @@ function abreVista(canvas, T, op) {
       A.nDest = v.length / 3;
       gl.bindBuffer(gl.ARRAY_BUFFER, A.bufDest);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+    },
+    // lista de { linhas, cor, largura }: os trilhos a manter a vista
+    extras(lista) {
+      const V = [], grupos = [];
+      for (const e of lista || []) {
+        const v = fitaLinhas(T, e.linhas || [], e.largura || 6, 1.4);
+        grupos.push({ ini: V.length / 3, n: v.length / 3, cor: e.cor || [0.72, 0.30, 0.66] });
+        for (let k = 0; k < v.length; k++) V.push(v[k]);
+      }
+      A.gruposExtra = grupos;
+      gl.bindBuffer(gl.ARRAY_BUFFER, A.bufExtra);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.DYNAMIC_DRAW);
     },
     // onde estou: um anel no chao e um pau a apontar ao ceu
     marca(lo, la, raio) {
@@ -1858,8 +1884,25 @@ function metros(a, b) {
 // O que se sabe de um trilho. A cota vem do GPS quando ele a traz e do terreno
 // quando nao traz -- e diz-se qual foi, porque um GPS de telemovel erra 15 m
 // na vertical com facilidade e o terreno nao erra nada dessa maneira.
+// Um GPS de relogio grava um ponto por segundo, e cada ponto treme uns
+// metros. Somar essas tremuras da 30% de distancia a mais: o trilho do Javali
+// Inferno (19/09/2026) dava 18,6 km em bruto; o relogio dizia 14,9; com um
+// passo minimo de 5 m entre pontos guardados da 14,7. O passo e 5 m porque e
+// o que o relogio proprio usa, a menos de 1%. A ordem e os tempos ficam.
+function simplificaTrilho(pts, passo) {
+  passo = passo || 5;
+  if (!pts || pts.length < 3) return pts || [];
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++)
+    if (metros(out[out.length - 1], pts[i]) >= passo) out.push(pts[i]);
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
 function medeTrilho(T, pts, op) {
   op = op || {};
+  const brutos = pts ? pts.length : 0;
+  pts = simplificaTrilho(pts, op.passo || 5);
   const n = pts.length;
   if (n < 2) return null;
   const doGPS = op.cotaDoGPS !== false && pts.some((p) => p.z != null);
@@ -1903,7 +1946,7 @@ function medeTrilho(T, pts, op) {
   if (T) for (const p of pts)
     if (p.lo >= T.lo0 && p.lo <= T.lo1 && p.la >= T.la0 && p.la <= T.la1) dentro++;
   return {
-    pontos: n, km: dist / 1000, sobe: Math.round(sobe), desce: Math.round(desce),
+    pontos: brutos, km: dist / 1000, sobe: Math.round(sobe), desce: Math.round(desce),
     zmin: Math.round(zmin), zmax: Math.round(zmax),
     cotaDe: doGPS ? 'GPS' : 'terreno',
     dur, vel: dur ? (dist / 1000) / (dur / 3600) : null,
@@ -1916,19 +1959,35 @@ function medeTrilho(T, pts, op) {
 // aplicacao, e aqui responde-se com o mapa de horizonte que ja esta cozido:
 // para cada ponto, compara-se a altura do sol com a altura a que o monte tapa
 // o ceu naquela direccao.
-function solNoTrilho(T, pts, quando) {
+// op.horaPropria: um trilho GRAVADO tem a hora de cada ponto, e a pergunta
+// certa e "quanto dele andei ao sol", nao "quanto estaria ao sol as 15:05".
+// Cada ponto usa a sua hora (o sol calcula-se por minuto, para nao repetir
+// a conta 20 000 vezes). Sem horas, ou sem a opcao, vale a hora dada.
+function solNoTrilho(T, pts, quando, op) {
   if (!T || !T.hori) return null;
-  const s = posicaoSol(quando, (T.la0 + T.la1) / 2, (T.lo0 + T.lo1) / 2);
+  op = op || {};
+  const laC = (T.la0 + T.la1) / 2, loC = (T.lo0 + T.lo1) / 2;
   const H = T.hori, nd = H.ndir;
-  const f = ((s.az % 360) + 360) % 360 / 360 * nd;
-  const l0 = Math.floor(f) % nd, l1 = (l0 + 1) % nd, t = f - Math.floor(f);
+  const porPonto = !!(op.horaPropria && pts.some((p) => p.t));
+  const cache = new Map();
+  const solEm = (ms) => {
+    const k = Math.floor(ms / 60000);
+    let s = cache.get(k);
+    if (!s) { s = posicaoSol(new Date(k * 60000), laC, loC); cache.set(k, s); }
+    return s;
+  };
+  const sFixo = posicaoSol(quando, laC, loC);
   const marca = new Uint8Array(pts.length);
-  let ao = 0, dentro = 0;
+  let ao = 0, dentro = 0, t0 = null, t1 = null;
   for (let i = 0; i < pts.length; i++) {
     const p = pts[i];
     if (p.lo < T.lo0 || p.lo > T.lo1 || p.la < T.la0 || p.la > T.la1) { marca[i] = 2; continue; }
     dentro++;
+    const s = porPonto && p.t ? solEm(p.t) : sFixo;
+    if (porPonto && p.t) { if (t0 == null || p.t < t0) t0 = p.t; if (t1 == null || p.t > t1) t1 = p.t; }
     if (s.alt <= 0) { marca[i] = 0; continue; }
+    const f = ((s.az % 360) + 360) % 360 / 360 * nd;
+    const l0 = Math.floor(f) % nd, l1 = (l0 + 1) % nd, t = f - Math.floor(f);
     const m = T.emM(p.lo, p.la);
     const i0 = Math.min(H.nx - 1, Math.max(0, Math.round(m[0] / T.larg * (H.nx - 1))));
     const j0 = Math.min(H.ny - 1, Math.max(0, Math.round((T.alt - m[1]) / T.alt * (H.ny - 1))));
@@ -1937,8 +1996,28 @@ function solNoTrilho(T, pts, quando) {
     const h = a0 * (1 - t) + a1 * t;
     if (s.alt > h) { marca[i] = 1; ao++; }
   }
-  return { sol: s, marca, pct: dentro ? 100 * ao / dentro : 0, dentro };
+  return { sol: sFixo, marca, pct: dentro ? 100 * ao / dentro : 0, dentro, porPonto, t0, t1 };
+}
+
+// Quanto do trilho vai debaixo de arvores. O mapa de horizonte so sabe do
+// monte; a copa e outra sombra, e num vale de vidoeiros e a que conta. Vem
+// da altura medida (>= 5 m) onde ha, senao da classe (montado/floresta).
+function copaNoTrilho(T, pts) {
+  if (!T || !T.classe) return null;
+  const mx = T.mx, my = T.my;
+  let sob = 0, dentro = 0;
+  for (const p of pts) {
+    if (p.lo < T.lo0 || p.lo > T.lo1 || p.la < T.la0 || p.la > T.la1) continue;
+    dentro++;
+    const m = T.emM(p.lo, p.la);
+    const i = Math.min(mx - 1, Math.max(0, Math.floor(m[0] / T.larg * mx)));
+    const j = Math.min(my - 1, Math.max(0, Math.floor((T.alt - m[1]) / T.alt * my)));
+    const k = j * mx + i, c = T.classe[k] & 127;
+    const arv = T.altv ? T.altv[k] >= 50 : (c === 4 || c === 5);
+    if (arv) sob++;
+  }
+  return { pct: dentro ? 100 * sob / dentro : 0, dentro, medida: !!T.altv };
 }
 
 if (typeof module !== 'undefined') Object.assign(module.exports,
-  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, metros });
+  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, copaNoTrilho, simplificaTrilho, metros });
