@@ -49,9 +49,21 @@ def le(f):
     T['ALTV'] = (np.frombuffer(B['ALTV'], np.uint8, offset=4).reshape(my, mx)
                  if 'ALTV' in B else None)
     T['temCasas'] = 'CASA' in B
+    T['pontos'] = []
+    if 'PONT' in B:
+        n, off = struct.unpack_from('<I', B['PONT'], 0)[0], 4
+        for _ in range(n):
+            lo, la, alt, lk, ln = struct.unpack_from('<ffHBB', B['PONT'], off); off += 12
+            kb = B['PONT'][off:off + lk].decode('utf-8'); off += lk
+            nb = B['PONT'][off:off + ln].decode('utf-8'); off += ln
+            T['pontos'].append((kb, nb, lo, la))
     if T['temCasas']:
         n, zc0, zc1 = struct.unpack_from('<Iff', B['CASA'], 0)
         T['nVertCasa'] = n
+        q = np.frombuffer(B['CASA'], np.uint16, offset=12).reshape(-1, 3).astype(np.float32) / 65535
+        tri = q.reshape(-1, 3, 3)
+        telhado = (tri[:, 0, 2] == tri[:, 1, 2]) & (tri[:, 1, 2] == tri[:, 2, 2])
+        T['telhados'] = tri[telhado].mean(1)[:, :2] if telhado.any() else None   # x,y em fraccao da caixa
     return T
 
 
@@ -244,6 +256,26 @@ def main():
     if g.any():
         q = float((dc[g] < 12).mean())
         B.cons('agua e plana', bool(q > 0.90), '%.1f%% da agua tem declive < 12 graus' % (100 * q))
+
+    # ---- 4b. posicao: a carta esta no sitio do relevo?
+    # A grelha de classes esteve espelhada norte-sul ate a v10 sem nenhuma
+    # verificacao dar por isso: as consistencias sao elementares e a floresta
+    # e decidida pela medicao, que estava certa. Esta e a prova que faltava.
+    # Os contornos dos edificios sao de outra fonte (Microsoft/OSM) e uma casa
+    # assenta em terreno artificializado ou agricola da COS; com a grelha ao
+    # espelho assentavam em floresta e matos (0,3%). As "povoacoes" do OSM nao
+    # servem: metade sao topónimos de sitios ermos (Fraga do Vale Mourisco).
+    if T['temCasas'] and T.get('telhados') is not None:
+        pts = T['telhados']
+        i = (pts[:, 0] * (mx - 1)).round().astype(int).clip(0, mx - 1)
+        j = ((1 - pts[:, 1]) * (my - 1)).round().astype(int).clip(0, my - 1)
+        sob = C[j, i]
+        p = float(np.isin(sob, [1, 2]).mean())
+        B.ver('posicao da carta', bool(p >= 0.5),
+              '%.0f%% dos telhados (%s) assentam em urbano ou agricola da COS '
+              '(com a grelha espelhada eram 0,3%%)' % (100 * p, f'{len(pts):,}'), {'p': p})
+    else:
+        B.nao('posicao da carta', 'sem contornos de edificios nao ha com que conferir a posicao')
 
     # ---- 5. casas
     urb = float((C == 1).sum()) * ac

@@ -180,7 +180,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=19"></script>
+<script src="fonte/terreno.js?v=20"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -247,6 +247,7 @@ function mostraInfo(z, ler) {
 `${z.titulo}
 ${z.km[0]} × ${z.km[1]} km · cotas de ${z.cota[0]} a ${z.cota[1]} m
 grelha ${z.passo} m · solo ${z.classe} m · ${z.fonte}
+ficheiro ${z.ficheiro}${z.fontes ? ' · carta ' + z.fontes.classes + ' · casas ' + z.fontes.casas : ''}
 
 plantas cozidas   ${num(c.total)}
 a desenhar        ${num(c.desenhadas)}

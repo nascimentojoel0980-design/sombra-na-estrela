@@ -74,6 +74,15 @@
   },
   {
    "tipo": "VERIFICACAO",
+   "nome": "posicao da carta",
+   "passa": true,
+   "texto": "82% dos telhados (7,038) assentam em urbano ou agricola da COS (com a grelha espelhada eram 0,3%)",
+   "valor": {
+    "p": 0.817277635691958
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
    "nome": "casas",
    "passa": true,
    "texto": "93,582 vertices de contorno (ms + osm); 1.58 km2 de urbano na carta. Densidade NAO verificada contra o ortofoto; alturas modeladas onde a fonte nao mede",
