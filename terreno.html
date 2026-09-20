@@ -181,7 +181,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=23"></script>
+<script src="fonte/terreno.js?v=24"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -227,6 +227,7 @@ async function abreZona(z) {
   await new Promise((r) => setTimeout(r, 0));
   V = abreVista(cv, T, { camadaRotulos: document.getElementById('rotulos'),
                          d0: +document.getElementById('d0').value || 250,
+                         densidade: z.tem && z.tem.plantas === false ? 0 : 1,
                          aoDesenhar: () => { if ((++nF & 7) === 0) mostraInfo(z, ler); } });
   window.V = V; window.T = T;
   for (const el of document.querySelectorAll('[data-m]')) V.mostrar[el.dataset.m] = el.checked;

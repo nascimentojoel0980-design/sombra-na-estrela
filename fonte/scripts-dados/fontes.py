@@ -143,21 +143,25 @@ def casas_poligonos(pasta, caixa):
 RASTER = {
     'mdt8': dict(pasta='lidar-derivado/mdt8', escala=0.1, nodata=(-32768,)),
     'chm5': dict(pasta='lidar-derivado/chm5', escala=0.1, nodata=(254, 255)),
+    # agua mensal Sentinel-2: 1 agua, 0 nao, 255 nuvem/sem dado (um por mes)
+    'agua': dict(pasta='sentinel/agua-mensal', escala=1.0, nodata=(255,)),
 }
 
 
-def ha_raster(pasta, produto, caixa):
+def ha_raster(pasta, produto, caixa, prefixo=None):
     e = RASTER[produto]
-    return bool(folhas(os.path.join(pasta, e['pasta']), produto, 'tif', caixa))
+    return bool(folhas(os.path.join(pasta, e['pasta']), prefixo or produto, 'tif', caixa))
 
 
-def raster_mosaico(pasta, produto, caixa, margem_celulas=3):
+def raster_mosaico(pasta, produto, caixa, margem_celulas=3, prefixo=None, preenche='mediana'):
+    """preenche: 'mediana' (buracos pequenos, como le_mdt) ou 'minimo' (para o
+    horizonte: fora da area de construcao nao se inventa monte nenhum)."""
     import rasterio
     from rasterio.windows import from_bounds as janela
     e = RASTER[produto]
-    fs = folhas(os.path.join(pasta, e['pasta']), produto, 'tif', caixa)
+    fs = folhas(os.path.join(pasta, e['pasta']), prefixo or produto, 'tif', caixa)
     if not fs:
-        raise SystemExit('%s: nenhuma folha em %s toca a caixa' % (produto, pasta))
+        raise SystemExit('%s: nenhuma folha em %s toca a caixa' % (prefixo or produto, pasta))
     lo0, la0, lo1, la1 = caixa
     # grelha alvo: a da primeira folha (todas tem de ter o mesmo passo e estar
     # alinhadas -- e a regra do armazem, e confere-se)
@@ -192,7 +196,30 @@ def raster_mosaico(pasta, produto, caixa, margem_celulas=3):
             Z[cj:cj + hh, ci:ci + ww] = np.where(np.isnan(Z[cj:cj + hh, ci:ci + ww]),
                                                  a * e['escala'], Z[cj:cj + hh, ci:ci + ww])
     if np.isnan(Z).all():
-        raise SystemExit('%s: as folhas existem mas nao tem dados na caixa' % produto)
-    if np.isnan(Z).any():
-        Z = np.where(np.isnan(Z), np.nanmedian(Z), Z)
+        raise SystemExit('%s: as folhas existem mas nao tem dados na caixa' % (prefixo or produto))
+    if preenche is not None and np.isnan(Z).any():
+        v = np.nanmedian(Z) if preenche == 'mediana' else float(np.nanmin(Z))
+        Z = np.where(np.isnan(Z), v, Z)
     return Z, (l, b, r_, t)
+
+
+def agua_permanente(pasta, caixa, minimo=0.75, meses_min=6):
+    """Agua que esta la o ano inteiro, a partir dos 12 meses de NDWI de 2024.
+    Um mes so (Julho) apanha sombra de encosta e lagoas cheias por acaso; a
+    persistencia nao. Celula = agua se, dos meses com dado (>= meses_min),
+    pelo menos `minimo` a viram como agua. Devolve (0/1 float32, caixa) como
+    le_mdt, mais a lista de meses usados."""
+    vistos = None; agua = None; cx = None; meses = []
+    for m in range(1, 13):
+        pref = 'agua_2024-%02d' % m
+        if not ha_raster(pasta, 'agua', caixa, pref): continue
+        Z, cx = raster_mosaico(pasta, 'agua', caixa, prefixo=pref, preenche=None)
+        ok = ~np.isnan(Z)
+        if vistos is None:
+            vistos = np.zeros(Z.shape, np.int16); agua = np.zeros(Z.shape, np.int16)
+        vistos += ok; agua += (ok & (Z > 0.5))
+        meses.append(pref[-2:])
+    if vistos is None:
+        raise SystemExit('agua mensal: nenhuma folha toca a caixa')
+    frac = np.where(vistos >= meses_min, agua / np.maximum(vistos, 1), 0.0)
+    return (frac >= minimo).astype(np.float32), cx, meses

@@ -1,9 +1,51 @@
 {
  "zonas": [
   {
+   "nome": "torre",
+   "titulo": "Torre e Lagoa Comprida",
+   "ficheiro": "torre-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.28,
+    -7.62,
+    40.39
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    298,
+    1931
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 95
+   },
+   "bytes": 8835230,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v13.terr.gz",
+   "ficheiro": "manteigas-v14.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -23,10 +65,14 @@
    "fonte": "MDT do LiDAR, com copa medida",
    "fontes": {
     "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 742
    },
-   "bytes": 8716470,
+   "bytes": 8618370,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -34,6 +80,7 @@
     "caminhos": true,
     "sombra": true,
     "casas": true,
+    "plantas": true,
     "altura_medida": true
    }
   }

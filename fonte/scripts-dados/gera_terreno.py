@@ -281,7 +281,7 @@ def abre_corredor(classes, rotas, caixa, mx, my, raio_m):
 
 
 # -------------------------------------------------------------- horizonte
-def horizonte(Z, passo_x, passo_y, ndir, alcance_m):
+def horizonte(Z, passo_x, passo_y, ndir, alcance_m, janela=None):
     """Para cada no e cada direccao, o angulo a que o terreno tapa o ceu.
 
     E o que permite sombra a serio: ao desenhar, compara-se a altura do sol
@@ -291,7 +291,11 @@ def horizonte(Z, passo_x, passo_y, ndir, alcance_m):
 
     Guarda-se em graus/0.5 num byte (0..180 = 0..90 graus).
     """
-    ny, nx = Z.shape
+    # janela = (j0, i0, ny, nx): calcula so para esses nos de Z, mas ve Z todo
+    # (a moldura a volta da caixa, quando ha)
+    NY, NX = Z.shape
+    j0, i0, ny, nx = janela if janela else (0, 0, NY, NX)
+    Zc = Z[j0:j0 + ny, i0:i0 + nx]
     H = np.zeros((ndir, ny, nx), dtype=np.uint8)
     base = min(passo_x, passo_y)
     for d in range(ndir):
@@ -305,9 +309,9 @@ def horizonte(Z, passo_x, passo_y, ndir, alcance_m):
         while dist < alcance_m:
             di = math.sin(az) * dist / passo_x       # leste = +coluna
             dj = -math.cos(az) * dist / passo_y      # norte = -linha
-            ii = np.clip(np.arange(nx)[None, :] + di, 0, nx - 1).astype(np.int32)
-            jj = np.clip(np.arange(ny)[:, None] + dj, 0, ny - 1).astype(np.int32)
-            np.maximum(maxang, (Z[jj, ii] - Z) / dist, out=maxang)
+            ii = np.clip(np.arange(i0, i0 + nx)[None, :] + di, 0, NX - 1).astype(np.int32)
+            jj = np.clip(np.arange(j0, j0 + ny)[:, None] + dj, 0, NY - 1).astype(np.int32)
+            np.maximum(maxang, (Z[jj, ii] - Zc) / dist, out=maxang)
             dist *= 1.25
         H[d] = np.clip(np.degrees(np.arctan(maxang)) * 2.0, 0, 180).astype(np.uint8)
     return H
@@ -361,6 +365,15 @@ def main():
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
     ap.add_argument('--sem-casas', action='store_true')
+    ap.add_argument('--sem-curvas', action='store_true', help='sem curvas de nivel (vista geral)')
+    ap.add_argument('--so-caminhos', default=None,
+                    help='lista de tipos a guardar, ex. nacional,estrada,estradao,rio (vista geral)')
+    ap.add_argument('--sem-plantas', action='store_true',
+                    help='a zona nao semeia nada (vista geral da serra a 50 m: a 6 000 km2 '
+                         'seriam 140 milhoes de plantas). Fica escrito no indice e o motor obedece.')
+    ap.add_argument('--alcance', type=float, default=15000.0,
+                    help='ate que distancia (m) um monte pode tapar o sol; com o MDT do armazem '
+                         'o horizonte ve para fora da caixa ate aqui')
     ap.add_argument('--penedo-alt', type=float, default=1200.0,
                     help='acima desta cota, uma pegada so da Microsoft, pequena e fora de '
                          'urbano/agricola, e tratada como penedo e nao se desenha')
@@ -399,6 +412,8 @@ def main():
         a.mdt = 'armazem:mdt8'
     if not a.chm and usa_fontes and fontes.ha_raster(a.fontes, 'chm5', a.caixa):
         a.chm = 'armazem:chm5'
+    if not a.agua and usa_fontes and fontes.ha_raster(a.fontes, 'agua', a.caixa, 'agua_2024-07'):
+        a.agua = 'armazem:agua'
     if a.mdt:
         if a.mdt == 'armazem:mdt8': z, cx = fontes.raster_mosaico(a.fontes, 'mdt8', a.caixa)
         else: z, cx = le_mdt(a.mdt)
@@ -408,7 +423,8 @@ def main():
         fonte = 'MDT do LiDAR' + (', com copa medida' if a.chm else '')
     else:
         z, cx = le_dem(); fonte = 'Copernicus 30 m'
-    print('MDT: %s   CHM: %s' % (a.mdt or 'Copernicus 30 m', a.chm or 'nenhum (altura modelada)'))
+    print('MDT: %s   CHM: %s   agua: %s' % (a.mdt or 'Copernicus 30 m', a.chm or 'nenhum (altura modelada)',
+                                          a.agua or 'so COS/OSM'))
     lons = np.linspace(lo0, lo1, nx); lats = np.linspace(la1, la0, ny)
     Z = amostra(z, cx, lons, lats).astype(np.float32)
     z0, z1 = float(Z.min()), float(Z.max())
@@ -549,6 +565,7 @@ def main():
     for props, g in sem_repetir(
             (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'caminhos') if gt == 2):
         t = props.get('t') or 'caminho'
+        if a.so_caminhos and t not in a.so_caminhos.split(','): continue
         cams.append((TIPO_CAM.get(t, 3), t, g))
     # --- linhas de agua (OSM aguaL). A COS so tem cursos com 20 m de largura
     # e o Sentinel nao ve 3 m: o Zezere no Covao da Ametade nao existia no
@@ -558,6 +575,7 @@ def main():
     for props, g in sem_repetir(
             (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'aguaL') if gt == 2):
         t = TIPO_AGUA.get(props.get('w'), 'ribeira')
+        if a.so_caminhos and t not in a.so_caminhos.split(','): continue
         cams.append((TIPO_CAM[t], t, g)); n_agl += 1
     porT = {}
     for _, t, _ in cams: porT[t] = porT.get(t, 0) + 1
@@ -797,7 +815,15 @@ def main():
     # de todas, por isso e a ultima a escrever e nao ha regra que lhe passe por
     # cima -- nem a da parede.
     if a.agua:
-        za, ca = le_mdt(a.agua)
+        if a.agua == 'armazem:agua':
+            # persistencia: agua em >= 75% dos meses com dado de 2024. Um mes so
+            # apanha sombra de encosta (NDWI > 0 em vertente a norte no Inverno)
+            # e lagoas sazonais; a persistencia atravessa o Verao e limpa as duas.
+            za, ca, meses = fontes.agua_permanente(a.fontes, a.caixa)
+            print('agua permanente: %d meses de 2024 (%s), agua em >= 75%% deles'
+                  % (len(meses), ' '.join(meses)))
+        else:
+            za, ca = le_mdt(a.agua)
         tapa_caixa(ca, a.caixa, 'mapa de agua')
         lonsA = np.linspace(lo0, lo1, mx); latsA = np.linspace(la1, la0, my)
         mask = amostra(za, ca, lonsA, latsA) > 0.5
@@ -810,8 +836,8 @@ def main():
 
     # --- curvas de nivel (ja vem dos azulejos: nao ha nada a calcular)
     curvas = []
-    for props, g in sem_repetir(
-            (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'curvas') if gt == 2):
+    for props, g in ([] if a.sem_curvas else sem_repetir(
+            (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'curvas') if gt == 2)):
         curvas.append((int(props.get('alt') or 0), int(props.get('g') or 0), g))
     print('curvas de nivel: %d linhas, %s pontos'
           % (len(curvas), f'{sum(len(g) for _,_,g in curvas):,}'))
@@ -915,14 +941,42 @@ def main():
         ph = a.passo_horizonte or a.passo
         hx = int(round(larg_m / ph)) + 1
         hy = int(round(alt_m / ph)) + 1
-        if (hx, hy) == (nx, ny):
-            Zh = Z
+        # O horizonte tem de ver para FORA da caixa: um cume a 3 km da borda
+        # tapa o sol la dentro e antes nao existia (so se conhecia o relevo da
+        # propria caixa, ate 4 km). Com o MDT do armazem, amostra-se uma
+        # moldura de --alcance a volta e calcula-se so para os nos da caixa.
+        margem = 0.0
+        if a.mdt == 'armazem:mdt8':
+            mlo = a.alcance / mlon; mla = a.alcance / mlat
+            caixa_h = (lo0 - mlo, la0 - mla, lo1 + mlo, la1 + mla)
+            try:
+                zh, cxh = fontes.raster_mosaico(a.fontes, 'mdt8', caixa_h, preenche='minimo')
+                # a moldura pode ficar mais curta onde acaba a area de construcao
+                caixa_h = (max(caixa_h[0], cxh[0]), max(caixa_h[1], cxh[1]),
+                           min(caixa_h[2], cxh[2]), min(caixa_h[3], cxh[3]))
+                margem = a.alcance
+            except SystemExit:
+                zh, cxh = z, cx
+        if margem:
+            # grelha estendida com o MESMO passo e alinhada aos nos da caixa
+            ex0 = int(math.ceil((lo0 - caixa_h[0]) * mlon / ph)); ex1 = int(math.ceil((caixa_h[2] - lo1) * mlon / ph))
+            ey0 = int(math.ceil((caixa_h[3] - la1) * mlat / ph)); ey1 = int(math.ceil((la0 - caixa_h[1]) * mlat / ph))
+            dlo = (lo1 - lo0) / (hx - 1); dla = (la1 - la0) / (hy - 1)
+            lonsH = lo0 + dlo * np.arange(-ex0, hx + ex1); latsH = la1 - dla * np.arange(-ey0, hy + ey1)
+            lonsH = np.clip(lonsH, cxh[0], cxh[2]); latsH = np.clip(latsH, cxh[1], cxh[3])
+            Zh = amostra(zh, cxh, lonsH, latsH).astype(np.float32)
+            H = horizonte(Zh, larg_m / (hx - 1), alt_m / (hy - 1), a.dir, a.alcance,
+                          janela=(ey0, ex0, hy, hx))
         else:
-            Zh = amostra(z, cx, np.linspace(lo0, lo1, hx),
-                         np.linspace(la1, la0, hy)).astype(np.float32)
-        H = horizonte(Zh, larg_m / (hx - 1), alt_m / (hy - 1), a.dir, 4000.0)
-        print('mapa de horizonte: %d x %d (passo %.0f m), %d direccoes, %.2f MB'
-              % (hx, hy, ph, a.dir, H.nbytes / 1e6))
+            if (hx, hy) == (nx, ny):
+                Zh = Z
+            else:
+                Zh = amostra(z, cx, np.linspace(lo0, lo1, hx),
+                             np.linspace(la1, la0, hy)).astype(np.float32)
+            H = horizonte(Zh, larg_m / (hx - 1), alt_m / (hy - 1), a.dir, min(a.alcance, 4000.0))
+        print('mapa de horizonte: %d x %d (passo %.0f m), %d direccoes, %.2f MB, ve ate %.0f km%s'
+              % (hx, hy, ph, a.dir, H.nbytes / 1e6, (margem or min(a.alcance, 4000.0)) / 1000,
+                 ' com moldura fora da caixa' if margem else ' SO DENTRO DA CAIXA'))
         print('   horizonte medio %.1f graus, maximo %.1f'
               % (H.mean() / 2, H.max() / 2))
 
@@ -1015,12 +1069,14 @@ def main():
         'cota': [round(z0), round(z1)],
         'fonte': fonte,
         'fontes': {'classes': fonte_cos, 'mdt': a.mdt or 'Copernicus 30 m', 'chm': a.chm,
+                   'agua': a.agua, 'horizonte_km': round((margem or min(a.alcance, 4000.0)) / 1000) if H is not None else None,
                    'casas': ' + '.join(sorted(fontes_casas)) or None,
                    'penedos_rejeitados': n_penedo},
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,
                 'casas': CASA is not None,
+                'plantas': not a.sem_plantas,
                 'altura_medida': ALTV is not None},
     })
     zonas.sort(key=lambda z: z['titulo'])
