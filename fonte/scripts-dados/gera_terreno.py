@@ -354,6 +354,10 @@ def main():
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
     ap.add_argument('--sem-casas', action='store_true')
+    ap.add_argument('--penedo-alt', type=float, default=1200.0,
+                    help='acima desta cota, uma pegada so da Microsoft, pequena e fora de '
+                         'urbano/agricola, e tratada como penedo e nao se desenha')
+    ap.add_argument('--penedo-m2', type=float, default=60.0)
     ap.add_argument('--fontes', default=os.path.join(RAIZ, '..', 'sne-dados-fonte'),
                     help='pasta do repositorio sne-dados-fonte (COS 2025 Serie 2 e '
                          'contornos Microsoft + OSM, recortados a area toda do mapa)')
@@ -473,11 +477,42 @@ def main():
     contornos_casas = []          # aneis em graus
     alturas_casas = []            # m medidos pela fonte, ou None
     fontes_casas = {}
+    n_penedo = 0
     if not a.sem_casas:
         if usa_fontes:
+            # A Microsoft ve casas em penedos. Rotularam-se 24 pegadas dela de
+            # 15-60 m2 fora de urbano/agricola contra o ortofoto (20/09/2026):
+            # das 16 com ortofoto, 10 de 11 acima de 1190 m eram penedos de
+            # granito e 3 de 3 abaixo de 1100 m eram casas. O que separa e a
+            # cota -- o planalto e um campo de blocos -- e nao a altura medida
+            # (um penedo mede 2,5 m no CHM como um telhado). Regra, medida e
+            # com limiares a vista: so-Microsoft + < --penedo-m2 + fora de
+            # urbano/agricola + acima de --penedo-alt = penedo. Perde-se um
+            # casal de pastor pequeno la em cima; ganha-se nao inventar casas
+            # no Covao. O OSM passa sempre: la alguem viu a casa.
+            base0 = C & 127
             for fo, h, anel in fontes.casas_poligonos(a.fontes, a.caixa):
+                if fo == 'ms':
+                    P = [((lo - lo0) * mlon, (la - la0) * mlat) for lo, la in anel]
+                    if P[0] == P[-1]: P.pop()
+                    k = len(P)
+                    if k >= 3:
+                        m2 = abs(sum(P[i][0] * P[(i + 1) % k][1] - P[(i + 1) % k][0] * P[i][1]
+                                     for i in range(k))) / 2
+                        cxm = sum(x for x, _ in P) / k; cym = sum(y for _, y in P) / k
+                        i = min(mx - 1, max(0, int(cxm / larg_m * mx)))
+                        j = min(my - 1, max(0, int((1 - cym / alt_m) * my)))
+                        iz = min(nx - 1, max(0, int(round(cxm / larg_m * (nx - 1)))))
+                        jz = min(ny - 1, max(0, int(round((alt_m - cym) / alt_m * (ny - 1)))))
+                        if (m2 < a.penedo_m2 and base0[j, i] not in (1, 2)
+                                and Z[jz, iz] >= a.penedo_alt):
+                            n_penedo += 1
+                            continue
                 contornos_casas.append(anel); alturas_casas.append(h)
                 fontes_casas[fo] = fontes_casas.get(fo, 0) + 1
+            if n_penedo:
+                print('pegadas Microsoft tratadas como penedos (< %.0f m2, > %.0f m, fora de '
+                      'urbano/agricola): %d' % (a.penedo_m2, a.penedo_alt, n_penedo))
         else:
             for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
                 if gt != 3 or not gs: continue
@@ -555,8 +590,14 @@ def main():
 
         base = C & 127
         corr = C & 128
-        livre = (CASA_LARGA == 0) & ~np.isin(base, [1, 2])
-        subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 3, 6, 7, 10])
+        # O urbano deixou de estar excluido (20/09/2026): com os contornos
+        # Microsoft + OSM os telhados ja estao mascarados um a um, e o que
+        # sobra com 5 m de copa dentro de um poligono urbano e arvore -- o
+        # Covao da Ametade e "Turismo" na COS (parque de campismo) e tem
+        # vidoeiros de 12 m que saiam apagados. O agricola continua de fora:
+        # um olival mede 5 m e nao e floresta.
+        livre = (CASA_LARGA == 0) & (base != 2)
+        subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 1, 3, 6, 7, 10])
         # a vegetacao esparsa da COS (chao nu provisorio) ganha mato onde o
         # laser mede mato; o matagal parte-se logo a seguir como o resto
         cresce = esparsa & (base == 10) & (h >= 0.5) & (h < a.arvore_min)
@@ -639,11 +680,19 @@ def main():
     # versao anterior estava em declive acima de 12 graus.
     plano = DEC < a.agua_graus if a.mdt else np.ones((my, mx), bool)
     vale = (AGUA_OSM > 0) & plano
-    C = np.where(vale, 9, C).astype(np.uint8)
     ac0 = a.classe * a.classe / 1e6
-    print('agua do OSM: %d poligonos, %.2f km2 aceites, %.2f km2 recusados por'
-          ' declive >= %.0f graus (ribeiras desenhadas como area)'
-          % (n_ag, vale.sum() * ac0, ((AGUA_OSM > 0) & ~plano).sum() * ac0, a.agua_graus))
+    # O OSM desenha lagoas que em Julho estao secas (a da Nave a NE do Covao:
+    # fundo castanho no ortofoto, COS pastagem, Sentinel sem agua). Uma lagoa
+    # sazonal nao e um espelho de agua nem e pasto seco: e zona humida (12).
+    # So fica agua onde a COS ja diz agua; o Sentinel confirma-a mais abaixo.
+    corr_ = C & 128; base_ = C & 127
+    ja_agua = base_ == 9
+    sazonal = vale & ~ja_agua
+    C = (np.where(sazonal, 12, base_) | corr_).astype(np.uint8)
+    print('agua do OSM: %d poligonos, %.2f km2 ja eram agua na COS, %.2f km2 sem agua na COS'
+          ' passam a zona humida (lagoa sazonal), %.2f km2 recusados por declive >= %.0f graus'
+          % (n_ag, (vale & ja_agua).sum() * ac0, sazonal.sum() * ac0,
+             ((AGUA_OSM > 0) & ~plano).sum() * ac0, a.agua_graus))
 
     # --- paredes e escarpas: isto nao e uma classe de ocupacao, e geometria
     # "Rocha" sao duas coisas que o motor tratava como uma so: blocos POUSADOS
@@ -903,7 +952,8 @@ def main():
         'cota': [round(z0), round(z1)],
         'fonte': fonte,
         'fontes': {'classes': fonte_cos,
-                   'casas': ' + '.join(sorted(fontes_casas)) or None},
+                   'casas': ' + '.join(sorted(fontes_casas)) or None,
+                   'penedos_rejeitados': n_penedo},
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,
