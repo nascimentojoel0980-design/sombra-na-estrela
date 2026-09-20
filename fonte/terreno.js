@@ -81,6 +81,11 @@ const CAMINHOS = [
   { n: 'estradao', limpo:  6, larg: 4.5, cor: [0.54, 0.42, 0.23] },
   { n: 'caminho',  limpo:  5, larg: 3.0, cor: [0.62, 0.60, 0.56] },
   { n: 'trilho',   limpo:  4, larg: 2.2, cor: [0.70, 0.23, 0.18] },
+  // linhas de agua do OSM (20/09/2026): a COS so tem cursos com 20 m de
+  // largura e o Sentinel nao ve 3 m -- o Zezere no Covao nao existia no mapa
+  { n: 'rio',      limpo:  4, larg: 4.0, cor: [0.30, 0.55, 0.82] },
+  { n: 'ribeira',  limpo:  2, larg: 2.0, cor: [0.36, 0.60, 0.84] },
+  { n: 'levada',   limpo:  1.5, larg: 1.4, cor: [0.42, 0.64, 0.84] },
 ];
 const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
@@ -421,7 +426,7 @@ const FS_CHAO = `#version 300 es
 precision highp float;
 precision highp sampler2DArray;
 in vec3 vN; in vec2 vUV; in float vD;
-uniform sampler2D uClasse; uniform vec3 uFundo; uniform float uNevoa;
+uniform sampler2D uClasse; uniform vec3 uFundo; uniform float uNevoa; uniform vec2 uTexel;
 ` + GLSL_SOMBRA + `
 out vec4 oCor;
 void main() {
@@ -429,7 +434,12 @@ void main() {
   float lam = max(0.0, dot(n, uSol));
   float ceu = 0.5 + 0.5 * n.z;
   float sol = aoSol(vUV);
-  vec3 base = texture(uClasse, vUV).rgb;
+  // A carta e de celulas de 5 m e ve-se em escada quando se esta perto. Quatro
+  // amostras a 3/4 de celula em diagonal alargam a transicao a ~2 celulas sem
+  // mudar a carta nem o ficheiro. (20/09/2026, "o pixel pode ser mais detalhado?")
+  vec2 o = uTexel * 0.75;
+  vec3 base = 0.25 * (texture(uClasse, vUV + vec2( o.x,  o.y)).rgb + texture(uClasse, vUV + vec2(-o.x,  o.y)).rgb
+                    + texture(uClasse, vUV + vec2( o.x, -o.y)).rgb + texture(uClasse, vUV + vec2(-o.x, -o.y)).rgb);
   // A luz do sol so entra se o monte a deixar passar; a do ceu entra sempre.
   // Sao de cores diferentes -- o sol puxa ao amarelo, o ceu ao azul -- e e
   // isso que faz a sombra ler-se como sombra e nao como um cinzento morto.
@@ -999,7 +1009,7 @@ function abreVista(canvas, T, op) {
   P.rota = prog(gl, VS_ROTA, FS_ROTA);
   P.curva = prog(gl, VS_CURVA, FS_CURVA);
   P.casa = T.casas ? prog(gl, VS_CASA, FS_CASA) : null;
-  L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa'].concat(SOMBRA_U));
+  L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa','uTexel'].concat(SOMBRA_U));
   L.planta = unis(P.planta, ['uMVP','uCam','uCaixa','uZ0','uD0','uTam','uFundo','uNevoa'].concat(SOMBRA_U));
   L.rota = unis(P.rota, ['uMVP','uCam','uFundo','uNevoa','uCor',
                          'uCota','uGrelha','uCaixaT','uZ0T','uPorCima']);
@@ -1215,6 +1225,7 @@ function abreVista(canvas, T, op) {
     gl.uniform2f(L.chao.uTam, T.larg, T.alt);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texClasse);
     gl.uniform1i(L.chao.uClasse, 0);
+    gl.uniform2f(L.chao.uTexel, 1 / T.mx, 1 / T.my);
     poeSombra(L.chao);
     gl.bindVertexArray(A.chao);
     const mppBase = 2 * Math.tan(0.5) / H;

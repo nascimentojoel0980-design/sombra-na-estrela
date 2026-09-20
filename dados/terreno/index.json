@@ -3,7 +3,7 @@
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v12.terr.gz",
+   "ficheiro": "manteigas-v13.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -26,7 +26,7 @@
     "casas": "ms + osm",
     "penedos_rejeitados": 742
    },
-   "bytes": 8458152,
+   "bytes": 8716470,
    "tem": {
     "curvas": true,
     "pontos": true,

@@ -396,3 +396,17 @@ zona baixa de Manteigas é pedra". Agora: 712 → rocha; 711/713 → chão nu
 provisório que a altura medida promove (≥0,5 m mato, ≥1,5 matagal, ≥5 árvore).
 Cursos de água (911) em declive ≥ 12° são margem e seguem o mesmo caminho.
 `--sem-fontes` ainda coze com os azulejos, mas a zona sai marcada no boletim.
+
+Regras acrescentadas a 20/09/2026 depois da fotografia do Covão da Ametade
+(clareiras de erva e uma levada, onde o mapa punha chão nu e nada):
+- **linhas de água** do OSM (`aguaL`: rio/ribeira/levada) vão no bloco CAMS
+  com tipos 5/6/7 e desenham-se como fita azul. A COS só tem cursos com 20 m
+  de largura; o Sentinel não vê 3 m.
+- **abaixo de 0,5 m o laser não diz o que é**; o NDVI (`--ndvi`) diz se é
+  verde: ≥ 0,5 erva (3), 0,25–0,5 rasteiro (6), < 0,25 chão nu (10). Sem
+  `--ndvi`, chão nu não se afirma (fica rasteiro). Urbano da COS sem edifício,
+  < 5 m e NDVI ≥ 0,5 é relvado (3) — o parque de campismo é "Turismo".
+- **penedos**: pegada só-Microsoft < 60 m², > 1200 m, fora de urbano/agrícola,
+  não se desenha (10/11 eram granito no ortofoto). O OSM passa sempre.
+- **lagoa do OSM sem água na COS** é zona húmida (12), não espelho de água.
+- o boletim tem **prova de posição**: telhados sobre urbano/agrícola ≥ 50 %.

@@ -58,8 +58,12 @@ PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
 # Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
 # cada lado do eixo: uma nacional abre mais do que um trilho de cabras.
 # Nao e enfeite -- e o que faz o caminho ler-se de cima por entre as copas.
-TIPO_CAM = {'nacional': 0, 'estrada': 1, 'estradao': 2, 'caminho': 3, 'trilho': 4}
-LIMPO = {'nacional': 11.0, 'estrada': 9.0, 'estradao': 6.0, 'caminho': 5.0, 'trilho': 4.0}
+TIPO_CAM = {'nacional': 0, 'estrada': 1, 'estradao': 2, 'caminho': 3, 'trilho': 4,
+            'rio': 5, 'ribeira': 6, 'levada': 7}
+LIMPO = {'nacional': 11.0, 'estrada': 9.0, 'estradao': 6.0, 'caminho': 5.0, 'trilho': 4.0,
+         'rio': 4.0, 'ribeira': 2.0, 'levada': 1.5}
+# linhas de agua do OSM (camada aguaL): w=river/stream/canal -> tipo do motor
+TIPO_AGUA = {'river': 'rio', 'stream': 'ribeira', 'canal': 'levada', 'drain': 'levada', 'ditch': 'levada'}
 
 
 # ----------------------------------------------------------------- cotas
@@ -325,6 +329,9 @@ def main():
     ap.add_argument('--mdt', default=None)
     ap.add_argument('--chm', default=None,
                     help='GeoTIFF do modelo de altura do coberto (LiDAR), EPSG:4326')
+    ap.add_argument('--ndvi', default=None,
+                    help='GeoTIFF uint8 de NDVI (valor/127.5-1, 255 = sem dado). Abaixo de 0,5 m o '
+                         'laser nao diz se e erva ou pedra; o NDVI diz se e verde')
     ap.add_argument('--agua', default=None,
                     help='GeoTIFF 0/1 em EPSG:4326: agua MEDIDA (Sentinel NDWI '
                          'cruzado com a Copernicus WAW). Ganha a tudo o resto, '
@@ -533,9 +540,18 @@ def main():
             (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'caminhos') if gt == 2):
         t = props.get('t') or 'caminho'
         cams.append((TIPO_CAM.get(t, 3), t, g))
+    # --- linhas de agua (OSM aguaL). A COS so tem cursos com 20 m de largura
+    # e o Sentinel nao ve 3 m: o Zezere no Covao da Ametade nao existia no
+    # mapa. Vao no mesmo bloco dos caminhos, com o seu tipo, e o motor
+    # desenha-os como fita azul; o corredor limpo e a propria agua.
+    n_agl = 0
+    for props, g in sem_repetir(
+            (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'aguaL') if gt == 2):
+        t = TIPO_AGUA.get(props.get('w'), 'ribeira')
+        cams.append((TIPO_CAM[t], t, g)); n_agl += 1
     porT = {}
     for _, t, _ in cams: porT[t] = porT.get(t, 0) + 1
-    print('caminhos: %d (%s)' % (len(cams), ', '.join('%s %d' % kv for kv in sorted(porT.items()))))
+    print('caminhos e linhas de agua: %d (%s)' % (len(cams), ', '.join('%s %d' % kv for kv in sorted(porT.items()))))
 
     abre_corredor(C, rotas, a.caixa, mx, my, a.corredor)
     for t, r in LIMPO.items():
@@ -625,6 +641,42 @@ def main():
             ce = collections.Counter((base[esparsa]).ravel().tolist())
             print('   vegetacao esparsa da COS (%.2f km2) medida: ' % (esparsa.sum() * ac)
                   + '  '.join('%s %.2f' % (NOME.get(k, k), n * ac) for k, n in ce.most_common(5)))
+
+        # --- abaixo de 0,5 m o laser nao ve o que e; o satelite ve se e verde
+        # "Chao nu" era uma afirmacao que a medicao nao sustentava: o LiDAR so
+        # diz "< 0,5 m", e a fotografia do Covao da Ametade mostra clareiras de
+        # erva onde o mapa punha chao pelado. Medido no Sentinel de Julho de
+        # 2024: as celulas que eram "chao nu" tem NDVI mediano 0,39 (P90 0,62);
+        # a rocha da COS tem 0,24; a pastagem 0,59. Regra, so onde o laser mede
+        # menos de 0,5 m e a classe e aberta (erva, mato, chao nu):
+        #   NDVI >= 0,50  erva (3)     0,25..0,50  rasteiro (6)     < 0,25  chao nu (10)
+        # Sem --ndvi nao se afirma nada: fica rasteiro (6), que nao desenha nada
+        # abaixo de 0,3 m. (Isto nao contradiz O_Satelite_Nao_Separa_Rocha.md:
+        # la tentou-se separar rocha de mato ralo; aqui separa-se verde de nao
+        # verde, que e o que o NDVI mede mesmo.)
+        base = C & 127; corr = C & 128
+        baixo = (h < 0.5) & np.isin(base, [3, 6, 10])
+        if a.ndvi:
+            zn, cn = le_mdt(a.ndvi); tapa_caixa(cn, a.caixa, 'NDVI')
+            vn = amostra(zn, cn, lonsC, latsC)
+            NDVI = np.where(vn >= 254, np.nan, vn / 127.5 - 1)
+            ok = baixo & ~np.isnan(NDVI)
+            base = np.where(ok & (NDVI >= 0.5), 3, base)
+            base = np.where(ok & (NDVI >= 0.25) & (NDVI < 0.5), 6, base)
+            base = np.where(ok & (NDVI < 0.25), 10, base)
+            # o urbano da COS sem edificio e verde e relvado, nao asfalto: o
+            # parque de campismo do Covao e "Turismo" e tem NDVI 0,80
+            relva = (base == 1) & (CASA_LARGA == 0) & (h < a.arvore_min) & ~np.isnan(NDVI) & (NDVI >= 0.5)
+            base = np.where(relva, 3, base)
+            print('abaixo de 0,5 m, pelo NDVI: erva %.2f  rasteiro %.2f  chao nu %.2f km2;'
+                  ' urbano relvado %.2f km2; sem NDVI %.2f km2'
+                  % (((base == 3) & baixo).sum() * ac, ((base == 6) & baixo).sum() * ac,
+                     ((base == 10) & baixo).sum() * ac, relva.sum() * ac,
+                     (baixo & np.isnan(NDVI)).sum() * ac))
+        else:
+            base = np.where(baixo & (base == 10), 6, base)
+            print('sem --ndvi: o que mede < 0,5 m fica rasteiro; "chao nu" nao se afirma')
+        C = (base | corr).astype(np.uint8)
 
         # --- o mato partido em dois pela medicao
         # Giesta e urze alta de 2 ou 3 m nao se andam como se anda num urzal
