@@ -1,0 +1,12 @@
+dados/lidar -- rasters ja na grelha do cozedor (gera_terreno.py), caixa -7.62 40.31 -7.49 40.42, EPSG:4326
+
+mdt_8m.tif     cotas (m, float32) a 8 m, media do MDT LiDAR 2 m da DGT (MDT-2m, voo Abr/Mai 2024), EPSG:3763 -> 4326
+chm_5m.tif     altura do coberto (m, float32) a 5 m = media de (MDS-2m - MDT-2m), nodata propagado, corte 0..60 m
+agua.tif       0/1 uint8 a 5 m: INTERSECCAO de Sentinel-2 NDWI>0 (22/07/2024) com Copernicus WAW 2018 classes 1 e 2
+ndvi2024.tif   uint8 a 5 m: NDVI de S2B_29TPE_20240722_0_L2A;  NDVI = valor/127.5 - 1  (255 = nodata)
+ndvi2021.tif   uint8 a 5 m: NDVI de S2B_29TPE_20210728_1_L2A;  NDVI = valor/127.5 - 1  (255 = nodata)
+painel_manteigas.png   cor verdadeira 2024 | CHM | classes finais, lado a lado
+
+Sentinel: reflectancia = DN/10000 (os COG do Element84 ja vem sem o BOA_ADD_OFFSET -- medido, ver O_Satelite_Nao_Separa_Rocha.md).
+Amostragem para a grelha de 5 m: vizinho mais proximo (Sentinel 10 m, WAW 10 m). mdt_8m/chm_5m: media (prepara_lidar.py --para-repo).
+agua.tif, ndvi*.tif e a mesma transformacao e tamanho que chm_5m.tif (verificado ao escrever).
