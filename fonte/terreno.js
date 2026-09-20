@@ -285,6 +285,7 @@ async function carregaTerreno(url) {
     return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
   };
   T.emM = (lo, la) => [(lo - T.lo0) * T.mlon, (la - T.la0) * T.mlat];
+  T.emLL = (x, y) => [T.lo0 + x / T.mlon, T.la0 + y / T.mlat];
   return T;
 }
 
@@ -1921,6 +1922,7 @@ async function cozeCaixa(caixa, op) {
     return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
   };
   T.emM = (lo, la) => [(lo - T.lo0) * T.mlon, (la - T.la0) * T.mlat];
+  T.emLL = (x, y) => [T.lo0 + x / T.mlon, T.la0 + y / T.mlat];
   return T;
 }
 
