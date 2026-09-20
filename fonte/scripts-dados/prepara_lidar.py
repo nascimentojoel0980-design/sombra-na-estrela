@@ -104,6 +104,13 @@ def escreve_grelha(z, perfil, caixa, passo_m, dest):
               src_transform=perfil['transform'], src_crs=perfil['crs'], src_nodata=NODATA_SAIDA,
               dst_transform=tr, dst_crs='EPSG:4326', dst_nodata=np.nan,
               resampling=Resampling.average)
+    # Arredondar a 0,1 m corta o ficheiro de 17,9 para 4,2 MB. Nao e compressao
+    # esperta: e deitar fora ruido de laser na terceira casa decimal, que
+    # nenhum consumidor deste ficheiro chega a ver. O cozedor guarda a altura
+    # da copa em DEGRAUS DE 0,5 m (ALTV = round(h*2)*5), portanto o que aqui se
+    # perde e um vigesimo do passo que ele proprio usa -- e o mesmo para o MDT,
+    # cujas cotas entram numa grelha de 8 m.
+    out = np.round(out, 1)
     nd = float(np.isnan(out).mean()) * 100
     os.makedirs(os.path.dirname(dest) or '.', exist_ok=True)
     with rasterio.open(dest, 'w', driver='GTiff', height=h, width=w, count=1,
