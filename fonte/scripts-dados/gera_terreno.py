@@ -206,6 +206,17 @@ def dilata(m, n):
 
 
 def pinta(destino, gs, cod, caixa, mx, my):
+    """Enche poligonos na grelha das classes. LINHA 0 = NORTE, como as cotas
+    (lats = linspace(la1, la0)), o CHM, o abre_corredor, o confere.py e o motor.
+
+    20/09/2026: ate aqui esta funcao punha a linha 0 a SUL. Tudo o que passava
+    por ela -- COS, agua do OSM, mascara das casas -- ficava espelhado
+    norte-sul em relacao ao relevo e a medicao. As classes que a medicao
+    decide (floresta, matagal, chao nu) saiam certas, porque o CHM esta a
+    norte-primeiro; as que vem da carta saiam no sitio errado. Era isto que
+    punha a rocha do planalto no fundo do vale, o urbano fora da vila e a
+    copa dos telhados por zerar (a mascara zerava-a no espelho). Nao foi a
+    COS: a COS estava certa e nos e que a liamos ao contrario."""
     lo0, la0, lo1, la1 = caixa
     kx = mx / (lo1 - lo0); ky = my / (la1 - la0)
     A = []
@@ -214,7 +225,7 @@ def pinta(destino, gs, cod, caixa, mx, my):
         for i in range(n):
             ax, ay = anel[i]; bx, by = anel[(i + 1) % n]
             if ay == by: continue
-            A.append(((ax - lo0) * kx, (ay - la0) * ky, (bx - lo0) * kx, (by - la0) * ky))
+            A.append(((ax - lo0) * kx, (la1 - ay) * ky, (bx - lo0) * kx, (la1 - by) * ky))
     if not A: return
     A = np.array(A, dtype=np.float64)
     ymin = max(0, int(math.floor(min(A[:, 1].min(), A[:, 3].min()))))

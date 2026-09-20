@@ -728,7 +728,10 @@ void main() {
   vec3 cor = mix(vec3(0.88, 0.42, 0.10), vec3(0.98, 0.55, 0.14), teto);
   float lam = max(0.0, dot(n, uSol));
   cor *= 0.62 + 0.22 * (0.5 + 0.5 * n.z) + 0.30 * lam;
-  oCor = vec4(mix(cor, uFundo, clamp(vD * uNevoa, 0.0, 0.72)), 1.0);
+  // vD / uNevoa como nos outros programas. Estava vD * uNevoa: com uNevoa em
+  // metros isso saturava logo, e as casas saiam sempre 72% cor de fundo --
+  // era por isso que pareciam rosa palido a qualquer distancia.
+  oCor = vec4(mix(cor, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0);
 }`;
 
 const VS_ROTA = `#version 300 es

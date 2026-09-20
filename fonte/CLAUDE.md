@@ -364,6 +364,23 @@ Na primeira vez que correu apanhou **duas falhas**:
   de 17°. Uma superfície de água não fica de pé numa encosta. Passaram a ser
   recusadas — 0,19 km² fora — e a água ficou 100% plana.
 
+- **A grelha de classes esteve espelhada norte–sul até à v10 (20/09/2026).**
+  `pinta()` escrevia a linha 0 a sul; cotas, CHM, `abre_corredor`, `confere.py`
+  e o motor têm a linha 0 a norte. Tudo o que vinha da carta (COS, água OSM,
+  máscara das casas) estava no espelho do relevo; o que a medição decide
+  (floresta, matagal, chão nu) saía certo porque o CHM está a norte-primeiro.
+  Sintomas que se explicaram mal durante dias: "rocha no fundo do vale" (era o
+  planalto espelhado), "casas confundidas com árvores" (a máscara zerava a copa
+  no sítio errado), "+13 km² de árvores que a COS não tinha" (eram +0,65).
+  Detectou-se por a vila de Manteigas (40,401 N) só ser urbano com a linha 0 a
+  sul. Corrigido na v11; a água medida pelo Sentinel passou a coincidir 100 %
+  com a da COS (antes "0,50 km² que a COS não tinha"). **Lição:** cada grelha
+  nova tem de declarar a orientação no cabeçalho da função, e uma prova de
+  posição (um ponto conhecido, a vila) faz parte do boletim a partir daqui.
+  As duas provas cegas (`prova_cega*.jpg`) rotulam classes da carta com a
+  grelha espelhada — só valem para floresta/matagal/chão nu; têm de ser
+  geradas de novo sobre a v11 antes de alguém as pontuar.
+
 ### As classes e as casas vêm do `sne-dados-fonte`, não dos azulejos (20/09/2026)
 
 O `gera_terreno.py` lê a COS 2025 Série 2 (GeoPackage, com o nível 3) e os

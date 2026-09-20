@@ -3,7 +3,7 @@
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v10.terr.gz",
+   "ficheiro": "manteigas-v11.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -25,7 +25,7 @@
     "classes": "COS 2025 Serie 2",
     "casas": "ms + osm"
    },
-   "bytes": 8561908,
+   "bytes": 8486750,
    "tem": {
     "curvas": true,
     "pontos": true,
