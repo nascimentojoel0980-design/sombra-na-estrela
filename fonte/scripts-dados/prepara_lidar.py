@@ -20,12 +20,13 @@ Regras que nao se negoceiam:
   python3 fonte/scripts-dados/prepara_lidar.py --pasta C:/.../lidar-manteigas \
       --caixa -7.62 40.31 -7.49 40.42
 """
-import argparse, glob, os, sys, time
+import argparse, math, glob, os, sys, time
 import numpy as np
 import rasterio
 from rasterio.merge import merge
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.windows import from_bounds
+from rasterio.transform import from_bounds as tr_from_bounds
 
 NODATA_DEFEITO = -999.0
 NODATA_SAIDA = -9999.0   # distinto de qualquer cota ou altura plausivel
@@ -72,6 +73,50 @@ def para_4326(z, perfil, dest):
     return out, tr
 
 
+def escreve_grelha(z, perfil, caixa, passo_m, dest):
+    """Reprojecta do NATIVO directo para a grelha que o cozedor vai ler.
+
+    O gera_terreno.py nunca usa o MDT nem o CHM a 2 m: amostra-os para a grelha
+    das cotas (--passo) e para a das classes (--classe), e deita o resto fora.
+    Escrever ja nessa grelha da ficheiros pequenos que cabem no repositorio --
+    e ai a cozedura pode correr em qualquer lado, nao so na maquina que tem as
+    312 folhas.
+
+    Vai do nativo em 3763 e nao do wgs84 ja escrito: duas reamostragens seguidas
+    perdem mais do que uma. E usa AVERAGE, nao bilinear: a passar de 2 m para
+    8 m estamos a reduzir, e a media e o que nao inventa detalhe nem o serra.
+
+    Sobra uma margem de duas celulas de cada lado. O cozedor mata-se se o
+    raster nao cobrir a caixa toda (tapa_caixa), e a aritmetica de virgula
+    flutuante nao e de fiar na casa decimal exacta.
+    """
+    lo0, la0, lo1, la1 = caixa
+    mlat = 110540.0; mlon = 111320.0 * math.cos(math.radians((la0 + la1) / 2))
+    dlo = passo_m / mlon; dla = passo_m / mlat
+    lo0 -= 2 * dlo; lo1 += 2 * dlo; la0 -= 2 * dla; la1 += 2 * dla
+    w = int(math.ceil((lo1 - lo0) / dlo)); h = int(math.ceil((la1 - la0) / dla))
+    # tr_from_bounds, nao from_bounds: o modulo windows tambem tem um
+    # from_bounds e devolve uma JANELA, nao uma transformacao. Os dois aceitam
+    # os mesmos argumentos e so um deles esta certo aqui.
+    tr = tr_from_bounds(lo0, la0, lo0 + w * dlo, la0 + h * dla, w, h)
+    out = np.full((h, w), np.nan, dtype=np.float32)
+    reproject(source=np.where(np.isnan(z), NODATA_SAIDA, z).astype(np.float32), destination=out,
+              src_transform=perfil['transform'], src_crs=perfil['crs'], src_nodata=NODATA_SAIDA,
+              dst_transform=tr, dst_crs='EPSG:4326', dst_nodata=np.nan,
+              resampling=Resampling.average)
+    nd = float(np.isnan(out).mean()) * 100
+    os.makedirs(os.path.dirname(dest) or '.', exist_ok=True)
+    with rasterio.open(dest, 'w', driver='GTiff', height=h, width=w, count=1,
+                       dtype='float32', crs='EPSG:4326', transform=tr,
+                       nodata=NODATA_SAIDA, compress='deflate', predictor=3,
+                       tiled=True, blockxsize=256, blockysize=256) as d:
+        d.write(np.where(np.isnan(out), NODATA_SAIDA, out).astype(np.float32), 1)
+    print('   %-26s %d x %d a %.0f m   %.2f MB   nodata %.4f%%'
+          % (os.path.basename(dest), w, h, passo_m,
+             os.path.getsize(dest) / 1e6, nd))
+    return out
+
+
 def dentro_da_caixa(arr, tr, caixa):
     win = from_bounds(*caixa, transform=tr)
     r0, r1 = int(np.floor(win.row_off)), int(np.ceil(win.row_off + win.height))
@@ -87,6 +132,13 @@ def main():
     ap.add_argument('--pasta', required=True, help='pasta com MDT-2m/ e MDS-2m/')
     ap.add_argument('--caixa', nargs=4, type=float, required=True, metavar=('LO0', 'LA0', 'LO1', 'LA1'))
     ap.add_argument('--max-alt', type=float, default=60.0)
+    ap.add_argument('--para-repo', default=None, metavar='PASTA',
+                    help='alem dos rasters cheios, escreve as versoes pequenas ja '
+                         'na grelha do cozedor (ex.: dados/lidar). Sao uns MB e '
+                         'cabem no repositorio, e ai a cozedura corre em qualquer '
+                         'lado e nao so nesta maquina')
+    ap.add_argument('--passo', type=float, default=8.0, help='grelha das cotas, m')
+    ap.add_argument('--classe', type=float, default=5.0, help='grelha das classes, m')
     a = ap.parse_args()
     t0 = time.time()
 
@@ -104,6 +156,13 @@ def main():
           % (n_val, n_neg, 100.0 * n_neg / n_val, n_alto, a.max_alt, 100.0 * n_alto / n_val))
     print('   nodata: MDT %.3f%%  MDS %.3f%%  CHM %.3f%%'
           % tuple(100.0 * np.isnan(x).mean() for x in (mdt, mds, chm)))
+
+    if a.para_repo:
+        print('versoes pequenas, ja na grelha que o cozedor le:')
+        escreve_grelha(mdt, p_mdt, a.caixa, a.passo,
+                       os.path.join(a.para_repo, 'mdt_%dm.tif' % round(a.passo)))
+        escreve_grelha(chm, p_mdt, a.caixa, a.classe,
+                       os.path.join(a.para_repo, 'chm_%dm.tif' % round(a.classe)))
 
     f_mdt = os.path.join(a.pasta, 'mdt_wgs84.tif'); f_chm = os.path.join(a.pasta, 'chm_wgs84.tif')
     mdt4, tr = para_4326(mdt, p_mdt, f_mdt)
