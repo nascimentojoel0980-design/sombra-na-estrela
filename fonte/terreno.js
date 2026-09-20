@@ -110,6 +110,15 @@ const PONTOS_LEGENDA = [
   { g: 'agua',       nome: 'nascente, lagoa, cascata', cor: '#2A5A79' },
   { g: 'outro',      nome: 'comer, WC, estacionamento', cor: '#7A7268' },
 ];
+// Fontes de ortofoto para drapear no chao (azulejos Web Mercator z/x/y).
+//   esri: Esri World Imagery (Maxar) -- global, CORS aberto, ate z19; uso nao
+//         comercial com atribuicao. Em Portugal anda nos 0,3-0,5 m.
+//   dgt:  ortofoto oficial DGT 25 cm por WMS -- melhor, mas so serve se o WMS
+//         responder com CORS ao navegador (a confirmar).
+const FOTO_FONTES = {
+  esri: { nome: 'Esri World Imagery', atrib: 'Esri, Maxar, Earthstar Geographics', zmax: 19,
+          url: (z, x, y) => 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + y + '/' + x },
+};
 const COR_EIXO = [0.96, 0.94, 0.86];   // a risca do meio das estradas
 // Corta linhas [lon,lat,...] em tracos de `cheio` m com `vazio` m entre eles,
 // para a fita do eixo sair tracejada. Devolve linhas de dois pontos.
@@ -454,7 +463,7 @@ function semeiaTudo(T, op) {
 if (typeof module !== 'undefined') module.exports = { carregaTerreno, malhaTerreno, semeiaTudo, CLASSES, BLOCO, D0 };
 // ARMADILHA 11: um const de topo NAO esta no window. A pagina precisa destas
 // tabelas para desenhar a legenda, por isso pendura-se aqui explicitamente.
-if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, PONTOS_LEGENDA, PISOS };
+if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, PONTOS_LEGENDA, PISOS, FOTO_FONTES };
 
 // ===========================================================================
 // O desenho. WebGL2 directo, sem biblioteca de mapa por baixo.
@@ -462,9 +471,9 @@ if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMI
 const VS_CHAO = `#version 300 es
 in vec3 aP; in vec3 aN;
 uniform mat4 uMVP; uniform vec3 uCam; uniform vec2 uTam;
-out vec3 vN; out vec2 vUV; out float vD;
+out vec3 vN; out vec2 vUV; out float vD; out vec2 vXY;
 void main() {
-  vN = aN; vUV = vec2(aP.x / uTam.x, 1.0 - aP.y / uTam.y);
+  vN = aN; vUV = vec2(aP.x / uTam.x, 1.0 - aP.y / uTam.y); vXY = aP.xy;
   vD = length(aP - uCam);
   gl_Position = uMVP * vec4(aP, 1.0);
 }`;
@@ -492,8 +501,9 @@ const GLSL_SOMBRA = `
 const FS_CHAO = `#version 300 es
 precision highp float;
 precision highp sampler2DArray;
-in vec3 vN; in vec2 vUV; in float vD;
+in vec3 vN; in vec2 vUV; in float vD; in vec2 vXY;
 uniform sampler2D uClasse; uniform vec3 uFundo; uniform float uNevoa; uniform vec2 uTexel;
+uniform sampler2D uFoto; uniform float uTemFoto; uniform vec4 uFotoCaixa;   // x0,y0,x1,y1 do bloco, m
 ` + GLSL_SOMBRA + `
 out vec4 oCor;
 void main() {
@@ -501,6 +511,16 @@ void main() {
   float lam = max(0.0, dot(n, uSol));
   float ceu = 0.5 + 0.5 * n.z;
   float sol = aoSol(vUV);
+  if (uTemFoto > 0.5) {
+    // ortofoto drapeado no bloco: a foto ja traz a sua luz; poe-se so um pouco
+    // de relevo e a sombra do monte a hora escolhida, para nao mentir sobre o sol
+    vec2 fuv = vec2((vXY.x - uFotoCaixa.x) / (uFotoCaixa.z - uFotoCaixa.x),
+                    (uFotoCaixa.w - vXY.y) / (uFotoCaixa.w - uFotoCaixa.y));
+    vec3 f = texture(uFoto, fuv).rgb;
+    vec3 cf = f * (0.62 + 0.30 * (0.5 * lam * sol + 0.5 * ceu) + 0.12 * sol);
+    oCor = vec4(mix(cf, uFundo, clamp(vD / uNevoa, 0.0, 1.0) * 0.85), 1.0);
+    return;
+  }
   // A carta e de celulas de 5 m e ve-se em escada quando se esta perto. Quatro
   // amostras a 3/4 de celula em diagonal alargam a transicao a ~2 celulas sem
   // mudar a carta nem o ficheiro. (20/09/2026, "o pixel pode ser mais detalhado?")
@@ -1190,6 +1210,7 @@ function abreVista(canvas, T, op) {
                 rumo: op.rumo || 0.6, incl: op.incl == null ? 0.95 : op.incl };
   const mostrar = { curvas: true, nomes: true, plantas: true,
                     caminhos: true, percursos: true, sombra: true,
+                    foto: null,          // null = carta; 'esri' = ortofoto drapeado
                     // o caminho por cima das copas, mas nao atraves dos montes
                     porCima: true };
   const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0 };
@@ -1235,7 +1256,7 @@ function abreVista(canvas, T, op) {
   P.rota = prog(gl, VS_ROTA, FS_ROTA);
   P.curva = prog(gl, VS_CURVA, FS_CURVA);
   P.casa = T.casas ? prog(gl, VS_CASA, FS_CASA) : null;
-  L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa','uTexel'].concat(SOMBRA_U));
+  L.chao = unis(P.chao, ['uMVP','uCam','uTam','uClasse','uFundo','uNevoa','uTexel','uFoto','uTemFoto','uFotoCaixa'].concat(SOMBRA_U));
   L.planta = unis(P.planta, ['uMVP','uCam','uCaixa','uZ0','uD0','uTam','uFundo','uNevoa'].concat(SOMBRA_U));
   L.rota = unis(P.rota, ['uMVP','uCam','uFundo','uNevoa','uCor',
                          'uCota','uGrelha','uCaixaT','uZ0T','uPorCima']);
@@ -1381,6 +1402,67 @@ function abreVista(canvas, T, op) {
     gl.uniform1f(u.uNdir, T.hori ? T.hori.ndir : 16);
     gl.uniform1f(u.uTemHori, (T.hori && mostrar.sombra) ? 1 : 0);
   }
+  // ---- ortofoto por bloco, com o detalhe a seguir a distancia
+  // Cada bloco de 1 km da malha pode levar uma textura feita de azulejos de
+  // imagem (Web Mercator XYZ). O nivel de zoom escolhe-se pela distancia da
+  // camara: perto z18 (0,46 m/px), longe z15 (3,6 m/px). Enquanto o nivel bom
+  // nao chega usa-se o que houver (mais grosso) ou a carta. Cache pequena.
+  const fotos = new Map();            // chave 'bi:z' -> {tex, pronta}
+  let fotosAPedir = 0;
+  const merc = (lo, la) => [lo / 180 * 20037508.342789244,
+                            Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360)) * 6378137];
+  function nivelPara(d) { return d < 600 ? 18 : d < 1800 ? 17 : d < 5000 ? 16 : 15; }
+  function fotoDoBloco(bi, b, d, fonte) {
+    const z = Math.min(fonte.zmax || 18, nivelPara(d));
+    for (let zz = z; zz >= 14; zz--) {
+      const k = bi + ':' + zz, e = fotos.get(k);
+      if (e && e.pronta) { if (zz < z) pedeFoto(bi, b, z, fonte); return e.tex; }
+    }
+    pedeFoto(bi, b, z, fonte);
+    return null;
+  }
+  function pedeFoto(bi, b, z, fonte) {
+    const k = bi + ':' + z;
+    if (fotos.has(k) || fotosAPedir > 6) return;
+    const e = { tex: null, pronta: false }; fotos.set(k, e); fotosAPedir++;
+    const ll0 = T.emLL(b.x0, b.y0), ll1 = T.emLL(b.x1, b.y1);
+    const m0 = merc(ll0[0], ll0[1]), m1 = merc(ll1[0], ll1[1]);
+    const N = Math.pow(2, z), tam = 40075016.68557849 / N;          // m por azulejo
+    const tx0 = Math.floor((m0[0] + 20037508.342789244) / tam), tx1 = Math.floor((m1[0] + 20037508.342789244) / tam);
+    const ty0 = Math.floor((20037508.342789244 - m1[1]) / tam), ty1 = Math.floor((20037508.342789244 - m0[1]) / tam);
+    const mpp = tam / 256;
+    const W = Math.min(2048, Math.round((m1[0] - m0[0]) / mpp)), Hh = Math.min(2048, Math.round((m1[1] - m0[1]) / mpp));
+    const cv2 = document.createElement('canvas'); cv2.width = Math.max(16, W); cv2.height = Math.max(16, Hh);
+    const cx2 = cv2.getContext('2d');
+    const sx = cv2.width / (m1[0] - m0[0]), sy = cv2.height / (m1[1] - m0[1]);
+    const pedidos = [];
+    for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) {
+      pedidos.push(new Promise((ok) => {
+        const im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = () => {
+          const ex0 = tx * tam - 20037508.342789244, ey1 = 20037508.342789244 - ty * tam;
+          cx2.drawImage(im, (ex0 - m0[0]) * sx, (m1[1] - ey1) * sy, tam * sx, tam * sy); ok(true);
+        };
+        im.onerror = () => ok(false);
+        im.src = fonte.url(z, tx, ty);
+      }));
+    }
+    Promise.all(pedidos).then((rs) => {
+      fotosAPedir--;
+      if (!rs.some(Boolean)) { fotos.delete(k); return; }
+      const tex = gl.createTexture(); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, cv2.width, cv2.height, 0, gl.RGB, gl.UNSIGNED_BYTE, cv2);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      e.tex = tex; e.pronta = true;
+      // cache: nao passar de 96 texturas
+      if (fotos.size > 96) { for (const [kk, ee] of fotos) { if (ee.pronta && kk !== k) { gl.deleteTexture(ee.tex); fotos.delete(kk); break; } } }
+    });
+  }
+
   function coord() {
     const cz = T.cotaEm(cam.x, cam.y);
     const h = Math.cos(cam.incl) * cam.dist, r = Math.sin(cam.incl) * cam.dist;
@@ -1469,17 +1551,27 @@ function abreVista(canvas, T, op) {
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texClasse);
     gl.uniform1i(L.chao.uClasse, 0);
     gl.uniform2f(L.chao.uTexel, 1 / T.mx, 1 / T.my);
+    gl.uniform1i(L.chao.uFoto, 3);
     poeSombra(L.chao);
     gl.bindVertexArray(A.chao);
     const mppBase = 2 * Math.tan(0.5) / H;
     let triChao = 0, blocosChao = 0;
-    for (const b of BLO.partes) {
+    const foto = mostrar.foto ? FOTO_FONTES[mostrar.foto] : null;
+    for (let bi = 0; bi < BLO.partes.length; bi++) {
+      const b = BLO.partes[bi];
       if (!naVista(b, MVP)) continue;
       const dx = Math.max(b.x0 - olho[0], 0, olho[0] - b.x1);
       const dy = Math.max(b.y0 - olho[1], 0, olho[1] - b.y1);
       const dz = Math.max(b.z0 - olho[2], 0, olho[2] - b.z1);
       const d = Math.max(1, Math.hypot(dx, dy, dz));
       const nv = b.niveis[passoDoBloco(d, T.passo, mppBase * d)];
+      let temFoto = 0;
+      if (foto) {
+        const tex = fotoDoBloco(bi, b, d, foto);
+        if (tex) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tex); temFoto = 1;
+                   gl.uniform4f(L.chao.uFotoCaixa, b.x0, b.y0, b.x1, b.y1); }
+      }
+      gl.uniform1f(L.chao.uTemFoto, temFoto);
       gl.drawElements(gl.TRIANGLES, nv.n, gl.UNSIGNED_INT, nv.off * 4);
       triChao += nv.n / 3; blocosChao++;
     }

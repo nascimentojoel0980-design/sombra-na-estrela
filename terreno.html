@@ -115,6 +115,8 @@
     <label class=int><input type=checkbox id=autoZona checked><i></i></label></div>
   <div class=lin><button class=bt id=earth type=button>Abrir esta vista no Google Earth</button></div>
   <h3>O que se vê</h3>
+  <div class=lin><span>Chão<small id=fotoNota>carta de ocupação (COS + medição)</small></span>
+    <select class=esc id=chao><option value="">carta</option><option value="esri">ortofoto (Esri)</option></select></div>
   <div class=lin><span>Percursos<small>as rotas marcadas</small></span>
     <label class=int><input type=checkbox data-m=percursos checked><i></i></label></div>
   <div class=lin><span>Caminhos e trilhos<small>estradas, estradões, trilhos</small></span>
@@ -193,7 +195,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=34"></script>
+<script src="fonte/terreno.js?v=35"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -219,6 +221,7 @@ async function arranca() {
   sel.innerHTML = ZONAS.map((z, i) =>
     '<option value="' + i + '">' + z.titulo + ' · ' + z.km[0] + '×' + z.km[1] + ' km</option>').join('');
   sel.addEventListener('change', () => abreZona(ZONAS[+sel.value]));
+  try { const c = localStorage.getItem('sne-chao'); if (c) { document.getElementById('chao').value = c; document.getElementById('chao').dispatchEvent(new Event('change')); } } catch (e) {}
   const guardada = ZONAS.findIndex((z) => z.nome === localStorage.getItem('sne-zona'));
   sel.value = String(guardada >= 0 ? guardada : 0);
   // vindo da ficha de um trilho ("mostrar no mapa") ou com um sitio pedido
@@ -300,6 +303,7 @@ async function abreZona(z, camIni) {
   if (camIni) V.poeCamara(camIni);
   if (escolhido) { const t = trilhoDe(escolhido); if (t) { V.destaque(t.fita, t.cor, 10); mostraEstat(t); } }
   for (const el of document.querySelectorAll('[data-m]')) V.mostrar[el.dataset.m] = el.checked;
+  V.mostrar.foto = document.getElementById('chao').value || null;
   mudaHora();
   actualizaExtras();
   // a versao dos dados a vista, ao pe do sol: para se saber, ao olhar, que
@@ -348,6 +352,15 @@ function mudaHora() {
 // ---- menu
 document.getElementById('abreMenu').addEventListener('click', () => {
   document.getElementById('menu').classList.toggle('on');
+});
+document.getElementById('chao').addEventListener('change', (e) => {
+  if (!V) return;
+  V.mostrar.foto = e.target.value || null;
+  const F = window.LEGENDA && window.LEGENDA.FOTO_FONTES[e.target.value];
+  document.getElementById('fotoNota').textContent = F
+    ? 'imagens: ' + F.atrib + ' · detalhe sobe ao aproximar (precisa de rede)'
+    : 'carta de ocupação (COS + medição)';
+  try { localStorage.setItem('sne-chao', e.target.value); } catch (err) {}
 });
 for (const el of document.querySelectorAll('[data-m]')) {
   el.addEventListener('change', () => { if (V) V.mostrar[el.dataset.m] = el.checked; });
