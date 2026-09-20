@@ -85,6 +85,17 @@ def le_mdt(caminho):
         return z, (b.left, b.bottom, b.right, b.top)
 
 
+def tapa_caixa(cx, caixa, quem):
+    """amostra() faz clip: um raster que nao tape a caixa nao rebenta, esborrata
+    o valor da borda para dentro em silencio. Mais vale morrer aqui."""
+    lo0, la0, lo1, la1 = caixa
+    if cx[0] <= lo0 and cx[1] <= la0 and cx[2] >= lo1 and cx[3] >= la1:
+        return
+    sys.exit('o %s nao tapa a caixa toda e amostra() esborrataria a borda:\n'
+             '  caixa  %.5f %.5f %.5f %.5f\n'
+             '  raster %.5f %.5f %.5f %.5f' % ((quem,) + tuple(caixa) + tuple(cx)))
+
+
 def amostra(z, cx, lons, lats):
     h, w = z.shape
     kx = (w - 1) / (cx[2] - cx[0]); ky = (h - 1) / (cx[3] - cx[1])
@@ -140,6 +151,20 @@ def sem_repetir(it):
 
 
 # ----------------------------------------------------------- rasterizar
+def dilata(m, n):
+    """alarga a mascara n celulas para cada lado (sem scipy: so np.maximum)"""
+    if n <= 0: return m
+    for _ in range(n):
+        d = m.copy()
+        d[1:, :] = np.maximum(d[1:, :], m[:-1, :])
+        d[:-1, :] = np.maximum(d[:-1, :], m[1:, :])
+        m = d.copy()
+        d[:, 1:] = np.maximum(d[:, 1:], m[:, :-1])
+        d[:, :-1] = np.maximum(d[:, :-1], m[:, 1:])
+        m = d
+    return m
+
+
 def pinta(destino, gs, cod, caixa, mx, my):
     lo0, la0, lo1, la1 = caixa
     kx = mx / (lo1 - lo0); ky = my / (la1 - la0)
@@ -249,6 +274,9 @@ def main():
     ap.add_argument('--mdt', default=None)
     ap.add_argument('--chm', default=None,
                     help='GeoTIFF do modelo de altura do coberto (LiDAR), EPSG:4326')
+    ap.add_argument('--arvore-min', type=float, default=5.0,
+                    help='m de copa medida a partir dos quais a celula e floresta, '
+                         'diga a COS o que disser (so faz efeito com --chm)')
     ap.add_argument('--zsolo', type=int, default=15)
     ap.add_argument('--titulo', default=None, help='como aparece no menu da aplicacao')
     ap.add_argument('--versao', type=int, default=VERSAO_DADOS,
@@ -271,6 +299,7 @@ def main():
 
     if a.mdt:
         z, cx = le_mdt(a.mdt); fonte = 'MDT ' + os.path.basename(a.mdt)
+        tapa_caixa(cx, a.caixa, 'MDT')
     else:
         z, cx = le_dem(); fonte = 'Copernicus 30 m'
     lons = np.linspace(lo0, lo1, nx); lats = np.linspace(la1, la0, ny)
@@ -327,18 +356,72 @@ def main():
     ALTV = None
     if a.chm:
         zc, cc = le_mdt(a.chm)
+        tapa_caixa(cc, a.caixa, 'CHM')
         lonsC = np.linspace(lo0, lo1, mx); latsC = np.linspace(la1, la0, my)
         h = amostra(zc, cc, lonsC, latsC)
         # o CHM traz lixo: ramos soltos a 60 m e valores negativos
         h = np.clip(h, 0, 25.5)
         ALTV = np.round(h * 10).astype(np.uint8)
-        dentro = (C & 127)
-        arv = np.isin(dentro, [4, 5])
+
+        # --- a medicao manda na carta
+        # A COS diz ONDE ha floresta; o CHM diz onde ha mesmo copa. Onde os dois
+        # discordam, quem mediu ganha. E o unico caminho que apanha coisas que
+        # nunca chegam a unidade minima de cartografia -- a fita de vidoeiros do
+        # Zezere no Covao da Ametade e a mais obvia: a COS poe matos, e ha
+        # betulas de 12 m. Sem isto o CHM so mudava a altura das arvores que a
+        # COS ja tinha, e deixava o covao pelado na mesma.
+        #
+        # Importa tambem por outra razao: a altura medida entra no desenho na
+        # celula onde foi medida. Uma celula de matos com 15 m de copa dava um
+        # arbusto de 15 m de alto e 19 m de raio (raio = altura x k, e o matos
+        # tem k=1,25). Promove-la a floresta poe la uma arvore, que e o que esta
+        # la. O bit 128 -- o corredor limpo do caminho -- nao se toca.
+        # Um MDS mede telhados tao bem como copas: sobre o centro de Manteigas
+        # da 5 m de media e 16 de maximo. Promover isso a floresta punha pinhal
+        # em cima das casas. O urbano e o agricola ficam sempre de fora, e alem
+        # disso pinta-se a mancha das casas soltas -- as quintas e as Caldas nao
+        # estao dentro de nenhum poligono urbano.
+        CASA = np.zeros((my, mx), dtype=np.uint8)
+        ncasa = 0
+        for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'casas'):
+            if gt != 3: continue
+            pinta(CASA, gs, 1, a.caixa, mx, my); ncasa += 1
+        CASA = dilata(CASA, int(math.ceil(12.0 / a.classe)))   # beirados e quintal
+
+        base = C & 127
+        corr = C & 128
+        livre = (CASA == 0) & ~np.isin(base, [1, 2])
+        subiu = (h >= a.arvore_min) & livre & np.isin(base, [0, 3, 6, 7])
+        # e ao contrario: a COS diz floresta e o laser nao encontra nada de pe.
+        # Nao e engano da COS -- ela responde a "que povoamento e este", e um
+        # pinhal ardido continua a ser um pinhal. O laser responde a outra
+        # pergunta, "o que esta ca hoje", e e essa que faz falta a quem anda la.
+        arde = np.isin(base, [4, 5])
+        raso = (h < 0.5) & arde                    # cinza, rocha, chao nu
+        rege = (h >= 0.5) & (h < a.arvore_min) & arde   # regeneracao baixa
+        base = np.where(subiu, 5, base)
+        base = np.where(rege, 6, base)
+        base = np.where(raso, 3, base)
+        C = (base | corr).astype(np.uint8)
+        ac = a.classe * a.classe / 1e6
+        print('casas protegidas da promocao: %d poligonos' % ncasa)
+        print('a medicao corrigiu a carta:')
+        print('   +%.2f km2 de arvores que a COS nao tinha' % (subiu.sum() * ac))
+        print('   -%.2f km2 que a COS diz floresta e mede menos de %.1f m'
+              '  (%.2f raso, %.2f regeneracao)'
+              % ((raso.sum() + rege.sum()) * ac, a.arvore_min,
+                 raso.sum() * ac, rege.sum() * ac))
+
+        arv = np.isin(C & 127, [4, 5])
         if arv.any():
             print('altura medida onde ha arvores: media %.1f m, maximo %.1f m'
                   % (ALTV[arv].mean() / 10, ALTV[arv].max() / 10))
+            cont = np.bincount((C & 127).ravel(), minlength=10)
+            print('   depois do CHM:  ' + '  '.join(
+                '%s %.1f' % (NOME.get(k, k), cont[k] * ac)
+                for k in range(10) if cont[k]))
         else:
-            print('CHM lido, mas a caixa nao tem floresta nem montado')
+            print('CHM lido, mas nem a COS nem a medicao acharam arvores na caixa')
 
     # --- curvas de nivel (ja vem dos azulejos: nao ha nada a calcular)
     curvas = []
