@@ -153,3 +153,86 @@ hoje sem copa, e então:
 
 Não é um limiar num contínuo: é uma mudança, que é o tipo de medida que estes
 dois negativos mostraram ser a única que aqui funciona.
+
+
+---
+
+# A terceira via também não separa — e corrige a história do incêndio
+
+**20/09/2026.** Cena `S2B_29TPE_20210728` (28/07/2021, 0,0% nuvem), escolhida
+por ser a mais próxima em fenologia da de 22/07/2024. B4 + B8 + SCL, 4,4 MB,
+mesma janela de 1124 × 1239 px, sem reamostragem.
+
+**Histograma de NDVI 2021 no domínio sem copa: unimodal outra vez.** Modo em
+0,38–0,41, e o detector de modos encontrou "dois" com um vale de profundidade
+**0%** — é um planalto só.
+
+| | NDVI 2021 | NDVI 2024 |
+|---|---|---|
+| encosta ardida do Zêzere — **tinha de dar alto** | +0,41 | +0,25 |
+| domos dos Cântaros — tinha de dar baixo | +0,27 | +0,28 |
+
+Separam-se na média (0,14) mas sobrepõem-se: `P10(ardida) − P90(domos)` = −0,10.
+E o mais importante: **a ardida não deu alto.** 0,41 é o centro exacto do
+histograma. Não era floresta.
+
+O controlo passou — a floresta que hoje está de pé tinha NDVI 2021 de +0,80,
+igual ao de 2024. A medição de 2021 é boa. O que estava errado era a premissa.
+
+## O facto que corrige o que já estava escrito aqui
+
+| | NDVI 2021 | NDVI 2024 | diferença |
+|---|---|---|---|
+| floresta de pé hoje (14,8 km²) | +0,80 | +0,80 | 0,00 |
+| raso hoje, que a COS chama floresta (24,2 km²) | **+0,48** | +0,39 | **−0,09** |
+| domos dos Cântaros | +0,27 | +0,28 | +0,04 |
+
+Se aqueles 24 km² fossem pinhal fechado em Julho de 2021, teriam NDVI ~0,80
+como o pinhal que continua de pé. Tinham 0,48, e o fogo de 2022 tirou-lhes
+**0,09**.
+
+**Portanto a história que este documento e as mensagens de commit anteriores
+contaram — "ardeu em Agosto de 2022" — estava simplificada.** Em 2021 aquilo
+já não era floresta fechada: era mato e pinhal aberto, provavelmente de fogos
+anteriores (a serra ardeu a sério em 2005 e 2017). A etiqueta "Florestas" da
+COS já estava velha **antes** do fogo de 2022.
+
+O que **não** muda é a conclusão que importa ao mapa: 84,7% do que a COS chama
+Florestas nesta caixa tem menos de 1 m de altura hoje. O CHM não prova *quando*
+caiu; prova que **hoje não está lá**, e é isso que interessa a quem vai andar
+na serra. A causa é que foi contada com mais certeza do que os dados davam.
+
+E explica também por que razão a diferença não separou nada: **rocha e "ardido"
+estavam ambos pelados em 2021.** A regra perguntava "o que eram antes", e a
+resposta é "o mesmo".
+
+---
+
+# Conclusão das três vias
+
+| via | resultado |
+|---|---|
+| reflectância de um dia (NDVI, brilho, SWIR) | não separa |
+| rugosidade do relevo (MDT e MDS a 2 m) | não separa |
+| diferença temporal (NDVI 2021 → 2024) | não separa |
+
+**Rocha fica a da COS**, e para-se aqui. Não há quarta tentativa: três medidas
+independentes deram histogramas unimodais, o que é a mesma resposta dita de
+três maneiras — nesta caixa, rocha nua, mato ralo e chão pelado formam um
+contínuo, não classes.
+
+## Mas a rocha da COS ficou melhor do que estava
+
+Não por termos classificado rocha, mas por termos **medido o que a poluía**. O
+`outro` da COS era o saco das classes 7 (espaços descobertos), 8 (zonas
+húmidas) e 9 (corpos de água), todas juntas. Agora:
+
+- **água** sai por medição: Sentinel NDWI ∩ WAW, 0,57 km², 89% de concordância
+  entre duas fontes independentes;
+- **zonas húmidas** saem por medição também: a WAW dá 0,00 km² na caixa. Não
+  estão lá.
+
+O que resta do saco é, por eliminação, **COS 7 — espaços descobertos e com
+pouca vegetação.** Que é exactamente rocha e chão pelado. A classe não foi
+classificada; foi **limpa**. E isso é defensável de uma maneira que não era
+antes.
