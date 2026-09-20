@@ -318,3 +318,48 @@ vista, conta píxeis da imagem inteira por cor.
       Gouveia, Guarda) — a do ICNF só cobre 11 concelhos de Aveiro, não serve
 - [ ] 47 blocos de ortofoto em falta; 82+82 quadrículas LiDAR que a DGT não serve
 - [ ] Unificar `app.js` e `sombra-na-estrela.html` numa fonte só
+
+---
+
+## REGRA: nenhuma zona se publica sem boletim
+
+Pedido dele, 20/09/2026, e vale para tudo o que este cozedor produzir:
+
+> *"Não quero que estejas a corrigir o problema imagem a imagem que envio.
+> Quero como deve ser, porque agora é uma área pequena e quando for grande ou
+> nova não sei afirmar."*
+
+Está certo. Olhar para o ecrã só funciona enquanto a área é pequena e ele
+conhece o terreno. Numa zona nova ninguém consegue afirmar nada a olho, e um
+mapa que não sabe dizer onde erra é pior do que não ter mapa.
+
+Por isso `gera_terreno.py` corre `confere.py` no fim de cada cozedura, e **a
+zona só entra no `index.json` se nenhuma VERIFICAÇÃO falhar.** O ficheiro
+cozido fica sempre no disco para se poder olhar; o que não acontece é passar a
+ser publicado sem ninguém saber que falhou. `--sem-boletim` fura a guarda e só
+se usa com motivo escrito.
+
+### As três etiquetas, e a diferença é o ponto todo
+
+| etiqueta | o que quer dizer |
+|---|---|
+| **VERIFICAÇÃO** | confronta o mapa com uma fonte **independente** do que o produziu. Se falha, o mapa está errado. |
+| **CONSISTÊNCIA** | confirma que o cozedor fez o que diz que faz. É circular por construção: passar **não** prova que o mapa é verdade, prova que o gerador não se partiu. |
+| **NÃO VERIFICADO** | não há maneira de o confrontar. Aparece com o nome da razão. **Uma classe sem verificação possível não é uma classe boa por defeito.** |
+
+Vender uma consistência como garantia seria o mesmo erro que pintar telhados
+de cinzento por causa de um ficheiro dessaturado.
+
+### O boletim já pagou o que custou
+
+Na primeira vez que correu apanhou **duas falhas**:
+
+- **as cotas**, com correlação 0,83 — e a falha era **da própria prova**, que
+  inventou a caixa do DEM de referência em vez de a ler do cozedor. Passou a
+  lê-la, e dá 0,9996. *Uma prova com a referência errada não prova nada, e foi
+  a terceira vez neste projecto* (antes: os polígonos `aguaA` como referência
+  de água, e os domos do planalto como referência de rocha).
+- **a água**, com 24% das células em declive acima de 12°. Essa era real: os
+  polígonos `aguaA` do OSM incluem ribeiras desenhadas como área em encostas
+  de 17°. Uma superfície de água não fica de pé numa encosta. Passaram a ser
+  recusadas — 0,19 km² fora — e a água ficou 100% plana.

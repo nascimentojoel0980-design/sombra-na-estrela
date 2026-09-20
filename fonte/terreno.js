@@ -1123,7 +1123,9 @@ function abreVista(canvas, T, op) {
     const cz = T.cotaEm(cam.x, cam.y);
     const h = Math.cos(cam.incl) * cam.dist, r = Math.sin(cam.incl) * cam.dist;
     const ox = cam.x - Math.sin(cam.rumo) * r, oy = cam.y - Math.cos(cam.rumo) * r;
-    return { olho: [ox, oy, Math.max(cz + h, T.cotaEm(ox, oy) + 25)], alvo: [cam.x, cam.y, cz] };
+    const dz = cam.dz || 0;
+    return { olho: [ox, oy, Math.max(cz + h + dz, T.cotaEm(ox, oy) + 25)],
+             alvo: [cam.x, cam.y, cz + dz] };
   }
   function naVista(b, M4) {
     let e = 0x3f;
@@ -1341,12 +1343,12 @@ function abreVista(canvas, T, op) {
     // mesmo tempo -- afasta-te enquanto sobes. Para subir a direito mantem-se
     // o r e mexe-se so no h, e recalculam-se dist e incl a partir dai. O
     // ponto do chao debaixo da camara fica onde estava.
-    sobe: (f) => {
-      const h = Math.cos(cam.incl) * cam.dist, r = Math.sin(cam.incl) * cam.dist;
-      const h2 = trava(h * f, 25, 20000);
-      cam.dist = trava(Math.hypot(r, h2), 40, 20000);
-      cam.incl = trava(Math.atan2(r, h2), 0.06, 1.45);
-    },
+    // Elevador: sobe e desce e mais nada. A primeira versao mantinha o
+    // afastamento no plano e mexia na altura, o que obrigava a recalcular
+    // dist e incl -- ou seja, mudava a camara. Ele disse que nao e isso: e
+    // subir com a mesma vista. Aqui o olho E o alvo sobem juntos, portanto a
+    // direccao de onde se olha nao muda uma virgula.
+    sobe: (d) => { cam.dz = trava((cam.dz || 0) + d * cam.dist * 0.12, -2000, 6000); },
     vaiA(lo, la, dist) { const m = T.emM(lo, la); cam.x = m[0]; cam.y = m[1];
                          if (dist) cam.dist = dist; },
     // linhas em [lon, lat] achatadas, como as do ficheiro

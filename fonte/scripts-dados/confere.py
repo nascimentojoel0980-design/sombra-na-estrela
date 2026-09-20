@@ -1,0 +1,268 @@
+# -*- coding: utf-8 -*-
+"""Boletim de uma zona cozida: em que partes dela se pode confiar.
+
+Porque este ficheiro existe. Ele disse: "nao quero que estejas a corrigir o
+problema imagem a imagem que envio; quero como deve ser, porque agora e uma
+area pequena e quando for grande ou nova nao sei afirmar". Tinha razao. Uma
+zona nova tem de se declarar a si propria antes de alguem olhar para ela.
+
+Cada linha do boletim tem de ser uma de duas coisas, e diz qual:
+
+  VERIFICACAO   confronta o mapa com uma fonte INDEPENDENTE do que o produziu.
+                Se falha, o mapa esta errado.
+  CONSISTENCIA  confirma que o cozedor fez o que diz que faz. E circular por
+                construcao -- passar nao prova que o mapa e verdade, so prova
+                que o gerador nao se partiu.
+
+A distincao e o ponto todo: uma consistencia a passar nao e uma garantia, e
+vender-lha como tal seria o mesmo erro que pintar telhados de cinzento por
+causa de um ficheiro dessaturado.
+
+E o que NAO se consegue verificar aparece como NAO VERIFICADO, com o nome da
+razao. Uma classe sem verificacao possivel nao e uma classe boa por defeito.
+"""
+import argparse, glob, gzip, json, math, os, re, struct, sys
+import numpy as np
+
+RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+R = 6378137.0
+NOME = {0: 'sem dado', 1: 'urbano', 2: 'agricola', 3: 'pastagem', 4: 'montado',
+        5: 'floresta', 6: 'mato rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua',
+        10: 'chao nu', 11: 'matagal'}
+
+
+def le(f):
+    b = gzip.open(f, 'rb').read()
+    i, B = 8, {}
+    while i < len(b):
+        t, n = struct.unpack_from('<4sI', b, i); i += 8
+        B[t.decode()] = b[i:i + n]; i += n
+    T = {}
+    T['caixa'] = struct.unpack_from('<dddd', B['BBOX'], 0)
+    nx, ny, passo, z0, z1 = struct.unpack_from('<HHfff', B['COTA'], 0)
+    T['Z'] = z0 + np.frombuffer(B['COTA'], np.uint16, offset=16).reshape(ny, nx).astype(np.float32) / 65535 * (z1 - z0)
+    T['passo'] = passo
+    mx, my, pc = struct.unpack_from('<HHf', B['CLAS'], 0)
+    T['C'] = np.frombuffer(B['CLAS'], np.uint8, offset=8).reshape(my, mx) & 127
+    T['corr'] = (np.frombuffer(B['CLAS'], np.uint8, offset=8).reshape(my, mx) & 128) > 0
+    T['pc'] = pc
+    T['ALTV'] = (np.frombuffer(B['ALTV'], np.uint8, offset=4).reshape(my, mx)
+                 if 'ALTV' in B else None)
+    T['temCasas'] = 'CASA' in B
+    if T['temCasas']:
+        n, zc0, zc1 = struct.unpack_from('<Iff', B['CASA'], 0)
+        T['nVertCasa'] = n
+    return T
+
+
+class Boletim:
+    def __init__(self): self.linhas = []
+    def ver(self, nome, ok, txt, valor=None):
+        self.linhas.append(('VERIFICACAO', nome, ok, txt, valor))
+    def cons(self, nome, ok, txt, valor=None):
+        self.linhas.append(('CONSISTENCIA', nome, ok, txt, valor))
+    def nao(self, nome, txt):
+        self.linhas.append(('NAO VERIFICADO', nome, None, txt, None))
+    def imprime(self):
+        larg = max(len(l[1]) for l in self.linhas) + 1
+        for tipo, nome, ok, txt, _ in self.linhas:
+            marca = '  ? ' if ok is None else ('  v ' if ok else '  X ')
+            print('%s%-14s %-*s %s' % (marca, tipo, larg, nome, txt))
+        falhas = [l[1] for l in self.linhas if l[2] is False]
+        naos = [l[1] for l in self.linhas if l[2] is None]
+        print()
+        if falhas: print('FALHOU: ' + ', '.join(falhas))
+        if naos: print('sem maneira de verificar: ' + ', '.join(naos))
+        if not falhas: print('nenhuma verificacao falhou')
+        return not falhas
+    def json(self):
+        def puro(v):
+            if isinstance(v, dict): return {k: puro(w) for k, w in v.items()}
+            if hasattr(v, 'item'): return v.item()     # numpy nao vai para JSON
+            return v
+        return [{'tipo': t, 'nome': n, 'passa': puro(ok), 'texto': x, 'valor': puro(v)}
+                for t, n, ok, x, v in self.linhas]
+
+
+# ---------------------------------------------------------------- ortofoto
+class Ortos:
+    def __init__(self, pasta):
+        self.pasta, self.tem = pasta, set()
+        xs = set()
+        for f in glob.glob(os.path.join(pasta, 'd_*.webp')):
+            m = re.search(r'd_(-?\d+)_(\d+)', f)
+            x, y = int(m.group(1)), int(m.group(2)); xs.add(x); self.tem.add((x, y))
+        o = sorted(xs)
+        self.passo = min((b - a for a, b in zip(o, o[1:]) if b > a), default=1280)
+        self.cache = {}
+    def cinza(self, lo, la, lado=40):
+        from PIL import Image
+        x = lo / 180 * 20037508.342789244
+        y = math.log(math.tan(math.pi / 4 + math.radians(la) / 2)) * R
+        tx = math.floor(x / self.passo) * self.passo; ty = math.floor(y / self.passo) * self.passo
+        if (tx, ty) not in self.tem: return None
+        im = self.cache.get((tx, ty))
+        if im is None:
+            im = Image.open(os.path.join(self.pasta, 'd_%d_%d.webp' % (tx, ty))).convert('L')
+            if len(self.cache) > 8: self.cache.clear()
+            self.cache[(tx, ty)] = im
+        mpp = self.passo / im.width
+        px = int((x - tx) / mpp); py = int((ty + self.passo - y) / mpp); k = int(lado / mpp / 2)
+        if px - k < 0 or py - k < 0 or px + k >= im.width or py + k >= im.height: return None
+        return np.asarray(im.crop((px - k, py - k, px + k, py + k))).astype(np.float32)
+
+
+def coesao(x, y):
+    """d de Cohen: quantos desvios-padrao separam duas populacoes"""
+    if len(x) < 20 or len(y) < 20: return None
+    s = math.sqrt((x.var() + y.var()) / 2)
+    return abs(x.mean() - y.mean()) / s if s > 1e-9 else None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('terreno')
+    ap.add_argument('--ortos', default='dados/det')
+    ap.add_argument('--dem', default='dados/dem.webp')
+    ap.add_argument('--amostra', type=int, default=300)
+    ap.add_argument('--semente', type=int, default=20260920)
+    ap.add_argument('--json', default=None)
+    a = ap.parse_args()
+
+    T = le(os.path.join(RAIZ, a.terreno) if not os.path.isabs(a.terreno) else a.terreno)
+    lo0, la0, lo1, la1 = T['caixa']
+    C, pc, ALTV = T['C'], T['pc'], T['ALTV']
+    my, mx = C.shape
+    ac = pc * pc / 1e6
+    rng = np.random.default_rng(a.semente)
+    B = Boletim()
+
+    print('%s' % a.terreno)
+    print('caixa %.4f %.4f %.4f %.4f   classes %dx%d a %.0f m   %.0f km2\n'
+          % (lo0, la0, lo1, la1, mx, my, pc, C.size * ac))
+
+    # ---- 1. cotas contra uma fonte independente (Copernicus 30 m)
+    dem = os.path.join(RAIZ, a.dem)
+    if os.path.exists(dem):
+        from PIL import Image
+        A = np.asarray(Image.open(dem).convert('RGB')).astype(np.float32)
+        Zc = A[:, :, 0] * 256.0 + A[:, :, 1] - 32768.0
+        # A caixa do DEM vem do cozedor, nao de memoria. A primeira versao deste
+        # ficheiro inventou-a e a prova das cotas falhou com correlacao 0,83
+        # sobre um MDT que a outra sessao tinha conferido a 0,9998 -- a falha
+        # era da prova. Uma prova com a referencia errada nao prova nada, e ja
+        # e a terceira vez neste projecto.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from gera_terreno import DEM_CAIXA
+        hD, wD = Zc.shape
+        ny, nx = T['Z'].shape
+        jj = ((DEM_CAIXA[3] - np.linspace(la1, la0, ny)) / (DEM_CAIXA[3] - DEM_CAIXA[1]) * (hD - 1))
+        ii = ((np.linspace(lo0, lo1, nx) - DEM_CAIXA[0]) / (DEM_CAIXA[2] - DEM_CAIXA[0]) * (wD - 1))
+        if jj.min() >= 0 and jj.max() < hD and ii.min() >= 0 and ii.max() < wD:
+            Zr = Zc[np.ix_(jj.astype(int), ii.astype(int))]
+            d = T['Z'] - Zr
+            r = float(np.corrcoef(T['Z'].ravel(), Zr.ravel())[0, 1])
+            vies = float(np.median(d)); esp = float(np.percentile(np.abs(d - vies), 90))
+            ok = bool(r > 0.99 and abs(vies) < 25 and esp < 60)
+            B.ver('cotas', ok, 'correlacao %.4f com o Copernicus 30 m; vies %+.1f m, '
+                  'P90 do desvio %.1f m' % (r, vies, esp), {'r': r, 'vies': vies})
+        else:
+            B.nao('cotas', 'a caixa sai fora do DEM de referencia')
+    else:
+        B.nao('cotas', 'nao ha %s para comparar' % a.dem)
+
+    # ---- 2. floresta contra o ortofoto (fonte independente do LiDAR)
+    O = Ortos(os.path.join(RAIZ, a.ortos))
+    if O.tem:
+        def amostra(masc, n):
+            cand = np.argwhere(masc)
+            if not len(cand): return np.array([]), 0
+            rng.shuffle(cand); v = []
+            for cj, ci in cand:
+                lo = lo0 + (ci + 0.5) / mx * (lo1 - lo0); la = la1 - (cj + 0.5) / my * (la1 - la0)
+                g = O.cinza(lo, la)
+                if g is None: continue
+                v.append([g.mean(), g.std()])
+                if len(v) >= n: break
+            return np.array(v), len(cand)
+        F, nF = amostra(C == 5, a.amostra)
+        NF, _ = amostra(np.isin(C, [3, 6, 7, 10]), a.amostra)
+        if len(F) >= 20 and len(NF) >= 20:
+            dB = coesao(F[:, 0], NF[:, 0]); dC = coesao(F[:, 1], NF[:, 1])
+            ok = bool((dB or 0) > 1.0 or (dC or 0) > 1.0)
+            B.ver('floresta', ok, 'contra a textura do ortofoto, %d+%d celulas: '
+                  'brilho d=%.2f, contraste d=%.2f (>1 separa)' % (len(F), len(NF), dB or 0, dC or 0),
+                  {'d_brilho': dB, 'd_contraste': dC})
+        else:
+            B.nao('floresta', 'o ortofoto nao cobre celulas suficientes')
+        cob = 0
+        for _ in range(200):
+            lo = rng.uniform(lo0, lo1); la = rng.uniform(la0, la1)
+            if O.cinza(lo, la, 20) is not None: cob += 1
+        B.ver('cobertura do ortofoto', bool(cob > 20),
+              '%.0f%% da caixa tem ortofoto de detalhe (faixa dos percursos)' % (cob / 2),
+              {'pct': cob / 2})
+    else:
+        B.nao('floresta', 'nao ha ortofoto em %s' % a.ortos)
+
+    # ---- 3. rocha: declarar que nao ha como verificar
+    B.nao('rocha / chao nu / mato',
+          'quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); '
+          'vem da COS e nao esta verificada')
+
+    # ---- 4. consistencias: o cozedor fez o que diz?
+    if ALTV is not None:
+        f = C == 5
+        if f.any():
+            p = float((ALTV[f] >= 50).mean())
+            B.cons('floresta tem copa', bool(p > 0.98), '%.1f%% das celulas de floresta medem >= 5 m' % (100 * p))
+        m = C == 11
+        if m.any():
+            p = float((ALTV[m] >= 15).mean())
+            B.cons('matagal tem copa', bool(p > 0.98), '%.1f%% do matagal mede >= 1,5 m' % (100 * p))
+        n = C == 10
+        if n.any():
+            p = float((ALTV[n] < 5).mean())
+            B.cons('chao nu esta nu', bool(p > 0.98), '%.1f%% do chao nu mede < 0,5 m' % (100 * p))
+    else:
+        B.nao('altura da vegetacao', 'a zona foi cozida sem --chm: as alturas sao da classe')
+
+    gy, gx = np.gradient(T['Z'], T['passo'])
+    dec = np.degrees(np.arctan(np.hypot(gx, gy)))
+    ny, nx = T['Z'].shape
+    dc = dec[np.ix_((np.arange(my) / my * ny).astype(int).clip(0, ny - 1),
+                    (np.arange(mx) / mx * nx).astype(int).clip(0, nx - 1))]
+    p = C == 8
+    if p.any():
+        q = float((dc[p] >= 40).mean())
+        B.cons('paredes sao ingremes', bool(q > 0.95), '%.1f%% das paredes tem declive >= 40 graus' % (100 * q))
+    g = C == 9
+    if g.any():
+        q = float((dc[g] < 12).mean())
+        B.cons('agua e plana', bool(q > 0.90), '%.1f%% da agua tem declive < 12 graus' % (100 * q))
+
+    # ---- 5. casas
+    urb = float((C == 1).sum()) * ac
+    if T['temCasas']:
+        B.ver('casas', True, '%s vertices de contorno OSM; %.2f km2 de urbano na carta. '
+              'O OSM e incompleto em vilas serranas -- densidade NAO verificada'
+              % (f"{T['nVertCasa']:,}", urb), {'urbano_km2': urb})
+    else:
+        B.nao('casas', 'a zona foi cozida sem contornos de edificios')
+
+    # ---- 6. o que a zona tem, para ninguem lhe pedir o que ela nao pode dar
+    print('classes:')
+    for k in sorted(set(C.ravel().tolist())):
+        print('   %-15s %7.2f km2' % (NOME.get(k, k), (C == k).sum() * ac))
+    print()
+    bom = B.imprime()
+    if a.json:
+        json.dump({'terreno': a.terreno, 'linhas': B.json()},
+                  open(os.path.join(RAIZ, a.json), 'w', encoding='utf-8'),
+                  ensure_ascii=False, indent=1)
+        print('\nboletim em %s' % a.json)
+    sys.exit(0 if bom else 2)
+
+
+if __name__ == '__main__':
+    main()

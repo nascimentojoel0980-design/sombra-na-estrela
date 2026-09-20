@@ -317,6 +317,9 @@ def main():
     ap.add_argument('--matagal-min', type=float, default=1.5,
                     help='m de copa medida a partir dos quais o mato passa de '
                          'rasteiro a matagal (so com --chm)')
+    ap.add_argument('--agua-graus', type=float, default=12.0,
+                    help='declive acima do qual um poligono de agua do OSM e '
+                         'recusado: uma superficie de agua nao fica de pe numa encosta')
     ap.add_argument('--parede-graus', type=float, default=45.0,
                     help='declive a partir do qual a celula e parede de rocha e nao '
                          'leva vegetacao nenhuma. So com --mdt: num DEM de 30 m o '
@@ -336,6 +339,10 @@ def main():
     ap.add_argument('--dir', type=int, default=16, help='direccoes do mapa de horizonte')
     ap.add_argument('--sem-horizonte', action='store_true')
     ap.add_argument('--sem-casas', action='store_true')
+    ap.add_argument('--sem-boletim', action='store_true',
+                    help='escreve o indice mesmo que o boletim falhe. So com '
+                         'motivo escrito: e esta guarda que impede uma zona '
+                         'nova de ser publicada sem ninguem saber que falhou')
     a = ap.parse_args()
 
     lo0, la0, lo1, la1 = a.caixa
@@ -374,9 +381,10 @@ def main():
         if not cod: continue
         pinta(C, gs, cod, a.caixa, mx, my); n_sol += 1
     n_ag = 0
+    AGUA_OSM = np.zeros((my, mx), dtype=np.uint8)
     for props, gt, gs in varre(pm, a.caixa, a.zsolo, 'aguaA'):
         if gt != 3: continue
-        pinta(C, gs, 9, a.caixa, mx, my); n_ag += 1
+        pinta(AGUA_OSM, gs, 1, a.caixa, mx, my); n_ag += 1
     print('poligonos: solo %d, agua %d' % (n_sol, n_ag))
 
     # --- percursos
@@ -516,6 +524,27 @@ def main():
                 for k in range(10) if cont[k]))
         else:
             print('CHM lido, mas nem a COS nem a medicao acharam arvores na caixa')
+
+    # --- a agua do OSM, so onde uma superficie de agua pode existir
+    # Os poligonos aguaA incluem RIBEIRAS desenhadas como area, com metros de
+    # largura, em encostas de 17 graus de declive medio. Uma superficie de agua
+    # nao fica de pe numa encosta: ou e um lago e e plana, ou e uma linha de
+    # agua e nao e uma superficie. O boletim apanhou isto -- 24% da agua da
+    # versao anterior estava em declive acima de 12 graus.
+    if a.mdt:
+        gy0, gx0 = np.gradient(Z, a.passo)
+        gr = np.degrees(np.arctan(np.hypot(gx0, gy0)))
+        jj0 = (np.arange(my) / my * ny).astype(int).clip(0, ny - 1)
+        ii0 = (np.arange(mx) / mx * nx).astype(int).clip(0, nx - 1)
+        plano = gr[np.ix_(jj0, ii0)] < a.agua_graus
+    else:
+        plano = np.ones((my, mx), bool)
+    vale = (AGUA_OSM > 0) & plano
+    C = np.where(vale, 9, C).astype(np.uint8)
+    ac0 = a.classe * a.classe / 1e6
+    print('agua do OSM: %d poligonos, %.2f km2 aceites, %.2f km2 recusados por'
+          ' declive >= %.0f graus (ribeiras desenhadas como area)'
+          % (n_ag, vale.sum() * ac0, ((AGUA_OSM > 0) & ~plano).sum() * ac0, a.agua_graus))
 
     # --- paredes e escarpas: isto nao e uma classe de ocupacao, e geometria
     # "Rocha" sao duas coisas que o motor tratava como uma so: blocos POUSADOS
@@ -732,6 +761,29 @@ def main():
     print('\n%s' % dest)
     print('  por comprimir %.2f MB   comprimido %.2f MB'
           % (len(saida) / 1e6, os.path.getsize(dest) / 1e6))
+
+    # --- o boletim, antes do indice e nao depois
+    # Regra do projecto, pedida por ele: "nao quero que estejas a corrigir o
+    # problema imagem a imagem; quero como deve ser, porque agora e uma area
+    # pequena e quando for grande ou nova nao sei afirmar."
+    #
+    # Uma zona so entra no indice -- ou seja, so passa a ser a zona que a
+    # aplicacao carrega -- se nenhuma VERIFICACAO falhar. O ficheiro cozido
+    # fica sempre no disco para se poder olhar; o que nao acontece e passar a
+    # ser publicado sem ninguem saber que falhou.
+    import subprocess
+    print()
+    bol = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                       'confere.py'), dest],
+                         capture_output=True, text=True)
+    print(bol.stdout, end='')
+    if bol.stderr.strip(): print(bol.stderr.strip())
+    if bol.returncode != 0 and not a.sem_boletim:
+        print('\nO INDICE NAO FOI ESCRITO. A zona anterior continua a ser a publicada.')
+        print('O ficheiro cozido esta em %s, para se poder olhar.' % dest)
+        print('Corrige o que falhou, ou volta a cozer com --sem-boletim se souberes')
+        print('o que estas a fazer e escreveres porque.')
+        sys.exit(2)
 
     # --- o indice, que e por onde a aplicacao sabe que esta zona existe.
     # Cozer uma zona nova e so correr isto: o menu apanha-a sozinho.

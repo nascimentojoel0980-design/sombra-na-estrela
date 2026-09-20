@@ -3,7 +3,7 @@
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v8.terr.gz",
+   "ficheiro": "manteigas-v9.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -21,7 +21,7 @@
     1993
    ],
    "fonte": "MDT do LiDAR, com copa medida",
-   "bytes": 8340076,
+   "bytes": 8341986,
    "tem": {
     "curvas": true,
     "pontos": true,
