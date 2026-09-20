@@ -92,4 +92,64 @@ Não está na reflectância de um dia. Está:
 2. **na mudança** — NBR de uma cena de 2021 contra a de 2024;
 3. **no perímetro oficial do ICNF.**
 
-O primeiro não custa descarga nenhuma, e é por aí que se vai a seguir.
+O primeiro foi tentado a seguir, e também falhou. Fica abaixo.
+
+---
+
+# A rugosidade também não separa — e a razão muda o problema
+
+**20/09/2026.** Segunda tentativa, segundo negativo. Medido no mosaico nativo
+em EPSG:3763 (2 m exactos em metros), não no reprojectado em graus — a
+reamostragem bilinear alisa precisamente aquilo que se quer medir. Janela de
+11 × 11 células (raio 10 m), plano por mínimos quadrados, R = desvio-padrão do
+resíduo.
+
+| R | Cântaros 1931 m (rocha) | encosta ardida 1373 m |
+|---|---|---|
+| MDT média / mediana | 0,41 / 0,24 m | 0,40 / **0,32** m |
+| MDS média / mediana | 0,42 / 0,24 m | 0,52 / **0,39** m |
+
+**A encosta ardida é mais rugosa que a rocha na mediana, nos dois modelos.**
+`P10(rocha) − P90(ardido)` dá −0,67 m no MDT e −0,95 no MDS, quando teria de
+ser positivo. Sobreposição total, histograma unimodal outra vez.
+
+O que R mede é **declive**: correlação R–declive de 0,49 no MDT e 0,47 no MDS.
+Uma encosta de 20° com quebras métricas deixa mais resíduo a um plano ajustado
+em 20 m do que um planalto de blocos de 1 m.
+
+## A razão pela qual isto nunca ia resultar
+
+A mancha de controlo estava mal escolhida — por quem escreveu a prova, não por
+quem a executou. A 1880–1980 m, nos domos do planalto, **a rocha da Estrela é
+laje lisa de granito, não caos de blocos.** A prova perguntava "a rocha é mais
+rugosa que o ardido?" quando esta rocha é, por natureza, das superfícies mais
+lisas da serra.
+
+O MDS não trouxe nada de novo onde não há copa, o que também diz uma coisa: a
+DGT **não** removeu os blocos ao classificar o solo. Simplesmente não há
+blocos ali para medir.
+
+**Duas provas seguidas mal desenhadas pela mesma razão** — escolher a
+referência sem olhar primeiro para o que ela é. Primeiro os polígonos `aguaA`,
+que são ribeiras de metros de largura em encosta; depois esta mancha, que é
+laje. A lição repete-se: *olhar para o dado antes de o usar como referência.*
+
+## O que sobra, e é o caminho certo
+
+Se a rocha é lisa e clara, e o ardido é liso e claro, nenhuma medida de **um
+instante** os separa. O que os separa é o que eram **antes**:
+
+- o granito já era granito em 2021;
+- a encosta ardida era floresta e matos em 2021.
+
+Uma cena Sentinel-2 de Verão de **2021**, antes do fogo de Agosto de 2022,
+resolve por diferença em vez de por limiar:
+
+```
+hoje sem copa, e então:
+    NDVI 2021 alto  -> tinha vegetação antes -> ardido, não é rocha
+    NDVI 2021 baixo -> já era pelado em 2021 -> rocha
+```
+
+Não é um limiar num contínuo: é uma mudança, que é o tipo de medida que estes
+dois negativos mostraram ser a única que aqui funciona.
