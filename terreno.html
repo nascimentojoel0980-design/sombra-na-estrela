@@ -189,7 +189,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=28"></script>
+<script src="fonte/terreno.js?v=29"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -316,6 +316,12 @@ const d0 = document.getElementById('d0');
     h += '<div class=it><i class=ln style="background:' + fundo
        + ';width:' + Math.round(6 + c.larg * 2.2) + 'px"></i>'
        + esc(nome) + '<span class=md>' + c.larg.toFixed(1).replace('.', ',') + ' m</span></div>';
+  }
+  if (L.PISOS) {
+    h += '<div class=t style="margin-top:8px">Piso, quando o OSM o diz</div>';
+    for (const p of L.PISOS) if (p)
+      h += '<div class=it><i class=ln style="background:' + hex(p.cor) + ';width:18px"></i>' + esc(p.n) + '</div>';
+    h += '<div class=it><span class=md style="margin-left:0">sem informação de piso: cor do tipo</span></div>';
   }
   h += '</div><div class=g><div class=t>Percursos e casas</div>'
      + '<div class=it><i class=ln style="background:#c8392b;width:14px"></i>'

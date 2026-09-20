@@ -64,6 +64,13 @@ LIMPO = {'nacional': 11.0, 'estrada': 9.0, 'estradao': 6.0, 'caminho': 5.0, 'tri
          'rio': 4.0, 'ribeira': 2.0, 'levada': 1.5}
 # linhas de agua do OSM (camada aguaL): w=river/stream/canal -> tipo do motor
 TIPO_AGUA = {'river': 'rio', 'stream': 'ribeira', 'canal': 'levada', 'drain': 'levada', 'ditch': 'levada'}
+# piso (surface do OSM), guardado ao lado do tipo no bloco CAMS: 0 sem
+# informacao, 1 alcatrao/betao, 2 calcada, 3 terra/gravilha. So 26% das vias
+# de Manteigas o trazem; onde nao ha, o motor pinta pelo tipo e diz que e.
+PISO = {'asphalt': 1, 'paved': 1, 'concrete': 1, 'concrete:plates': 1, 'chipseal': 1,
+        'sett': 2, 'cobblestone': 2, 'paving_stones': 2, 'unhewn_cobblestone': 2,
+        'unpaved': 3, 'gravel': 3, 'fine_gravel': 3, 'compacted': 3, 'dirt': 3, 'ground': 3,
+        'earth': 3, 'grass': 3, 'sand': 3, 'rock': 3, 'pebblestone': 3, 'mud': 3, 'wood': 3}
 
 
 # ----------------------------------------------------------------- cotas
@@ -582,7 +589,7 @@ def main():
             (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'caminhos') if gt == 2):
         t = props.get('t') or 'caminho'
         if a.so_caminhos and t not in a.so_caminhos.split(','): continue
-        cams.append((TIPO_CAM.get(t, 3), t, g))
+        cams.append((TIPO_CAM.get(t, 3), t, g, PISO.get((props.get('s') or '').split(';')[0], 0)))
     # --- linhas de agua (OSM aguaL). A COS so tem cursos com 20 m de largura
     # e o Sentinel nao ve 3 m: o Zezere no Covao da Ametade nao existia no
     # mapa. Vao no mesmo bloco dos caminhos, com o seu tipo, e o motor
@@ -592,14 +599,17 @@ def main():
             (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'aguaL') if gt == 2):
         t = TIPO_AGUA.get(props.get('w'), 'ribeira')
         if a.so_caminhos and t not in a.so_caminhos.split(','): continue
-        cams.append((TIPO_CAM[t], t, g)); n_agl += 1
+        cams.append((TIPO_CAM[t], t, g, 0)); n_agl += 1
     porT = {}
-    for _, t, _ in cams: porT[t] = porT.get(t, 0) + 1
+    for _, t, _, _ in cams: porT[t] = porT.get(t, 0) + 1
     print('caminhos e linhas de agua: %d (%s)' % (len(cams), ', '.join('%s %d' % kv for kv in sorted(porT.items()))))
+    porP = collections.Counter(p for _, _, _, p in cams)
+    print('   piso conhecido: alcatrao %d, calcada %d, terra %d; sem informacao %d'
+          % (porP[1], porP[2], porP[3], porP[0]))
 
     abre_corredor(C, rotas, a.caixa, mx, my, a.corredor)
     for t, r in LIMPO.items():
-        ls = [g for tt, nome, g in cams if nome == t]
+        ls = [g for tt, nome, g, _ in cams if nome == t]
         if ls: abre_corredor(C, ls, a.caixa, mx, my, r)
     ncorr = int((C & 128).astype(bool).sum())
     print('corredor sem vegetacao: %.2f km2' % (ncorr * a.classe * a.classe / 1e6))
@@ -1030,8 +1040,8 @@ def main():
         return bloco(tag, c + pts.tobytes())
 
     saida += linhas_bloco('ROTA', rotas)
-    saida += linhas_bloco('CAMS', [g for _, _, g in cams],
-                          np.array([[t, 0] for t, _, _ in cams], dtype=np.int16))
+    saida += linhas_bloco('CAMS', [g for _, _, g, _ in cams],
+                          np.array([[t, piso] for t, _, _, piso in cams], dtype=np.int16))
     saida += linhas_bloco('CURV', [g for _, _, g in curvas],
                           np.array([[alt, gr] for alt, gr, _ in curvas], dtype=np.int16))
     corpo = bytearray(struct.pack('<I', len(pontos)))

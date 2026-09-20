@@ -45,7 +45,7 @@
   {
    "nome": "torre",
    "titulo": "Torre e Lagoa Comprida",
-   "ficheiro": "torre-v1.terr.gz",
+   "ficheiro": "torre-v2.terr.gz",
    "caixa": [
     -7.75,
     40.28,
@@ -72,7 +72,7 @@
     "casas": "ms + osm",
     "penedos_rejeitados": 95
    },
-   "bytes": 8835230,
+   "bytes": 8835488,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -87,7 +87,7 @@
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v14.terr.gz",
+   "ficheiro": "manteigas-v15.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -114,7 +114,7 @@
     "casas": "ms + osm",
     "penedos_rejeitados": 742
    },
-   "bytes": 8618370,
+   "bytes": 8618643,
    "tem": {
     "curvas": true,
     "pontos": true,

@@ -81,15 +81,15 @@ const CAMINHOS = [
   // ja eram diferentes (9 / 7 / 4,5 / 3 / 2,2 m)
   // Estradas alcatroadas: cinzento escuro com o eixo pintado por cima
   // (eixo: true desenha uma segunda fita fina, clara, ao centro).
-  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.27, 0.27, 0.29], eixo: true },
-  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.36, 0.36, 0.38], eixo: true },
+  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.19, 0.19, 0.21], eixo: true },
+  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.25, 0.25, 0.27], eixo: true },
   { n: 'estradao', limpo:  6, larg: 4.5, cor: [0.50, 0.34, 0.16] },
   { n: 'caminho',  limpo:  5, larg: 3.0, cor: [0.78, 0.76, 0.72] },
   { n: 'trilho',   limpo:  4, larg: 2.2, cor: [0.58, 0.14, 0.12] },
   // linhas de agua do OSM (20/09/2026): a COS so tem cursos com 20 m de
   // largura e o Sentinel nao ve 3 m -- o Zezere no Covao nao existia no mapa
-  { n: 'rio',      limpo:  4, larg: 4.0, cor: [0.30, 0.55, 0.82] },
-  { n: 'ribeira',  limpo:  2, larg: 2.0, cor: [0.36, 0.60, 0.84] },
+  { n: 'rio',      limpo:  3, larg: 3.0, cor: [0.30, 0.55, 0.82] },
+  { n: 'ribeira',  limpo:  2, larg: 1.6, cor: [0.36, 0.60, 0.84] },
   { n: 'levada',   limpo:  1.5, larg: 1.4, cor: [0.42, 0.64, 0.84] },
 ];
 // Os pontos com nome agrupam-se por cor: a legenda da pagina le isto.
@@ -111,6 +111,48 @@ const PONTOS_LEGENDA = [
   { g: 'outro',      nome: 'comer, WC, estacionamento', cor: '#7A7268' },
 ];
 const COR_EIXO = [0.96, 0.94, 0.86];   // a risca do meio das estradas
+// Corta linhas [lon,lat,...] em tracos de `cheio` m com `vazio` m entre eles,
+// para a fita do eixo sair tracejada. Devolve linhas de dois pontos.
+function tracos(T, linhas, cheio, vazio) {
+  const out = [];
+  for (const L of linhas) {
+    const n = L.length / 2;
+    let acum = 0;                      // distancia percorrida na linha
+    for (let i = 0; i + 1 < n; i++) {
+      const a = T.emM(L[i * 2], L[i * 2 + 1]), b = T.emM(L[i * 2 + 2], L[i * 2 + 3]);
+      const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+      if (len < 0.01) continue;
+      const per = cheio + vazio;
+      // primeiro traco que comeca dentro deste segmento
+      let s = Math.ceil(acum / per) * per - acum;
+      // um traco que vinha do segmento anterior e ainda esta a meio
+      const fase = acum % per;
+      if (fase < cheio && fase > 0) {
+        const fim = Math.min(len, cheio - fase);
+        out.push(pontoLL(T, a, dx, dy, len, 0, fim));
+      }
+      for (; s < len; s += per) {
+        const fim = Math.min(len, s + cheio);
+        out.push(pontoLL(T, a, dx, dy, len, s, fim));
+      }
+      acum += len;
+    }
+  }
+  return out;
+}
+function pontoLL(T, a, dx, dy, len, s0, s1) {
+  const p = T.emLL(a[0] + dx * s0 / len, a[1] + dy * s0 / len);
+  const q = T.emLL(a[0] + dx * s1 / len, a[1] + dy * s1 / len);
+  return new Float32Array([p[0], p[1], q[0], q[1]]);
+}
+// Piso do OSM (2.o valor de caminhosTipo): quando se sabe, manda na cor.
+// 1 alcatrao, 2 calcada, 3 terra; 0 = sem informacao -> cor do tipo.
+const PISOS = [
+  null,
+  { n: 'alcatrão',        cor: [0.24, 0.24, 0.26] },
+  { n: 'calçada',         cor: [0.66, 0.62, 0.55] },
+  { n: 'terra, gravilha', cor: [0.62, 0.47, 0.30] },
+];
 const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
 
@@ -411,7 +453,7 @@ function semeiaTudo(T, op) {
 if (typeof module !== 'undefined') module.exports = { carregaTerreno, malhaTerreno, semeiaTudo, CLASSES, BLOCO, D0 };
 // ARMADILHA 11: um const de topo NAO esta no window. A pagina precisa destas
 // tabelas para desenhar a legenda, por isso pendura-se aqui explicitamente.
-if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, PONTOS_LEGENDA };
+if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, PONTOS_LEGENDA, PISOS };
 
 // ===========================================================================
 // O desenho. WebGL2 directo, sem biblioteca de mapa por baixo.
@@ -702,24 +744,33 @@ function fitaLinhas(T, linhas, largura, acima) {
 // intervalo do mesmo buffer, e desenha-se com a sua cor e uma chamada so.
 function fitaCaminhos(T, acima) {
   if (!T.caminhos || !T.caminhos.length) return { pos: new Float32Array(0), grupos: [] };
+  // grupos por (tipo, piso): a largura vem do tipo, a cor do piso se se souber
   const porTipo = CAMINHOS.map(() => []);
+  const porTP = CAMINHOS.map(() => PISOS.map(() => []));
   for (let i = 0; i < T.caminhos.length; i++) {
-    const t = T.caminhosTipo ? T.caminhosTipo[i * 2] : 3;
-    (porTipo[t] || porTipo[3]).push(T.caminhos[i]);
+    const t0 = T.caminhosTipo ? T.caminhosTipo[i * 2] : 3;
+    const t = porTipo[t0] ? t0 : 3;
+    const p = T.caminhosTipo ? (T.caminhosTipo[i * 2 + 1] || 0) : 0;
+    porTipo[t].push(T.caminhos[i]);
+    porTP[t][PISOS[p] ? p : 0].push(T.caminhos[i]);
   }
   const V = [], grupos = [];
   const alt = acima == null ? 0.9 : acima;
   for (let t = 0; t < CAMINHOS.length; t++) {
-    const ini = V.length / 3;
-    const f = fitaLinhas(T, porTipo[t], CAMINHOS[t].larg, alt);
-    for (let k = 0; k < f.length; k++) V.push(f[k]);
-    grupos.push({ tipo: t, ini, n: V.length / 3 - ini });
+    for (let p = 0; p < PISOS.length; p++) {
+      if (!porTP[t][p].length) continue;
+      const ini = V.length / 3;
+      const f = fitaLinhas(T, porTP[t][p], CAMINHOS[t].larg, alt);
+      for (let k = 0; k < f.length; k++) V.push(f[k]);
+      grupos.push({ tipo: t, piso: p, ini, n: V.length / 3 - ini });
+    }
   }
-  // o eixo das estradas: uma fita de 0,5 m um nadinha acima da fita larga
+  // o eixo das estradas: tracejado (4 m pintado, 6 m sem), 0,5 m de largo,
+  // um nadinha acima da fita larga
   for (let t = 0; t < CAMINHOS.length; t++) {
     if (!CAMINHOS[t].eixo) continue;
     const ini = V.length / 3;
-    const f = fitaLinhas(T, porTipo[t], 0.5, alt + 0.08);
+    const f = fitaLinhas(T, tracos(T, porTipo[t], 4, 6), 0.5, alt + 0.08);
     for (let k = 0; k < f.length; k++) V.push(f[k]);
     grupos.push({ tipo: t, eixo: true, ini, n: V.length / 3 - ini });
   }
@@ -768,7 +819,9 @@ void main() {
   // 20/09/2026: ele pediu "blocos laranja". Nao e cor de telha nem de parede:
   // e um SINAL, para a casa nunca se confundir com copa nem com chao. Paredes
   // um pouco mais escuras que o tecto so para o volume se ler.
-  vec3 cor = mix(vec3(0.88, 0.42, 0.10), vec3(0.98, 0.55, 0.14), teto);
+  // 20/09/2026: "blocos totalmente cor de tijolo" -- telhado e paredes tijolo,
+  // as paredes um pouco mais escuras para o volume se ler
+  vec3 cor = mix(vec3(0.54, 0.24, 0.16), vec3(0.66, 0.30, 0.20), teto);
   float lam = max(0.0, dot(n, uSol));
   cor *= 0.62 + 0.22 * (0.5 + 0.5 * n.z) + 0.30 * lam;
   // vD / uNevoa como nos outros programas. Estava vD * uNevoa: com uNevoa em
@@ -1343,7 +1396,7 @@ function abreVista(canvas, T, op) {
         gl.bindVertexArray(A.cam);
         for (const g of A.grupos) {
           if (!g.n) continue;
-          const c = g.eixo ? COR_EIXO : CAMINHOS[g.tipo].cor;
+          const c = g.eixo ? COR_EIXO : (g.piso && PISOS[g.piso] ? PISOS[g.piso].cor : CAMINHOS[g.tipo].cor);
           gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
           gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
         }
