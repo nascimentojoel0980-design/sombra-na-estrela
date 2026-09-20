@@ -14,6 +14,7 @@
     line-height:1.1;color:#3A3226;text-shadow:0 0 3px #FFFDF6,0 0 3px #FFFDF6,0 0 5px #FFFDF6}
   .r b{display:block;font-weight:600}
   .r.cume{color:#5B4426}.r.povoacao{font-size:12px}.r.agua{color:#2A5A79}
+  .r.patrimonio{color:#1E5BD8}.r.interesse{color:#A0308F}.r.outro{color:#7A7268;font-size:10px}
   .caixa{background:rgba(255,253,246,.94);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.16)}
 
   /* barra de cima: zona + menu */
@@ -32,11 +33,13 @@
   #menu h3{margin:14px 14px 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
     color:#8A8270;font-weight:700}
   .lin{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--linha)}
-  #legenda{border-top:1px solid var(--linha)}
-  #legenda>summary{padding:11px 14px;cursor:pointer;font:600 13px/1 system-ui,sans-serif;
+  #legBox{position:fixed;left:8px;bottom:64px;z-index:7;max-width:min(300px,calc(100vw - 16px))}
+  #legenda{border-top:0}
+  #legCorpo{max-height:min(52vh,420px);overflow:auto;padding-bottom:6px}
+  #legenda>summary{padding:9px 14px;cursor:pointer;font:600 12px/1 system-ui,sans-serif;
     letter-spacing:.06em;text-transform:uppercase;color:var(--fraco);list-style:none}
   #legenda>summary::-webkit-details-marker{display:none}
-  #legenda>summary::after{content:'▾';float:right;transition:transform .15s}
+  #legenda>summary::after{content:'▾';float:right;margin-left:14px;transition:transform .15s}
   #legenda[open]>summary::after{transform:rotate(180deg)}
   #legenda .g{padding:2px 14px 10px}
   #legenda .t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
@@ -126,12 +129,6 @@
     <label class=int><input type=checkbox data-m=sombra checked><i></i></label></div>
   <div class=lin><span>Dia</span><input class=esc id=dia type=date></div>
 
-  <details id=legenda>
-    <summary>Legenda</summary>
-    <div id=legTerreno></div>
-    <div id=legCaminhos></div>
-    <div id=legPercurso></div>
-  </details>
 
   <h3>Densidade</h3>
   <div class=lin><span>Detalhe da vegetação<small id=d0txt></small></span>
@@ -176,12 +173,22 @@
   <button data-a=desce title="descer na vertical">⇩</button>
 </div>
 
+<div id=legBox class=caixa>
+  <details id=legenda>
+    <summary>Legenda</summary>
+    <div id=legCorpo>
+    <div id=legTerreno></div>
+    <div id=legCaminhos></div>
+    <div id=legPercurso></div>
+    </div>
+  </details>
+</div>
 <div id=sol class=caixa>
   <span>☀</span><input id=hora type=range min=0 max=1439 step=5><span id=solTxt></span><span id=versao title="ficheiro de terreno carregado"></span>
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=25"></script>
+<script src="fonte/terreno.js?v=26"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -311,6 +318,13 @@ const d0 = document.getElementById('d0');
      + 'percurso marcado<span class=md>por cima</span></div>'
      + '<div class=it><i class=sw style="background:#f58a22"></i>'
      + 'casas<span class=md>Microsoft + OSM</span></div></div>';
+  if (L.PONTOS_LEGENDA) {
+    h += '<div class=g><div class=t>Nomes no mapa</div>';
+    for (const p of L.PONTOS_LEGENDA)
+      h += '<div class=it><i class=sw style="background:' + p.cor + ';width:12px;height:12px;border-radius:50%"></i>'
+         + esc(p.nome) + '</div>';
+    h += '</div>';
+  }
   document.getElementById('legTerreno').outerHTML = h;
   document.getElementById('legCaminhos').remove();
   document.getElementById('legPercurso').remove();

@@ -76,16 +76,37 @@ const NOME_CLASSE = {
 };
 
 const CAMINHOS = [
-  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.91, 0.51, 0.25] },
-  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.94, 0.74, 0.39] },
-  { n: 'estradao', limpo:  6, larg: 4.5, cor: [0.54, 0.42, 0.23] },
-  { n: 'caminho',  limpo:  5, larg: 3.0, cor: [0.62, 0.60, 0.56] },
-  { n: 'trilho',   limpo:  4, larg: 2.2, cor: [0.70, 0.23, 0.18] },
+  // 20/09/2026: cores mais afastadas umas das outras, a pedido -- laranja
+  // forte, amarelo, castanho, cinzento claro, vermelho escuro; as larguras
+  // ja eram diferentes (9 / 7 / 4,5 / 3 / 2,2 m)
+  { n: 'nacional', limpo: 11, larg: 9.0, cor: [0.88, 0.36, 0.10] },
+  { n: 'estrada',  limpo:  9, larg: 7.0, cor: [0.97, 0.80, 0.30] },
+  { n: 'estradao', limpo:  6, larg: 4.5, cor: [0.50, 0.34, 0.16] },
+  { n: 'caminho',  limpo:  5, larg: 3.0, cor: [0.78, 0.76, 0.72] },
+  { n: 'trilho',   limpo:  4, larg: 2.2, cor: [0.58, 0.14, 0.12] },
   // linhas de agua do OSM (20/09/2026): a COS so tem cursos com 20 m de
   // largura e o Sentinel nao ve 3 m -- o Zezere no Covao nao existia no mapa
   { n: 'rio',      limpo:  4, larg: 4.0, cor: [0.30, 0.55, 0.82] },
   { n: 'ribeira',  limpo:  2, larg: 2.0, cor: [0.36, 0.60, 0.84] },
   { n: 'levada',   limpo:  1.5, larg: 1.4, cor: [0.42, 0.64, 0.84] },
+];
+// Os pontos com nome agrupam-se por cor: a legenda da pagina le isto.
+const GRUPO_PONTO = {
+  cume: 'cume', povoacao: 'povoacao', aldeia: 'povoacao',
+  agua: 'agua', lagoa: 'agua', cascata: 'agua', nascente: 'agua',
+  monumento: 'patrimonio', castelo: 'patrimonio', igreja: 'patrimonio',
+  ruinas: 'patrimonio', arqueologia: 'patrimonio',
+  ver: 'interesse', miradouro: 'interesse', piquenique: 'interesse',
+  abrigo: 'interesse', campismo: 'interesse', parque: 'interesse',
+};
+const SINAL_PONTO = { cume: '▲ ', patrimonio: '◆ ', interesse: '● ', agua: '~ ' };
+const PONTOS_LEGENDA = [
+  { g: 'cume',       nome: 'cume',                 cor: '#5B4426' },
+  { g: 'povoacao',   nome: 'povoação',             cor: '#3A3226' },
+  { g: 'patrimonio', nome: 'monumento, castelo, igreja, ruínas', cor: '#1E5BD8' },
+  { g: 'interesse',  nome: 'miradouro, abrigo, campismo, sítio a ver', cor: '#A0308F' },
+  { g: 'agua',       nome: 'nascente, lagoa, cascata', cor: '#2A5A79' },
+  { g: 'outro',      nome: 'comer, WC, estacionamento', cor: '#7A7268' },
 ];
 const BLOCO = 1000;        // m: so para nao desenhar o que esta atras
 const D0 = 250;            // m: dentro disto vai tudo o que a carta diz
@@ -387,7 +408,7 @@ function semeiaTudo(T, op) {
 if (typeof module !== 'undefined') module.exports = { carregaTerreno, malhaTerreno, semeiaTudo, CLASSES, BLOCO, D0 };
 // ARMADILHA 11: um const de topo NAO esta no window. A pagina precisa destas
 // tabelas para desenhar a legenda, por isso pendura-se aqui explicitamente.
-if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS };
+if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, PONTOS_LEGENDA };
 
 // ===========================================================================
 // O desenho. WebGL2 directo, sem biblioteca de mapa por baixo.
@@ -1108,7 +1129,8 @@ function abreVista(canvas, T, op) {
   gl.clearColor(FUNDO[0], FUNDO[1], FUNDO[2], 1);
 
   // ---- rotulos
-  const ORDEM = { cume: 0, povoacao: 1, aldeia: 1, lagoa: 2, cascata: 2, miradouro: 2 };
+  const ORDEM = { cume: 0, povoacao: 1, aldeia: 1, lagoa: 2, cascata: 2, miradouro: 2,
+                  monumento: 2, castelo: 2, igreja: 2, ruinas: 3, arqueologia: 3, nascente: 3 };
   if (op.rotulos !== false) {
     // 'info' sao os paineis interpretativos: chamam-se quase todos o mesmo e
     // empilhavam-se em cima do vale. Nao entram.
@@ -1119,8 +1141,9 @@ function abreVista(canvas, T, op) {
     }).sort((a, b) => a.pri - b.pri);
     for (const p of C) {
       const el = document.createElement('div');
-      el.className = 'r ' + (ORDEM[p.k] === undefined ? 'outro' : p.k);
-      el.innerHTML = (p.k === 'cume' ? '▲ ' : '') + '<b>' + p.nome.replace(/[<&]/g, '') + '</b>'
+      const g = GRUPO_PONTO[p.k] || 'outro';
+      el.className = 'r ' + g;
+      el.innerHTML = (SINAL_PONTO[g] || '') + '<b>' + p.nome.replace(/[<&]/g, '') + '</b>'
         + (p.k === 'cume' && p.alt ? p.alt + ' m' : '');
       el.style.display = 'none';
       (op.camadaRotulos || document.body).appendChild(el);
