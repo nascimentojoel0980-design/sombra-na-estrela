@@ -676,16 +676,19 @@ function fitaRotas(T, largura, acima) {
   return new Float32Array(fitaLinhas(T, suaviza(T, T.rotas), largura || 2.5, acima || 1.2));
 }
 
-// Curvas em vez de cotovelos, sem inventar tracado. Os vertices do OSM estao
-// a 18 m uns dos outros (mediana) e viram 17 graus (mediana) em cada um; a
-// fita de segmentos rectos le-se como uma cobra de cartao. Isto passa uma
-// Catmull-Rom POR TODOS os vertices originais (nenhum se move) e so
-// acrescenta pontos entre eles; e o desvio do arco em relacao a corda fica
-// preso a `desvioMax` m (1,5) -- se a curva quiser afastar-se mais do que
-// isso da linha do OSM, encosta-se a linha. Fiel ao mesmo tracado, mais
-// pontos, e nada fora da tolerancia com que o proprio OSM foi desenhado.
-function suaviza(T, linhas, desvioMax, passoM) {
-  desvioMax = desvioMax || 1.5; passoM = passoM || 4;
+// Cantos arredondados, sem inventar tracado. Os vertices do OSM estao a
+// 18 m (mediana) e viram 17 graus (mediana); nos caminhos e ribeiras chegam a
+// 50 m e a fita de rectas le-se como poligono. A primeira versao passava uma
+// Catmull-Rom pelo troco todo com desvio preso a 1,5 m -- nas estradas, com
+// vertices densos, ficou curva; nos caminhos o limite quase nao dobrava o
+// cotovelo. Isto e outra coisa: as RECTAS ficam exactamente onde o OSM as
+// pos, e cada canto e substituido por um arco tangente as duas rectas. O raio
+// escolhe-se canto a canto para o arco nunca se afastar do vertice original
+// mais do que `desvioMax` m (2 m, abaixo da tolerancia do proprio OSM), nem
+// comer mais de 45% de cada troco vizinho. Um canto de 90 graus fica com
+// raio 4,8 m; um de 30 graus, com 12 m (o tecto).
+function suaviza(T, linhas, desvioMax, raioMax) {
+  desvioMax = desvioMax || 2.0; raioMax = raioMax || 12;
   const out = [];
   for (const L of linhas) {
     const n = L.length / 2;
@@ -693,23 +696,38 @@ function suaviza(T, linhas, desvioMax, passoM) {
     const P = new Array(n);
     for (let i = 0; i < n; i++) P[i] = T.emM(L[i * 2], L[i * 2 + 1]);
     const R = [P[0][0], P[0][1]];
-    for (let i = 0; i + 1 < n; i++) {
-      const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n - 1, i + 2)];
-      const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
-      const k = Math.max(1, Math.min(8, Math.round(len / passoM)));
-      for (let j = 1; j <= k; j++) {
-        const t = j / k, t2 = t * t, t3 = t2 * t;
-        let x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
-        let y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
-        if (j < k) {
-          // desvio em relacao a corda p1-p2: se passar do limite, encosta
-          const cx = p1[0] + (p2[0] - p1[0]) * t, cy = p1[1] + (p2[1] - p1[1]) * t;
-          const d = Math.hypot(x - cx, y - cy);
-          if (d > desvioMax) { const f = desvioMax / d; x = cx + (x - cx) * f; y = cy + (y - cy) * f; }
-        } else { x = p2[0]; y = p2[1]; }         // o vertice original, exacto
-        R.push(x, y);
+    for (let i = 1; i + 1 < n; i++) {
+      const a = P[i - 1], v = P[i], b = P[i + 1];
+      const ux = v[0] - a[0], uy = v[1] - a[1], la = Math.hypot(ux, uy);
+      const wx = b[0] - v[0], wy = b[1] - v[1], lb = Math.hypot(wx, wy);
+      if (la < 0.05 || lb < 0.05) { R.push(v[0], v[1]); continue; }
+      const cosT = (ux * wx + uy * wy) / (la * lb);
+      const teta = Math.acos(Math.max(-1, Math.min(1, cosT)));   // angulo de viragem
+      if (teta < 0.03 || teta > 2.8) { R.push(v[0], v[1]); continue; }  // recto ou inversao
+      const sec = 1 / Math.cos(teta / 2);
+      let r = Math.min(raioMax, desvioMax / (sec - 1));
+      let d = r * Math.tan(teta / 2);                              // recuo tangente
+      const dmax = 0.45 * Math.min(la, lb);
+      if (d > dmax) { d = dmax; r = d / Math.tan(teta / 2); }
+      if (r < 0.5) { R.push(v[0], v[1]); continue; }
+      // pontos de tangencia
+      const t1 = [v[0] - ux / la * d, v[1] - uy / la * d];
+      const t2 = [v[0] + wx / lb * d, v[1] + wy / lb * d];
+      // centro do arco: a r do vertice ao longo da bissectriz interior
+      const bx = (-ux / la + wx / lb), by = (-uy / la + wy / lb), lbis = Math.hypot(bx, by) || 1;
+      const c = [v[0] + bx / lbis * r * sec, v[1] + by / lbis * r * sec];
+      const a1 = Math.atan2(t1[1] - c[1], t1[0] - c[0]);
+      let a2 = Math.atan2(t2[1] - c[1], t2[0] - c[0]);
+      let da = a2 - a1;
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      const k = Math.max(2, Math.min(10, Math.ceil(Math.abs(da) * r / 2)));   // ~2 m por passo
+      for (let s = 0; s <= k; s++) {
+        const ang = a1 + da * s / k;
+        R.push(c[0] + Math.cos(ang) * r, c[1] + Math.sin(ang) * r);
       }
     }
+    R.push(P[n - 1][0], P[n - 1][1]);
     const F = new Float32Array(R.length);
     for (let i = 0; i < R.length; i += 2) { const ll = T.emLL(R[i], R[i + 1]); F[i] = ll[0]; F[i + 1] = ll[1]; }
     out.push(F);
