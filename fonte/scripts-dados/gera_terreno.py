@@ -275,6 +275,10 @@ def main():
     ap.add_argument('--mdt', default=None)
     ap.add_argument('--chm', default=None,
                     help='GeoTIFF do modelo de altura do coberto (LiDAR), EPSG:4326')
+    ap.add_argument('--agua', default=None,
+                    help='GeoTIFF 0/1 em EPSG:4326: agua MEDIDA (Sentinel NDWI '
+                         'cruzado com a Copernicus WAW). Ganha a tudo o resto, '
+                         'porque e a unica classe que tres fontes confirmaram')
     ap.add_argument('--parede-graus', type=float, default=45.0,
                     help='declive a partir do qual a celula e parede de rocha e nao '
                          'leva vegetacao nenhuma. So com --mdt: num DEM de 30 m o '
@@ -479,6 +483,27 @@ def main():
         if antes:
             print('   deixaram de ser:  ' + '  '.join(
                 '%s %.2f' % (NOME.get(k, k), n * ac) for k, n in antes.most_common(4)))
+
+    # --- agua medida, e por ultimo porque ganha a tudo
+    # A COS perdeu a agua: o saco do 'outro' eram as classes 7, 8 e 9 juntas e
+    # nao se distinguem. Esta mascara vem do Sentinel-2 (NDWI) cruzado com a
+    # Copernicus Water and Wetness -- 0,57 km2 de cada fonte, 0,50 de
+    # interseccao, 89% de concordancia entre duas fontes independentes uma da
+    # outra e do nosso mapa, e o MDT a confirmar 0,6 graus de declive na maior
+    # massa. Tres fontes no mesmo sitio: e a classe em que temos mais confianca
+    # de todas, por isso e a ultima a escrever e nao ha regra que lhe passe por
+    # cima -- nem a da parede.
+    if a.agua:
+        za, ca = le_mdt(a.agua)
+        tapa_caixa(ca, a.caixa, 'mapa de agua')
+        lonsA = np.linspace(lo0, lo1, mx); latsA = np.linspace(la1, la0, my)
+        mask = amostra(za, ca, lonsA, latsA) > 0.5
+        base = C & 127; corr = C & 128
+        novo_ag = mask & (base != 9)
+        C = (np.where(mask, 9, base) | corr).astype(np.uint8)
+        ac = a.classe * a.classe / 1e6
+        print('agua medida: %.2f km2  (%.2f km2 que a COS nao tinha)'
+              % (mask.sum() * ac, novo_ag.sum() * ac))
 
     # --- curvas de nivel (ja vem dos azulejos: nao ha nada a calcular)
     curvas = []
