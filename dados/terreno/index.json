@@ -1,6 +1,2022 @@
 {
  "zonas": [
   {
+   "nome": "c6r4",
+   "titulo": "Albardeiros e arredores",
+   "ficheiro": "c6r4-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.42,
+    -7.23,
+    40.53
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    487,
+    1145
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8749871,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c3r5",
+   "titulo": "Aldeia Nova e arredores",
+   "ficheiro": "c3r5-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.53,
+    -7.62,
+    40.64
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    218,
+    764
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8956216,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c6r0",
+   "titulo": "Aldeia de Santa Margarida e arredores",
+   "ficheiro": "c6r0-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.0,
+    -7.23,
+    40.09
+   ],
+   "km": [
+    11.1,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    278,
+    435
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6185349,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c4r6",
+   "titulo": "Antas e arredores",
+   "ficheiro": "c4r6-v1.terr.gz",
+   "caixa": [
+    -7.62,
+    40.64,
+    -7.49,
+    40.7
+   ],
+   "km": [
+    11.0,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    396,
+    744
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 4883009,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r0",
+   "titulo": "Atalaia do Campo e arredores",
+   "ficheiro": "c5r0-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.0,
+    -7.36,
+    40.09
+   ],
+   "km": [
+    11.1,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    287,
+    854
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5760439,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r3",
+   "titulo": "Boiço e arredores",
+   "ficheiro": "c0r3-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.31,
+    -8.01,
+    40.42
+   ],
+   "km": [
+    7.6,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    51,
+    343
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6641107,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c4r2",
+   "titulo": "Bouça e arredores",
+   "ficheiro": "c4r2-v1.terr.gz",
+   "caixa": [
+    -7.62,
+    40.2,
+    -7.49,
+    40.31
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    389,
+    1870
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 101
+   },
+   "bytes": 8962017,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c3r2",
+   "titulo": "Cabeço do Bulde e arredores",
+   "ficheiro": "c3r2-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.2,
+    -7.62,
+    40.31
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    333,
+    1855
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 4
+   },
+   "bytes": 9166625,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r4",
+   "titulo": "Carvalhal e arredores",
+   "ficheiro": "c0r4-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.42,
+    -8.01,
+    40.53
+   ],
+   "km": [
+    7.6,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    124,
+    372
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6784878,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c6r5",
+   "titulo": "Cavadoude e arredores",
+   "ficheiro": "c6r5-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.53,
+    -7.23,
+    40.64
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    413,
+    1077
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8848754,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c1r1",
+   "titulo": "Cavaleiros de Baixo e arredores",
+   "ficheiro": "c1r1-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.09,
+    -7.88,
+    40.2
+   ],
+   "km": [
+    11.1,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    317,
+    1187
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8887828,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c1r2",
+   "titulo": "Cerdeira e arredores",
+   "ficheiro": "c1r2-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.2,
+    -7.88,
+    40.31
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    160,
+    1162
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9658281,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r3",
+   "titulo": "Chamusca da Beira e arredores",
+   "ficheiro": "c2r3-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.31,
+    -7.75,
+    40.42
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    225,
+    933
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9362596,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r4",
+   "titulo": "Chaveiral e arredores",
+   "ficheiro": "c2r4-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.42,
+    -7.75,
+    40.53
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    149,
+    495
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8363250,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r6",
+   "titulo": "Corvos-à-Nogueira e arredores",
+   "ficheiro": "c2r6-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.64,
+    -7.75,
+    40.7
+   ],
+   "km": [
+    11.0,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    280,
+    614
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5418695,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c6r2",
+   "titulo": "Escarigo e arredores",
+   "ficheiro": "c6r2-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.2,
+    -7.23,
+    40.31
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    434,
+    804
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7641390,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c3r6",
+   "titulo": "Esmolfe e arredores",
+   "ficheiro": "c3r6-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.64,
+    -7.62,
+    40.7
+   ],
+   "km": [
+    11.0,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    309,
+    713
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5231097,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r6",
+   "titulo": "Espedrada e arredores",
+   "ficheiro": "c7r6-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.64,
+    -7.15,
+    40.7
+   ],
+   "km": [
+    6.8,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    553,
+    861
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 2809721,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r2",
+   "titulo": "Fajoeira e arredores",
+   "ficheiro": "c2r2-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.2,
+    -7.75,
+    40.31
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    219,
+    1342
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 1
+   },
+   "bytes": 9097542,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r1",
+   "titulo": "Fatela e arredores",
+   "ficheiro": "c5r1-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.09,
+    -7.36,
+    40.2
+   ],
+   "km": [
+    11.1,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    388,
+    1046
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7662205,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r0",
+   "titulo": "Fonte Limpa e arredores",
+   "ficheiro": "c0r0-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.0,
+    -8.01,
+    40.09
+   ],
+   "km": [
+    7.7,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    284,
+    945
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5746614,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r2",
+   "titulo": "Fontão e arredores",
+   "ficheiro": "c0r2-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.2,
+    -8.01,
+    40.31
+   ],
+   "km": [
+    7.6,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    125,
+    725
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6722586,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c4r1",
+   "titulo": "Freixial e arredores",
+   "ficheiro": "c4r1-v1.terr.gz",
+   "caixa": [
+    -7.62,
+    40.09,
+    -7.49,
+    40.2
+   ],
+   "km": [
+    11.1,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    376,
+    1192
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8259617,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r5",
+   "titulo": "Galisteu e arredores",
+   "ficheiro": "c5r5-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.53,
+    -7.36,
+    40.64
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    350,
+    1287
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 2
+   },
+   "bytes": 8336737,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r5",
+   "titulo": "Gonçalo Bocas e arredores",
+   "ficheiro": "c7r5-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.53,
+    -7.15,
+    40.64
+   ],
+   "km": [
+    6.8,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    656,
+    974
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5286404,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r0",
+   "titulo": "Janeiro de Baixo e arredores",
+   "ficheiro": "c2r0-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.0,
+    -7.75,
+    40.09
+   ],
+   "km": [
+    11.1,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    290,
+    931
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7914580,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c1r4",
+   "titulo": "Laceiras e arredores",
+   "ficheiro": "c1r4-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.42,
+    -7.88,
+    40.53
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    51,
+    415
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9416312,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c1r5",
+   "titulo": "Largo Eirô e arredores",
+   "ficheiro": "c1r5-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.53,
+    -7.88,
+    40.64
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    163,
+    497
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9824430,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r0",
+   "titulo": "Medelim e arredores",
+   "ficheiro": "c7r0-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.0,
+    -7.15,
+    40.09
+   ],
+   "km": [
+    6.8,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    263,
+    522
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 3847768,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r1",
+   "titulo": "Meãs e arredores",
+   "ficheiro": "c2r1-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.09,
+    -7.75,
+    40.2
+   ],
+   "km": [
+    11.1,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    340,
+    1417
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8892233,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c2r5",
+   "titulo": "Moimenta de Maceira Dão e arredores",
+   "ficheiro": "c2r5-v1.terr.gz",
+   "caixa": [
+    -7.88,
+    40.53,
+    -7.75,
+    40.64
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    214,
+    569
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9052367,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r5",
+   "titulo": "Mosteiro e arredores",
+   "ficheiro": "c0r5-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.53,
+    -8.01,
+    40.64
+   ],
+   "km": [
+    7.6,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    186,
+    725
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6489662,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c6r3",
+   "titulo": "Olas e arredores",
+   "ficheiro": "c6r3-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.31,
+    -7.23,
+    40.42
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    438,
+    926
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7998073,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c3r1",
+   "titulo": "Ourondo e arredores",
+   "ficheiro": "c3r1-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.09,
+    -7.62,
+    40.2
+   ],
+   "km": [
+    11.1,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    337,
+    1005
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9522414,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c1r0",
+   "titulo": "Pampilhosa da Serra e arredores",
+   "ficheiro": "c1r0-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.0,
+    -7.88,
+    40.09
+   ],
+   "km": [
+    11.1,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    290,
+    956
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7810799,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r1",
+   "titulo": "Penamacor e arredores",
+   "ficheiro": "c7r1-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.09,
+    -7.15,
+    40.2
+   ],
+   "km": [
+    6.8,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    364,
+    716
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 4694279,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c3r4",
+   "titulo": "Pinhanços e arredores",
+   "ficheiro": "c3r4-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.42,
+    -7.62,
+    40.53
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    209,
+    1357
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 16
+   },
+   "bytes": 8110305,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c4r5",
+   "titulo": "Ponte Nova e arredores",
+   "ficheiro": "c4r5-v1.terr.gz",
+   "caixa": [
+    -7.62,
+    40.53,
+    -7.49,
+    40.64
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    288,
+    765
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8523229,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c4r4",
+   "titulo": "Portela de Folgosinho e arredores",
+   "ficheiro": "c4r4-v1.terr.gz",
+   "caixa": [
+    -7.62,
+    40.42,
+    -7.49,
+    40.53
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    438,
+    1594
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 85
+   },
+   "bytes": 8100124,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c6r1",
+   "titulo": "Póvoa Palhaça e arredores",
+   "ficheiro": "c6r1-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.09,
+    -7.23,
+    40.2
+   ],
+   "km": [
+    11.1,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    332,
+    789
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7354372,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r4",
+   "titulo": "Quinta da Caravella e arredores",
+   "ficheiro": "c7r4-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.42,
+    -7.15,
+    40.53
+   ],
+   "km": [
+    6.8,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    750,
+    1013
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5127606,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r6",
+   "titulo": "Quinta da Marvela e arredores",
+   "ficheiro": "c5r6-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.64,
+    -7.36,
+    40.7
+   ],
+   "km": [
+    11.0,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    360,
+    750
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 4631950,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r4",
+   "titulo": "Quinta da Taberna e arredores",
+   "ficheiro": "c5r4-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.42,
+    -7.36,
+    40.53
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    530,
+    1288
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 5
+   },
+   "bytes": 8212165,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r3",
+   "titulo": "Quinta do Clérigo e arredores",
+   "ficheiro": "c7r3-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.31,
+    -7.15,
+    40.42
+   ],
+   "km": [
+    6.8,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    489,
+    1007
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5197309,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r2",
+   "titulo": "Quinta dos Alvercões e arredores",
+   "ficheiro": "c5r2-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.2,
+    -7.36,
+    40.31
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    401,
+    789
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7821036,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c3r0",
+   "titulo": "Rochas de Cima e arredores",
+   "ficheiro": "c3r0-v1.terr.gz",
+   "caixa": [
+    -7.75,
+    40.0,
+    -7.62,
+    40.09
+   ],
+   "km": [
+    11.1,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    326,
+    1096
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 7885757,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r1",
+   "titulo": "Sandinha e arredores",
+   "ficheiro": "c0r1-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.09,
+    -8.01,
+    40.2
+   ],
+   "km": [
+    7.7,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    182,
+    1000
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6985742,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c5r3",
+   "titulo": "Sarzedo e arredores",
+   "ficheiro": "c5r3-v1.terr.gz",
+   "caixa": [
+    -7.49,
+    40.31,
+    -7.36,
+    40.42
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    432,
+    1252
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 8380759,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
    "nome": "serra",
    "titulo": "Serra da Estrela (vista geral)",
    "ficheiro": "serra-v1.terr.gz",
@@ -43,14 +2059,98 @@
    }
   },
   {
+   "nome": "c1r6",
+   "titulo": "São Martinho e arredores",
+   "ficheiro": "c1r6-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.64,
+    -7.88,
+    40.7
+   ],
+   "km": [
+    11.0,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    320,
+    632
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 6279340,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c4r0",
+   "titulo": "São Vicente da Beira e arredores",
+   "ficheiro": "c4r0-v1.terr.gz",
+   "caixa": [
+    -7.62,
+    40.0,
+    -7.49,
+    40.09
+   ],
+   "km": [
+    11.1,
+    9.9
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    317,
+    1225
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 1
+   },
+   "bytes": 7089796,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
    "nome": "torre",
    "titulo": "Torre e Lagoa Comprida",
-   "ficheiro": "torre-v2.terr.gz",
+   "ficheiro": "torre-v3.terr.gz",
    "caixa": [
     -7.75,
-    40.28,
+    40.31,
     -7.62,
-    40.39
+    40.42
    ],
    "km": [
     11.0,
@@ -70,9 +2170,9 @@
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 95
+    "penedos_rejeitados": 163
    },
-   "bytes": 8835488,
+   "bytes": 8937081,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -115,6 +2215,174 @@
     "penedos_rejeitados": 742
    },
    "bytes": 8618643,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c7r2",
+   "titulo": "Vale da Senhora da Póvoa e arredores",
+   "ficheiro": "c7r2-v1.terr.gz",
+   "caixa": [
+    -7.23,
+    40.2,
+    -7.15,
+    40.31
+   ],
+   "km": [
+    6.8,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    463,
+    940
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 5181167,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": true,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c0r6",
+   "titulo": "Vasconha e arredores",
+   "ficheiro": "c0r6-v1.terr.gz",
+   "caixa": [
+    -8.1,
+    40.64,
+    -8.01,
+    40.7
+   ],
+   "km": [
+    7.6,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    332,
+    986
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 3627766,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c6r6",
+   "titulo": "Velosa e arredores",
+   "ficheiro": "c6r6-v1.terr.gz",
+   "caixa": [
+    -7.36,
+    40.64,
+    -7.23,
+    40.7
+   ],
+   "km": [
+    11.0,
+    6.6
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    403,
+    786
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 4585952,
+   "tem": {
+    "curvas": true,
+    "pontos": true,
+    "rotas": false,
+    "caminhos": true,
+    "sombra": true,
+    "casas": true,
+    "plantas": true,
+    "altura_medida": true
+   }
+  },
+  {
+   "nome": "c1r3",
+   "titulo": "Vila Chã e arredores",
+   "ficheiro": "c1r3-v1.terr.gz",
+   "caixa": [
+    -8.01,
+    40.31,
+    -7.88,
+    40.42
+   ],
+   "km": [
+    11.0,
+    12.2
+   ],
+   "passo": 8.0,
+   "classe": 5.0,
+   "cota": [
+    51,
+    568
+   ],
+   "fonte": "MDT do LiDAR, com copa medida",
+   "fontes": {
+    "classes": "COS 2025 Serie 2",
+    "mdt": "armazem:mdt8",
+    "chm": "armazem:chm5",
+    "agua": "armazem:agua",
+    "horizonte_km": 15,
+    "casas": "ms + osm",
+    "penedos_rejeitados": 0
+   },
+   "bytes": 9241912,
    "tem": {
     "curvas": true,
     "pontos": true,

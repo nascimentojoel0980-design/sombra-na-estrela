@@ -1,0 +1,86 @@
+{
+ "terreno": "dados/terreno/c6r2-v1.terr.gz",
+ "linhas": [
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cotas",
+   "passa": true,
+   "texto": "correlacao 0.9973 com o Copernicus 30 m; vies +0.1 m, P90 do desvio 7.7 m",
+   "valor": {
+    "r": 0.9973299740060307,
+    "vies": 0.067626953125
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "floresta",
+   "passa": true,
+   "texto": "contra a textura do ortofoto, 300+300 celulas em nucleo de 0 m: brilho d=2.25, contraste d=0.26 (>1 separa)",
+   "valor": {
+    "d_brilho": 2.2478673458099365,
+    "d_contraste": 0.255825400352478,
+    "nucleo_m": 0.0
+   }
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "cobertura do ortofoto",
+   "passa": null,
+   "texto": "so 0% da caixa tem ortofoto de detalhe: as provas por foto nao se fazem aqui",
+   "valor": null
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "rocha / chao nu / mato",
+   "passa": null,
+   "texto": "quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); vem da COS e nao esta verificada",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "floresta tem copa",
+   "passa": true,
+   "texto": "100.0% das celulas de floresta medem >= 5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "matagal tem copa",
+   "passa": true,
+   "texto": "99.9% do matagal mede >= 1,5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "paredes sao ingremes",
+   "passa": true,
+   "texto": "100.0% das paredes tem declive >= 40 graus",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "agua e plana",
+   "passa": true,
+   "texto": "100.0% da agua tem declive < 12 graus",
+   "valor": null
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "posicao da carta",
+   "passa": true,
+   "texto": "92% dos telhados (12,453) assentam em urbano ou agricola da COS (com a grelha espelhada eram 0,3%)",
+   "valor": {
+    "p": 0.9220268208463824
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "casas",
+   "passa": true,
+   "texto": "163,005 vertices de contorno (ms + osm); 1.74 km2 de urbano na carta. Densidade NAO verificada contra o ortofoto; alturas modeladas onde a fonte nao mede",
+   "valor": {
+    "urbano_km2": 1.7448000000000001
+   }
+  }
+ ]
+}
