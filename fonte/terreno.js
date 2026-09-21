@@ -119,6 +119,25 @@ const FOTO_FONTES = {
   esri: { nome: 'Esri World Imagery', atrib: 'Esri, Maxar, Earthstar Geographics', zmax: 19,
           url: (z, x, y) => 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + y + '/' + x },
 };
+// Azulejos de foto ja descarregados, partilhados entre zonas: ao trocar de
+// zona o contexto WebGL e outro e as texturas morrem, mas as imagens nao
+// precisam de voltar a vir da rede (nem da cache do service worker) --
+// recompoem-se daqui. Ate 900 azulejos (~30 MB).
+const AZULEJOS = new Map();
+function azulejo(url) {
+  let p = AZULEJOS.get(url);
+  if (p) { AZULEJOS.delete(url); AZULEJOS.set(url, p); return p; }   // LRU: vai para o fim
+  p = new Promise((ok) => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    let feito = false; const fim = (v) => { if (!feito) { feito = true; ok(v); } };
+    im.onload = () => fim(im); im.onerror = () => fim(null);
+    setTimeout(() => { if (!feito) { im.src = ''; fim(null); } }, 12000);
+    im.src = url;
+  });
+  AZULEJOS.set(url, p);
+  if (AZULEJOS.size > 900) AZULEJOS.delete(AZULEJOS.keys().next().value);
+  return p;
+}
 const COR_EIXO = [0.96, 0.94, 0.86];   // a risca do meio das estradas
 // Corta linhas [lon,lat,...] em tracos de `cheio` m com `vazio` m entre eles,
 // para a fita do eixo sair tracejada. Devolve linhas de dois pontos.
@@ -1446,20 +1465,11 @@ function abreVista(canvas, T, op) {
     const sx = cv2.width / (m1[0] - m0[0]), sy = cv2.height / (m1[1] - m0[1]);
     const pedidos = [];
     for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) {
-      pedidos.push(new Promise((ok) => {
-        const im = new Image(); im.crossOrigin = 'anonymous';
-        let feito = false;
-        const fim = (v) => { if (!feito) { feito = true; ok(v); } };
-        im.onload = () => {
-          const ex0 = tx * tam - 20037508.342789244, ey1 = 20037508.342789244 - ty * tam;
-          try { cx2.drawImage(im, (ex0 - m0[0]) * sx, (m1[1] - ey1) * sy, tam * sx, tam * sy); } catch (err) {}
-          fim(true);
-        };
-        im.onerror = () => fim(false);
-        // um azulejo que nunca responde nao pode prender a fila: ao mexer a
-        // camara paravam de chegar fotos e ficava tudo a meio (21/09/2026)
-        setTimeout(() => { if (!feito) { im.src = ''; fim(false); } }, 12000);
-        im.src = fonte.url(z, tx, ty);
+      pedidos.push(azulejo(fonte.url(z, tx, ty)).then((im) => {
+        if (!im) return false;
+        const ex0 = tx * tam - 20037508.342789244, ey1 = 20037508.342789244 - ty * tam;
+        try { cx2.drawImage(im, (ex0 - m0[0]) * sx, (m1[1] - ey1) * sy, tam * sx, tam * sy); } catch (err) { return false; }
+        return true;
       }));
     }
     Promise.all(pedidos).then((rs) => {
@@ -1728,7 +1738,8 @@ function abreVista(canvas, T, op) {
     // aproximar sem isto ia ao encontro de um alvo que ficou no ar e a altura
     // fixa dominava tudo -- "o zoom deixou de funcionar". Assim, aproximar
     // traz-te de volta ao chao e afastar sobe, na mesma proporcao.
-    aproxima: (f) => { const d0 = cam.dist; cam.dist = trava(cam.dist * f, 40, 20000);
+    // ate 160 km: a vista geral tem 80 km de lado e quer-se ve-la inteira
+    aproxima: (f) => { const d0 = cam.dist; cam.dist = trava(cam.dist * f, 40, 160000);
                        if (cam.dz) cam.dz *= cam.dist / d0; },
     // Subir na vertical nao e inclinar. A camara orbita um ponto do chao a
     // distancia 'dist' e inclinacao 'incl'; a altura e h = cos(incl)*dist e o
@@ -1760,7 +1771,7 @@ function abreVista(canvas, T, op) {
     camara() { const ll = T.emLL(cam.x, cam.y); return { lo: ll[0], la: ll[1], dist: cam.dist, rumo: cam.rumo, incl: cam.incl }; },
     poeCamara(c) { if (!c) return; const m = T.emM(c.lo, c.la);
       cam.x = trava(m[0], 0, T.larg); cam.y = trava(m[1], 0, T.alt);
-      if (c.dist) cam.dist = trava(c.dist, 40, 20000);
+      if (c.dist) cam.dist = trava(c.dist, 40, 160000);
       if (c.rumo != null) cam.rumo = c.rumo; if (c.incl != null) cam.incl = trava(c.incl, 0.06, 1.45); cam.dz = 0; },
     // lista de { linhas, cor, largura }: os trilhos a manter a vista
     extras(lista) {
