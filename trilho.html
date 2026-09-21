@@ -75,7 +75,7 @@
   <h2>Zonas do terreno usadas</h2>
   <div id=zonas class=nota></div>
 </main>
-<script src="fonte/terreno.js?v=50"></script>
+<script src="fonte/terreno.js?v=51"></script>
 <script src="fonte/previsao.js?v=3"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -125,58 +125,7 @@ function compoe(zs) {
 }
 
 // classe do chao no ponto (a zona fina que o contem, senao a geral)
-function classeEm(Ts, lo, la) {
-  for (const T of Ts) {
-    if (!T.classe || lo < T.lo0 || lo > T.lo1 || la < T.la0 || la > T.la1) continue;
-    const m = T.emM(lo, la);
-    const i = Math.min(T.mx - 1, Math.max(0, Math.floor(m[0] / T.larg * T.mx)));
-    const j = Math.min(T.my - 1, Math.max(0, Math.floor((T.alt - m[1]) / T.alt * T.my)));
-    const c = T.classe[j * T.mx + i];
-    if (c & 128) return c;
-    // o tracado (GPS ou base de dados) anda uns metros ao lado do corredor
-    // cozido: se ha caminho ate ~10 m, e por ele que se anda
-    const r = Math.max(1, Math.round(10 / (T.larg / T.mx)));
-    for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
-      const ii = i + di, jj = j + dj;
-      if (ii < 0 || jj < 0 || ii >= T.mx || jj >= T.my) continue;
-      if (T.classe[jj * T.mx + ii] & 128) return c | 128;
-    }
-    return c;
-  }
-  return -1;
-}
-// tipo de chao para andar: [nome, factor sobre a velocidade de Tobler]
-const CHAO_ANDAR = {
-  caminho: ['caminho, estrada ou trilho marcado', 1.0], urbano: ['povoação / campo agrícola', 1.0],
-  erva: ['erva, pastagem ou chão nu', 0.85], humida: ['zona húmida / lameiro', 0.7], rasteiro: ['mato rasteiro', 0.8],
-  matagal: ['matagal alto (giesta, urze alta)', 0.55], arv: ['floresta aberta', 0.8], mata: ['floresta densa', 0.7],
-  rocha: ['blocos de rocha', 0.6], parede: ['escarpa / parede', 0.4], agua: ['água', 0.5], ardido: ['chão ardido recente', 0.75], fora: ['fora do mapa', 0.85],
-};
-function tipoChao(c) {
-  if (c < 0) return 'fora';
-  if (c & 128) return 'caminho';
-  return { 0: 'erva', 1: 'urbano', 2: 'urbano', 3: 'erva', 4: 'arv', 5: 'mata', 6: 'rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua', 10: 'erva', 11: 'matagal', 12: 'humida', 13: 'ardido' }[c & 127] || 'erva';
-}
-function estimaTempo(Ts, pts, e) {
-  const ps = simplificaTrilho(pts, 5);          // os mesmos pontos que medeTrilho usou (e.z alinha)
-  const zs = e.z, n = Math.min(ps.length, zs.length);
-  const soma = {}; let total = 0, m = 0;
-  for (let i = 1; i < n; i++) {
-    const d = metros(ps[i - 1], ps[i]); if (!(d > 0)) continue;
-    const s = (zs[i] - zs[i - 1]) / d;
-    let v = 6 * Math.exp(-3.5 * Math.abs(s + 0.05));                 // km/h, Tobler
-    const c = classeEm(Ts, (ps[i - 1].lo + ps[i].lo) / 2, (ps[i - 1].la + ps[i].la) / 2);
-    const tipo = tipoChao(c);
-    v *= CHAO_ANDAR[tipo][1];
-    const zm = (zs[i] + zs[i - 1]) / 2;
-    if (zm > 1200) v *= Math.max(0.7, 1 - 0.04 * (zm - 1200) / 300);
-    const seg = d / (v / 3.6);
-    (soma[tipo] = soma[tipo] || { nome: CHAO_ANDAR[tipo][0], m: 0, s: 0 }); soma[tipo].m += d; soma[tipo].s += seg;
-    total += seg; m += d;
-  }
-  const linhas = Object.values(soma).sort((a, b) => b.m - a.m);
-  return { total, m, n: n - 1, linhas };
-}
+// classeEm / CHAO_ANDAR / tipoChao / estimaTempo vivem no motor (terreno.js)
 (async () => {
   try {
     const t = await trilho();

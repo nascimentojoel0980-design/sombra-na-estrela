@@ -1681,9 +1681,9 @@ function abreVista(canvas, T, op) {
   }
 
   let ultimo = 0; const ritmos = []; let ultimaProj = null;
-  function desenha(ts) {
+  function desenha(ts, soUm) {
     if (!vivo) return;
-    requestAnimationFrame(desenha);
+    if (!soUm) requestAnimationFrame(desenha);
     const dpr = Math.min(devicePixelRatio || 1, op.dprMax || 2);
     const cw = canvas.clientWidth || innerWidth, ch = canvas.clientHeight || innerHeight;
     const W = Math.round(cw * dpr), H = Math.round(ch * dpr);
@@ -1976,6 +1976,11 @@ function abreVista(canvas, T, op) {
     },
     // esta dentro da caixa desta zona?
     dentro(lo, la) { return lo >= T.lo0 && lo <= T.lo1 && la >= T.la0 && la <= T.la1; },
+    // um quadro agora, devolvido como imagem: a pagina mostra-o enquanto a
+    // zona seguinte se constroi, para nao haver um corte a preto na troca
+    instantaneo() {
+      try { desenha(agoraMs(), true); return canvas.toDataURL('image/jpeg', 0.72); } catch (e) { return null; }
+    },
     desliga() {
       vivo = false;
       for (const p of C) if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
@@ -2560,5 +2565,75 @@ function copaNoTrilho(T, pts) {
   return { pct: dentro ? 100 * sob / dentro : 0, dentro, medida: !!T.altv };
 }
 
+// ------------------------------------------------- tempo a andar
+// A classe do chao no ponto (a zona que o contem, entre varias). Se ha
+// corredor de caminho ate ~10 m ao lado, e por ele que se anda: o tracado
+// (GPS ou base de dados) anda uns metros ao lado do corredor cozido.
+function classeEm(Ts, lo, la) {
+  for (const T of Ts) {
+    if (!T.classe || lo < T.lo0 || lo > T.lo1 || la < T.la0 || la > T.la1) continue;
+    const m = T.emM(lo, la);
+    const i = Math.min(T.mx - 1, Math.max(0, Math.floor(m[0] / T.larg * T.mx)));
+    const j = Math.min(T.my - 1, Math.max(0, Math.floor((T.alt - m[1]) / T.alt * T.my)));
+    const c = T.classe[j * T.mx + i];
+    if (c & 128) return c;
+    const r = Math.max(1, Math.round(10 / (T.larg / T.mx)));
+    for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= T.mx || jj >= T.my) continue;
+      if (T.classe[jj * T.mx + ii] & 128) return c | 128;
+    }
+    return c;
+  }
+  return -1;
+}
+// tipo de chao para andar: [nome, factor sobre a velocidade de Tobler]
+const CHAO_ANDAR = {
+  caminho: ['caminho, estrada ou trilho marcado', 1.0], urbano: ['povoação / campo agrícola', 1.0],
+  erva: ['erva, pastagem ou chão nu', 0.85], humida: ['zona húmida / lameiro', 0.7], rasteiro: ['mato rasteiro', 0.8],
+  matagal: ['matagal alto (giesta, urze alta)', 0.55], arv: ['floresta aberta', 0.8], mata: ['floresta densa', 0.7],
+  rocha: ['blocos de rocha', 0.6], parede: ['escarpa / parede', 0.4], agua: ['água', 0.5], ardido: ['chão ardido recente', 0.75], fora: ['fora do mapa', 0.85],
+};
+function tipoChao(c) {
+  if (c < 0) return 'fora';
+  if (c & 128) return 'caminho';
+  return { 0: 'erva', 1: 'urbano', 2: 'urbano', 3: 'erva', 4: 'arv', 5: 'mata', 6: 'rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua', 10: 'erva', 11: 'matagal', 12: 'humida', 13: 'ardido' }[c & 127] || 'erva';
+}
+// Tempo a andar: Tobler pela inclinacao de cada troco, vezes o factor do chao
+// lido do mapa, menos 4% por 300 m acima dos 1200 m. Sem paragens. Devolve
+// tambem o acumulado por ponto (ps, acum em m, tempos em s) para se saber
+// quanto falta a partir de um sitio.
+function estimaTempo(Ts, pts, e) {
+  const ps = simplificaTrilho(pts, 5);          // os mesmos pontos que medeTrilho usou (e.z alinha)
+  const zs = e.z, n = Math.min(ps.length, zs.length);
+  const soma = {}; let total = 0, m = 0;
+  const acum = new Float64Array(n), tempos = new Float64Array(n);
+  for (let i = 1; i < n; i++) {
+    const d = metros(ps[i - 1], ps[i]);
+    acum[i] = acum[i - 1] + (d > 0 ? d : 0);
+    if (!(d > 0)) { tempos[i] = tempos[i - 1]; continue; }
+    const s = (zs[i] - zs[i - 1]) / d;
+    let v = 6 * Math.exp(-3.5 * Math.abs(s + 0.05));                 // km/h, Tobler
+    const c = classeEm(Ts, (ps[i - 1].lo + ps[i].lo) / 2, (ps[i - 1].la + ps[i].la) / 2);
+    const tipo = tipoChao(c);
+    v *= CHAO_ANDAR[tipo][1];
+    const zm = (zs[i] + zs[i - 1]) / 2;
+    if (zm > 1200) v *= Math.max(0.7, 1 - 0.04 * (zm - 1200) / 300);
+    const seg = d / (v / 3.6);
+    (soma[tipo] = soma[tipo] || { nome: CHAO_ANDAR[tipo][0], m: 0, s: 0 }); soma[tipo].m += d; soma[tipo].s += seg;
+    total += seg; m += d; tempos[i] = tempos[i - 1] + seg;
+  }
+  const linhas = Object.values(soma).sort((a, b) => b.m - a.m);
+  return { total, m, n: n - 1, linhas, ps: ps.slice(0, n), acum, tempos };
+}
+// O que falta a partir de um sitio (lo, la): o ponto do trilho mais perto,
+// se estiver a menos de `raio` m; senao null.
+function faltaDesde(est, lo, la, raio) {
+  let k = -1, dm = raio || 300;
+  for (let i = 0; i < est.ps.length; i++) { const d = metros(est.ps[i], { lo, la }); if (d < dm) { dm = d; k = i; } }
+  if (k < 0) return null;
+  return { m: est.m - est.acum[k], s: est.total - est.tempos[k], desvio: dm, i: k };
+}
+
 if (typeof module !== 'undefined') Object.assign(module.exports,
-  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, copaNoTrilho, simplificaTrilho, metros, setasLinhas });
+  { descodificaPoly, leGPX, medeTrilho, solNoTrilho, copaNoTrilho, simplificaTrilho, metros, setasLinhas, estimaTempo, faltaDesde, classeEm });

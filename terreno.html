@@ -129,6 +129,7 @@
   .tr .estat .barra{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0 3px}
   .tr .estat .barra i{flex:1;display:block}
   #bts button svg{display:block;margin:auto}
+  #congela{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;pointer-events:none;transition:opacity .3s}
   #trilhoInfo{position:fixed;z-index:9;padding:10px 12px 8px;max-width:min(300px,calc(100vw - 24px));font-size:13px;line-height:1.4}
   #trilhoInfo b{display:block;font-size:14px;margin-right:22px}
   #trilhoInfo i{font-style:normal;color:#8A8270;font-size:12px;display:block}
@@ -243,6 +244,7 @@
 </div>
 <canvas id=mini width=360 height=150 title="onde estás na serra (apoio)"></canvas>
 
+<img id=congela alt="" hidden>
 <div id=trilhoInfo class=caixa hidden></div>
 <div id=trilhoDica class=caixa hidden></div>
 <div id=legBox class=caixa>
@@ -260,7 +262,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=50"></script>
+<script src="fonte/terreno.js?v=51"></script>
 <script src="fonte/previsao.js?v=3"></script>
 <script>
 const VER = '11';
@@ -426,11 +428,19 @@ function vigiaZona() {
   }
 }
 
+function tiraCongela() {
+  const c = $('congela'); if (c.hidden) return;
+  c.style.opacity = '0'; setTimeout(() => { c.hidden = true; c.removeAttribute('src'); }, 320);
+}
 async function abreZona(z, camIni) {
   if (!z || zonaAberta === z.nome) return;
   zonaAberta = z.nome; zonaObj = z;
   try { localStorage.setItem('sne-zona', z.nome); } catch (e) {}
+  let primeiro = true;
   if (V) {
+    // a ultima imagem fica no ecra ate a zona nova desenhar o primeiro quadro:
+    // a camara e a mesma, por isso o que se ve continua no sitio
+    try { const foto = V.instantaneo(); if (foto) { const c = $('congela'); c.src = foto; c.style.opacity = '1'; c.hidden = false; } } catch (e) {}
     V.desliga(); V = null;
     // O desliga() perde o contexto WebGL de proposito (liberta a memoria da
     // zona anterior). No telemovel, pedir outra vez um contexto a MESMA tela
@@ -456,7 +466,7 @@ async function abreZona(z, camIni) {
   V = abreVista(cv, T, { camadaRotulos: document.getElementById('rotulos'),
                          d0: +document.getElementById('d0').value || 250,
                          densidade: z.tem && z.tem.plantas === false ? 0 : 1,
-                         aoDesenhar: () => { if ((++nF & 7) === 0) { mostraInfo(z, ler); vigiaZona(); pintaMini(); } } });
+                         aoDesenhar: () => { if (primeiro) { primeiro = false; tiraCongela(); } if ((++nF & 7) === 0) { mostraInfo(z, ler); vigiaZona(); pintaMini(); } } });
   window.V = V; window.T = T;
   if (camIni) V.poeCamara(camIni);
   if (escolhido) { const t = trilhoDe(escolhido); if (t) { V.destaque(t.fita, t.cor, 10); mostraEstat(t); } }
@@ -764,6 +774,7 @@ function mostraTrilhoInfo(it, x, y) {
     + (it.ref ? '<i>' + esc(it.ref) + '</i>' : '')
     + '<i>' + (it.km != null ? km1(it.km) : '—') + (it.el && it.el.up != null ? ' · ↗ ' + Math.round(it.el.up) + ' m' : '') + (it.el && it.el.down != null ? ' · ↘ ' + Math.round(it.el.down) + ' m' : '')
     + (it.zmin != null ? ' · ' + Math.round(it.zmin) + '–' + Math.round(it.zmax) + ' m' : '') + '</i>'
+    + linhaTempo(it.meu ? it.meu.pts : paraPontos(geoDe(BD.find((r) => String(r.id) === String(it.id)) || {})), !!it.meu)
     + '<div class=bts><a class="bt" href="' + ficha + '" target=_blank>Ficha completa ↗</a><button class=bt data-esc>' + (escolhido && escolhido.fonte === it.fonte && String(escolhido.id) === String(it.id) ? 'Largar' : 'Escolher') + '</button></div>';
   el.hidden = false;
   const w = el.offsetWidth, h = el.offsetHeight;
@@ -804,6 +815,16 @@ let MEUS = [];            // os que ele importou ou gravou
 let escolhido = null;     // { fonte: 'bd'|'meu', id }
 
 const km1 = (v) => v.toFixed(v < 10 ? 1 : 0) + ' km';
+// tempo a andar (Tobler x chao x altitude) e, com posicao GPS em cima do
+// trilho, o que falta ate ao fim
+function linhaTempo(pts, meu) {
+  if (!T) return '';
+  const e = medeTrilho(T, pts, { cotaDoGPS: !!meu }); if (!e) return '';
+  const est = estimaTempo([T], pts, e);
+  let h = '<i>tempo estimado a andar <b>' + hm(est.total) + '</b> (sem paragens)</i>';
+  if (ultimo) { const f = faltaDesde(est, ultimo.lo, ultimo.la, 300); if (f) h += '<i>daqui até ao fim: <b>' + km1(f.m / 1000) + ' · ' + hm(f.s) + '</b></i>'; }
+  return h;
+}
 const hm = (s) => s == null ? '' : (s / 3600 | 0) + 'h' + String(Math.round(s / 60) % 60).padStart(2, '0');
 
 // A base de dados dos percursos ja existe: e a mesma que a aplicacao usa. Nao
@@ -952,6 +973,7 @@ function mostraEstat(t) {
       + (copa.medida ? ' (copa medida ≥ 5 m)' : ' (pela carta)')
       + ' — o monte não é a única sombra</i>';
   }
+  html += linhaTempo(t.pts, !!t.meu);
   if (sol && sol.dentro) {
     html += '<div class=barra>' + barraSol(sol) + '</div>'
       + '<i>' + sol.pct.toFixed(0) + '% ao sol às '
@@ -1101,9 +1123,11 @@ function desligaGPS() {
   $('gpsTxt').textContent = 'desligada';
   if (aGravar) paraGravar();
 }
+let ultimoFalta = 0;
 function fixo(p) {
   const { latitude: la, longitude: lo, accuracy: erro, altitude: z, speed: vel } = p.coords;
   ultimo = { la, lo, z: (z == null ? null : z), t: p.timestamp };
+  if (escolhido && V && performance.now() - ultimoFalta > 20000) { ultimoFalta = performance.now(); const t = trilhoDe(escolhido); if (t) mostraEstat(t); }
   const dentro = V && V.dentro(lo, la);
   if (V) V.marca(dentro ? lo : null, la, Math.max(10, Math.min(60, erro || 15)));
   $('verMe').hidden = !dentro;
