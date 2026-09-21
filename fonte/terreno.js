@@ -971,7 +971,10 @@ function fitaCaminhos(T, acima) {
   for (let t = 0; t < CAMINHOS.length; t++) {
     if (!CAMINHOS[t].eixo) continue;
     const ini = V.length / 3;
-    const f = fitaLinhas(T, tracos(T, suaviza(T, porTipo[t]), 4, 6), 0.5, alt + 0.08);
+    // 0,45 m acima e nao 0,08: a fita da estrada e plana entre as duas bordas,
+    // e num lombo (terreno convexo de lado a lado) o asfalto passava por cima
+    // da risca do eixo e ela desaparecia em trocos inteiros (21/09/2026)
+    const f = fitaLinhas(T, tracos(T, suaviza(T, porTipo[t]), 4, 6), 0.5, alt + 0.45);
     for (let k = 0; k < f.length; k++) V.push(f[k]);
     grupos.push({ tipo: t, eixo: true, ini, n: V.length / 3 - ini });
   }
