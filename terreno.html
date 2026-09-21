@@ -195,7 +195,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=35"></script>
+<script src="fonte/terreno.js?v=36"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
@@ -223,7 +223,10 @@ async function arranca() {
   sel.addEventListener('change', () => abreZona(ZONAS[+sel.value]));
   try { const c = localStorage.getItem('sne-chao'); if (c) { document.getElementById('chao').value = c; document.getElementById('chao').dispatchEvent(new Event('change')); } } catch (e) {}
   const guardada = ZONAS.findIndex((z) => z.nome === localStorage.getItem('sne-zona'));
-  sel.value = String(guardada >= 0 ? guardada : 0);
+  // sem zona guardada, abre-se a vista geral (se existir): e dela que se
+  // entra nas finas ao aproximar
+  const geral = ZONAS.findIndex((z) => z.classe >= 20);
+  sel.value = String(guardada >= 0 ? guardada : (geral >= 0 ? geral : 0));
   // vindo da ficha de um trilho ("mostrar no mapa") ou com um sitio pedido
   const q = new URLSearchParams(location.search);
   let pedido = null;
@@ -248,7 +251,7 @@ async function arranca() {
 
 // Google Earth na mesma vista: latitude, longitude, altitude do alvo, distancia,
 // campo de visao, rumo, inclinacao. Abre a app no telemovel e o site no PC.
-$('earth').addEventListener('click', () => {
+document.getElementById('earth').addEventListener('click', () => {
   if (!V || !T) return;
   const c = V.camara(); const m = T.emM(c.lo, c.la); const alt = Math.round(T.cotaEm(m[0], m[1]));
   const rumo = ((c.rumo * 180 / Math.PI) % 360 + 360) % 360, tilt = Math.round(c.incl * 180 / Math.PI);
