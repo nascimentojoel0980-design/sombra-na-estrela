@@ -114,7 +114,7 @@
     max-height:80vh;overflow:auto;padding-bottom:6px}
   #visMenu h3{margin:12px 14px 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8270;font-weight:700}
   #mini{position:fixed;right:8px;bottom:64px;z-index:7;width:150px;height:110px;border-radius:10px;
-    box-shadow:0 2px 10px rgba(0,0,0,.18);background:#E8E2D2;cursor:pointer}
+    box-shadow:0 2px 10px rgba(0,0,0,.18);background:#E8E2D2;pointer-events:none}
   @media (max-height:700px){#mini{width:120px;height:88px}}
 </style>
 
@@ -207,7 +207,7 @@
     <label class=int><input type=checkbox data-m=nomes checked><i></i></label></div>
 
 </div>
-<canvas id=mini width=150 height=110 title="onde estás na serra"></canvas>
+<canvas id=mini width=150 height=110 title="onde estás na serra (apoio)"></canvas>
 
 <div id=legBox class=caixa>
   <details id=legenda>
@@ -224,7 +224,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=40"></script>
+<script src="fonte/terreno.js?v=41"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
@@ -565,39 +565,53 @@ const miniImg = new Image(); miniImg.src = 'dados/relevo.jpg';
 function pintaMini() {
   const c = $('mini'); if (!c) return;
   const g = c.getContext('2d'), W = c.width, H = c.height;
-  const X = (lo) => (lo - MINI_CX[0]) / (MINI_CX[2] - MINI_CX[0]) * W;
-  const Y = (la) => (MINI_CX[3] - la) / (MINI_CX[3] - MINI_CX[1]) * H;
+  // Janela do minimapa: centrada na camara e a acompanhar o zoom do mapa
+  // grande, mas sempre mais alta (e de apoio, nao se navega nele): meia-largura
+  // = 5x a distancia da camara, entre 2 km e a serra inteira. Encosta-se aos
+  // limites da serra em vez de mostrar fora dela.
+  const mlon = 111320 * Math.cos(40.35 * Math.PI / 180), mlat = 110540;
+  let cm = null; if (V && T) cm = V.camara();
+  let meiaW = (MINI_CX[2] - MINI_CX[0]) / 2;                       // graus de lon
+  if (cm) meiaW = Math.min(meiaW, Math.max(2000, cm.dist * 5) / mlon);
+  const meiaH = meiaW * mlon / mlat * H / W;                         // graus de lat
+  let clo = cm ? cm.lo : (MINI_CX[0] + MINI_CX[2]) / 2, cla = cm ? cm.la : (MINI_CX[1] + MINI_CX[3]) / 2;
+  clo = Math.min(MINI_CX[2] - meiaW, Math.max(MINI_CX[0] + meiaW, clo));
+  cla = Math.min(MINI_CX[3] - meiaH, Math.max(MINI_CX[1] + meiaH, cla));
+  const jan = [clo - meiaW, cla - meiaH, clo + meiaW, cla + meiaH];
+  const X = (lo) => (lo - jan[0]) / (jan[2] - jan[0]) * W;
+  const Y = (la) => (jan[3] - la) / (jan[3] - jan[1]) * H;
   g.clearRect(0, 0, W, H);
-  if (miniImg.complete && miniImg.naturalWidth) g.drawImage(miniImg, 0, 0, W, H); else { g.fillStyle = '#E8E2D2'; g.fillRect(0, 0, W, H); }
-  g.lineWidth = 0.6;
+  if (miniImg.complete && miniImg.naturalWidth) {
+    const iw = miniImg.naturalWidth, ih = miniImg.naturalHeight;
+    const sx = (jan[0] - MINI_CX[0]) / (MINI_CX[2] - MINI_CX[0]) * iw, sw = (jan[2] - jan[0]) / (MINI_CX[2] - MINI_CX[0]) * iw;
+    const sy = (MINI_CX[3] - jan[3]) / (MINI_CX[3] - MINI_CX[1]) * ih, sh = (jan[3] - jan[1]) / (MINI_CX[3] - MINI_CX[1]) * ih;
+    g.drawImage(miniImg, sx, sy, sw, sh, 0, 0, W, H);
+  } else { g.fillStyle = '#E8E2D2'; g.fillRect(0, 0, W, H); }
+  g.lineWidth = 0.8;
   for (const z of ZONAS) {
     if (!fina(z)) continue;
+    if (z.caixa[2] < jan[0] || z.caixa[0] > jan[2] || z.caixa[3] < jan[1] || z.caixa[1] > jan[3]) continue;
     const x0 = X(z.caixa[0]), y0 = Y(z.caixa[3]), w = X(z.caixa[2]) - x0, h = Y(z.caixa[1]) - y0;
     const aberta = zonaObj && z.nome === zonaObj.nome;
-    g.fillStyle = aberta ? 'rgba(216,121,43,.45)' : 'rgba(255,253,246,.10)';
+    g.fillStyle = aberta ? 'rgba(216,121,43,.30)' : 'rgba(255,253,246,.06)';
     g.strokeStyle = aberta ? '#D8792B' : 'rgba(60,50,40,.45)';
     g.fillRect(x0, y0, w, h); g.strokeRect(x0, y0, w, h);
   }
-  if (V && T) {
-    const cm = V.camara(); const x = X(cm.lo), y = Y(cm.la);
-    // o que se ve: um leque no rumo da camara
-    const r = Math.max(6, Math.min(40, cm.dist / 1500 * 6));
-    g.fillStyle = 'rgba(30,91,216,.25)'; g.beginPath(); g.moveTo(x, y);
+  if (cm) {
+    const x = X(cm.lo), y = Y(cm.la);
+    const r = Math.max(8, Math.min(W * 0.45, cm.dist * 1.2 / mlon / (jan[2] - jan[0]) * W));
+    g.fillStyle = 'rgba(30,91,216,.22)'; g.beginPath(); g.moveTo(x, y);
     g.arc(x, y, r, -Math.PI / 2 - cm.rumo - 0.5, -Math.PI / 2 - cm.rumo + 0.5); g.closePath(); g.fill();
-    g.fillStyle = '#1E5BD8'; g.beginPath(); g.arc(x, y, 3, 0, 6.283); g.fill();
+    g.fillStyle = '#1E5BD8'; g.beginPath(); g.arc(x, y, 3.5, 0, 6.283); g.fill();
     g.strokeStyle = '#fff'; g.lineWidth = 1.2; g.stroke();
   }
+  const kmJan = (jan[2] - jan[0]) * mlon / 1000;
+  const passo = kmJan > 40 ? 20 : kmJan > 16 ? 10 : kmJan > 8 ? 5 : kmJan > 3 ? 2 : 1;
+  const px = passo * 1000 / mlon / (jan[2] - jan[0]) * W;
+  g.fillStyle = 'rgba(255,253,246,.85)'; g.fillRect(6, H - 14, px + 8, 10);
+  g.fillStyle = '#3A3226'; g.fillRect(10, H - 9, px, 2);
+  g.font = '9px system-ui'; g.fillText(passo + ' km', 10, H - 15);
 }
-$('mini').addEventListener('click', (e) => {
-  const r = $('mini').getBoundingClientRect();
-  const lo = MINI_CX[0] + (e.clientX - r.left) / r.width * (MINI_CX[2] - MINI_CX[0]);
-  const la = MINI_CX[3] - (e.clientY - r.top) / r.height * (MINI_CX[3] - MINI_CX[1]);
-  const z = zonaFinaEm(lo, la) || zonaGeralEm(lo, la); if (!z) return;
-  const dist = fina(z) ? 3000 : 20000;
-  if (zonaObj && z.nome === zonaObj.nome) { V.poeCamara({ lo, la, dist }); return; }
-  aTrocar = true; $('zona').value = String(ZONAS.indexOf(z));
-  abreZona(z, { lo, la, dist }).finally(() => { aTrocar = false; });
-});
 miniImg.onload = pintaMini;
 
 // ecra inteiro: a pagina toda, para o telemovel nao gastar um terco com a barra
