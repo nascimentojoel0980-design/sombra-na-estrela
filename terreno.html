@@ -195,11 +195,24 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=36"></script>
+<script src="fonte/terreno.js?v=37"></script>
 <script>
 const VER = '11';
 const cv = document.getElementById('c'), estado = document.getElementById('estado');
 let V = null, T = null, ZONAS = [], zonaAberta = null;
+// Um erro de arranque ficava mudo: a pagina dizia "a carregar..." para sempre
+// (21/09/2026). Agora o erro aparece na propria caixa, com a linha, para se
+// poder ler no telemovel e mandar.
+addEventListener('error', (e) => {
+  const el = document.getElementById('estado');
+  if (el && (!V || /a carregar|a ler|a construir/.test(el.textContent)))
+    el.textContent = 'Erro na página: ' + (e.message || e.error) + (e.lineno ? ' (linha ' + e.lineno + ')' : '')
+      + '\nRecarrega; se continuar, manda este texto.';
+});
+addEventListener('unhandledrejection', (e) => {
+  const el = document.getElementById('estado');
+  if (el && !V) el.textContent = 'Erro na página: ' + ((e.reason && e.reason.message) || e.reason) + '\nRecarrega; se continuar, manda este texto.';
+});
 
 const diz = (t) => { estado.textContent = t; estado.style.display = t ? '' : 'none'; };
 const num = (n) => n.toLocaleString('pt-PT');
