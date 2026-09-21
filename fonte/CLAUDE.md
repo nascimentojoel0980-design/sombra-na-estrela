@@ -437,4 +437,5 @@ infere "urbana" para caminhos sem piso em urbano da COS.
 - Ids de trilho na URL (`?trilho=bd:0`) chegam como texto; os da BD são números. Comparar sempre com `String()` (`trilhoDe`), senão a entrada da ficha cai na serra sem trilho.
 - Listas de trilhos sem tecto de 60 linhas: a pesquisa só filtra.
 - `trilho.html`: tempo estimado por tipo de chão (Tobler × factor do chão lido de `T.classe`, corredor de caminho até ~10 m ao lado × altitude), botão de regresso ao mapa.
+- No mapa: secção "Previsão de montanha" no menu, a seguir ao Sol (`#secPrev`), pede ao abrir para o meio da zona à vista (cotas T.z0–T.z1) e volta a pedir ao mudar de zona; `testa_previsao_mapa.js`.
 - `fonte/previsao.js`: previsão de montanha por prazo — AROME 1,5 km (0–48 h) → ARPEGE (4 d) → ICON-EU (5 d) → IFS (7 d), mais o conjunto de 51 membros do ECMWF (probabilidade, faixas P10–P90, confiança; nos dias só com IFS é o conjunto que manda), avisos IPMA (GDA/CBO/CBR/VIS). Grandezas no cume: 850/700 hPa interpolados à cota. Lido pelo Open-Meteo (o site está bloqueado neste servidor; `testes/testa_previsao.js` simula as respostas).

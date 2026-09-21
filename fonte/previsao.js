@@ -46,13 +46,15 @@
   const r0 = (v) => v == null ? '—' : String(Math.round(v));
 
   async function pede(url, ms) {
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms || 20000);
-    try {
-      const r = await fetch(url, { signal: ctl.signal });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j || j.error) throw new Error((j && j.reason) || ('HTTP ' + r.status));
-      return j;
-    } finally { clearTimeout(tm); }
+    // o prazo é só para a resposta chegar; a leitura do corpo não se corta
+    // (no telemóvel, a página pode estar ocupada a construir a malha e o
+    // temporizador disparava a meio da leitura)
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), ms || 25000);
+    let r;
+    try { r = await fetch(url, { signal: ctl.signal }); } finally { clearTimeout(tm); }
+    const j = await r.json().catch((e) => { throw new Error('resposta ilegível (' + e.message + ')'); });
+    if (!r.ok || !j || j.error) throw new Error((j && j.reason) || ('HTTP ' + r.status));
+    return j;
   }
 
   // um modelo: tenta com níveis de pressão, depois sem, depois o mínimo
@@ -75,7 +77,7 @@
   }
 
   async function avisosIPMA() {
-    const j = await pede('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json', 12000);
+    const j = await pede('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json', 25000);
     const areas = { GDA: 'Guarda', CBO: 'Castelo Branco', CBR: 'Coimbra', VIS: 'Viseu' };
     const agora = Date.now();
     return (Array.isArray(j) ? j : []).filter((a) => areas[a.idAreaAviso] && a.awarenessLevelID && a.awarenessLevelID !== 'green'

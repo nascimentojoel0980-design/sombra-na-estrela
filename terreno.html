@@ -105,6 +105,25 @@
   details.sec>summary h3{flex:1}
   details.sec>summary::after{content:'▾';margin-right:14px;color:#8A8270;transition:transform .15s}
   details.sec[open]>summary::after{transform:rotate(180deg)}
+  #secPrev h3 small{display:block;font-weight:400;font-size:11px;color:#8A8270;letter-spacing:0;text-transform:none}
+  #prevCx{padding:4px 14px 12px;font-size:13px;--fraco:#8A8270;--fundo:var(--papel);--azul:#1E5BD8}
+  #prevCx .pnota,#prevCx .nota{color:#8A8270;font-size:12px}
+  #prevCx .hoje{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+  #prevCx .hoje .h{flex:0 0 auto;min-width:58px;text-align:center;border:1px solid var(--linha);border-radius:10px;padding:6px 4px;background:#fff;font-size:12px}
+  #prevCx .hoje .h b{display:block;font-size:14px}
+  #prevCx .hoje .h .ico{font-size:20px;display:block;margin:2px 0}
+  #prevCx .hoje .h .ch{color:#1E5BD8}
+  #prevCx .hoje .h span{display:block}
+  #prevCx .dias{display:flex;flex-direction:column;gap:8px}
+  #prevCx .dia{border:1px solid var(--linha);border-radius:12px;padding:8px 10px;background:#fff}
+  #prevCx .dia .cab{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px}
+  #prevCx .dia .cab .ico{font-size:20px}
+  #prevCx .dia .aval{margin-left:auto;padding:2px 9px;border-radius:8px;color:#fff;font-weight:600;font-size:12px}
+  #prevCx .chips{display:flex;flex-wrap:wrap;gap:4px 6px;margin:6px 0 4px}
+  #prevCx .chip{border:1px solid var(--linha);border-radius:8px;padding:3px 7px;font-size:13px;background:var(--papel);white-space:nowrap}
+  #prevCx .chip small{display:block;color:#8A8270;font-size:10px;line-height:1.1}
+  #prevCx .chip i{font-style:normal;color:#8A8270;font-size:11px}
+  #prevCx ul{margin:4px 0 0;padding-left:18px}
   .tr .estat{display:block;margin-top:6px;padding:8px 10px;background:#fff;border:1px solid var(--linha);border-radius:10px;color:var(--tinta)}
   .tr .estat i{display:block;font-size:12px;color:#5b5346}
   .tr .estat .barra{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0 3px}
@@ -135,6 +154,10 @@
   <div class=lin><span>Sombra dos montes<small>horizonte medido em 16 direcções</small></span>
     <label class=int><input type=checkbox data-m=sombra checked><i></i></label></div>
   <div class=lin><span>Dia</span><input class=esc id=dia type=date></div>
+  <details class=sec id=secPrev>
+    <summary><h3>Previsão de montanha <small id=prevNota></small></h3></summary>
+    <div id=prevCx><div id=prev class=pnota>abre para pedir aos modelos (AROME, ARPEGE, ICON-EU, IFS e o conjunto do ECMWF) para a zona à vista</div></div>
+  </details>
 
 
   <h3>Densidade</h3>
@@ -227,6 +250,7 @@
 <div id=estado class=caixa>a carregar…</div>
 
 <script src="fonte/terreno.js?v=47"></script>
+<script src="fonte/previsao.js?v=3"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
@@ -429,6 +453,7 @@ async function abreZona(z, camIni) {
   V.mostrar.foto = document.getElementById('chao').value || null;
   mudaHora();
   actualizaExtras();
+  if ($('secPrev').open) pedePrevisao();
   // a versao dos dados a vista, ao pe do sol: para se saber, ao olhar, que
   // terreno e este (ha-de haver sempre a duvida "ja recarregou?")
   document.getElementById('versao').textContent = (z.ficheiro || '').replace(/\.terr\.gz$/, '');
@@ -549,6 +574,20 @@ document.getElementById('dia').value =
   hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-'
   + String(hoje.getDate()).padStart(2, '0');
 document.getElementById('dia').addEventListener('change', mudaHora);
+// previsão de montanha para a zona à vista: pede-se quando se abre a secção,
+// e outra vez se entretanto se mudou de zona. Ponto: o meio da zona; cotas:
+// o mínimo e o máximo do terreno cozido.
+let prevZona = null;
+async function pedePrevisao() {
+  if (!T || !zonaObj) return;
+  const chave = zonaObj.nome + '|' + zonaObj.ficheiro;
+  if (prevZona === chave) return;
+  prevZona = chave;
+  const la = (T.la0 + T.la1) / 2, lo = (T.lo0 + T.lo1) / 2;
+  try { await previsaoMontanha($('prev'), $('prevNota'), { la, lo, zmin: Math.round(T.z0), zmax: Math.round(T.z1) }); }
+  catch (e) { prevZona = null; $('prev').textContent = 'Sem previsão agora (' + e.message + '). Precisa de rede.'; }
+}
+$('secPrev').addEventListener('toggle', () => { if ($('secPrev').open) pedePrevisao(); });
 document.getElementById('hora').value = hoje.getHours() * 60 + hoje.getMinutes();
 document.getElementById('hora').addEventListener('input', () => {
   mudaHora();
