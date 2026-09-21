@@ -220,7 +220,7 @@ function compoe(zs) {
       let i = Math.round((fx - m.l) / (W - m.l - m.r) * (n - 1)); i = Math.max(0, Math.min(n - 1, i));
       svg.querySelector('#cur').setAttribute('x1', X(i)); svg.querySelector('#cur').setAttribute('x2', X(i));
       svg.querySelector('#curP').setAttribute('cx', X(i)); svg.querySelector('#curP').setAttribute('cy', Y(zs[i]));
-      cursorIdx = idxOrig(ac[i] / acumOrig[acumOrig.length - 1] * acumOrig[acumOrig.length - 1]);
+      cursorIdx = idxOrig(ac[i] / ac[n - 1] * acumOrig[acumOrig.length - 1]);   // por fraccao: os pontos originais somam mais (tremura do GPS)
       $('perfilNota').textContent = '(' + (ac[i] / 1000).toFixed(2).replace('.', ',') + ' km · ' + Math.round(zs[i]) + ' m)';
       redesenha();
     };
