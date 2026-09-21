@@ -576,7 +576,7 @@ def main():
     contornos_casas = []          # aneis em graus
     alturas_casas = []            # m medidos pela fonte, ou None
     fontes_casas = {}
-    n_penedo = 0
+    n_penedo = 0; penedos = []
     if not a.sem_casas:
         if usa_fontes:
             # A Microsoft ve casas em penedos. Rotularam-se 24 pegadas dela de
@@ -606,6 +606,9 @@ def main():
                         if (m2 < a.penedo_m2 and base0[j, i] not in (1, 2)
                                 and Z[jz, iz] >= a.penedo_alt):
                             n_penedo += 1
+                            # e um penedo com posicao medida: vai para o ficheiro
+                            # (bloco PENE) para o motor o desenhar onde esta
+                            penedos.append((lo0 + cxm / mlon, la0 + cym / mlat, m2))
                             continue
                 contornos_casas.append(anel); alturas_casas.append(h)
                 fontes_casas[fo] = fontes_casas.get(fo, 0) + 1
@@ -945,6 +948,23 @@ def main():
         print('agua medida: %.2f km2  (%.2f km2 que a COS nao tinha)'
               % (mask.sum() * ac, novo_ag.sum() * ac))
 
+    # --- rugosidade do chao (MDT-2m), para os campos de blocos
+    # O CHM nao ve penedos (o laser classifica a pedra como chao: 80% das
+    # celulas de rocha da Torre medem 0). O RMS do residuo do MDT a 2 m ve.
+    # Guarda-se por celula de classe, em cm; o motor decide densidade e
+    # tamanho dos blocos por ele (so nas classes de pedra).
+    RUGO = None
+    if usa_fontes and not a.sem_plantas and fontes.ha_raster(a.fontes, 'rug8', a.caixa):
+        zr, cr = fontes.raster_mosaico(a.fontes, 'rug8', a.caixa, preenche=None)
+        passo_rug = abs(cr[2] - cr[0]) / zr.shape[1] * mlon
+        if a.classe >= 4 * passo_rug: R = amostra_grossa(zr, cr, lonsC, latsC, 4, 'media')
+        else: R = amostra(zr, cr, lonsC, latsC)
+        R = np.where(np.isnan(R), 0, R)
+        RUGO = np.clip(np.round(R * 100), 0, 253).astype(np.uint8)
+        b7 = (C & 127) == 7
+        print('rugosidade (rug8): media %.0f cm; nas celulas de rocha %.0f cm, %.0f%% delas >= 8 cm'
+              % (RUGO.mean(), RUGO[b7].mean() if b7.any() else 0, 100 * (RUGO[b7] >= 8).mean() if b7.any() else 0))
+
     # --- areas ardidas (ICNF), depois de tudo o que decide o chao
     # Um fogo posterior as fontes (LiDAR Abr-Set 2024, COS 2025) deixa a carta
     # e o laser a dizer floresta onde ja so ha cinza: classe 13, 'ardido
@@ -1156,6 +1176,10 @@ def main():
     if ALTV is not None:
         if not a.sem_plantas:     # sem plantas ninguem le a altura; 2,5 MB a menos
             saida += bloco('ALTV', struct.pack('<HH', mx, my) + ALTV.tobytes())
+    if RUGO is not None:
+        saida += bloco('RUGO', struct.pack('<HH', mx, my) + RUGO.tobytes())
+    if penedos:
+        saida += bloco('PENE', struct.pack('<I', len(penedos)) + b''.join(struct.pack('<fff', lo, la, m2) for lo, la, m2 in penedos))
     if CASA is not None:
         saida += bloco('CASA', CASA)
     if H is not None:
@@ -1220,12 +1244,14 @@ def main():
         'fontes': {'classes': fonte_cos, 'mdt': a.mdt or 'Copernicus 30 m', 'chm': a.chm, 'vias': fonte_vias,
                    'agua': a.agua, 'horizonte_km': round((margem or min(a.alcance, 4000.0)) / 1000) if H is not None else None,
                    'casas': ' + '.join(sorted(fontes_casas)) or None,
-                   'penedos_rejeitados': n_penedo, 'ardidas': fonte_ardidas},
+                   'penedos_rejeitados': n_penedo, 'ardidas': fonte_ardidas,
+                   'rugosidade': 'armazem:rug8 (RMS do residuo do MDT-2m)' if RUGO is not None else None},
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,
                 'casas': CASA is not None,
                 'plantas': not a.sem_plantas, 'ardidas': bool(ardidas),
+                'rugosidade': RUGO is not None, 'penedos': len(penedos),
                 'altura_medida': ALTV is not None},
     })
     zonas.sort(key=lambda z: z['titulo'])

@@ -143,6 +143,8 @@ def casas_poligonos(pasta, caixa):
 RASTER = {
     'mdt8': dict(pasta='lidar-derivado/mdt8', escala=0.1, nodata=(-32768,)),
     'chm5': dict(pasta='lidar-derivado/chm5', escala=0.1, nodata=(254, 255)),
+    # rugosidade do MDT-2m (RMS do residuo, cm): campos de blocos; ferramentas/lidar_rugosidade.py
+    'rug8': dict(pasta='lidar-derivado/rug8', escala=0.01, nodata=(254, 255)),
     # agua mensal Sentinel-2: 1 agua, 0 nao, 255 nuvem/sem dado (um por mes)
     'agua': dict(pasta='sentinel/agua-mensal', escala=1.0, nodata=(255,)),
 }
