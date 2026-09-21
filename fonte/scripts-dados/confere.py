@@ -230,7 +230,7 @@ def main():
                     i0 = int((lo - zlo0) / (zlo1 - zlo0) * fx); j0 = int((zla1 - la) / (zla1 - zla0) * fy)
                     w = CF[max(0, j0 - r):j0 + r, max(0, i0 - r):i0 + r]
                     if not w.size: continue
-                    tot += 1; ok += int(np.bincount(w.ravel(), minlength=13).argmax() == 5)
+                    tot += 1; ok += int(np.bincount((w & 127).ravel(), minlength=14).argmax() == 5)   # sem o bit do corredor
             if tot >= 100: res.append((zf['nome'], ok / tot, tot))
         if res:
             pior = min(p for _, p, _ in res)
@@ -275,7 +275,16 @@ def main():
             NF, _ = amostra(nucleo(aberto, n), a.amostra)
             if len(F) >= 60 and len(NF) >= 60: nuc = n; break
         else: nuc = 0
-        if len(F) >= 20 and len(NF) >= 20:
+        # O ortofoto de prova e de ANTES dos fogos recentes (classe 13). Onde
+        # uma parte grande da zona ardeu depois das fontes, a foto ja nao
+        # mostra o chao de hoje e nao serve de prova: nem aprova nem chumba
+        # (c7r0 Medelim, 21/09/2026: 16 km2 ardidos em 2025, a floresta que
+        # sobra sao 0,65 km2 de bordas e a textura deixa de separar).
+        ardido = float((C == 13).mean())
+        if ardido > 0.10:
+            B.nao('floresta', '%.0f%% da zona ardeu depois do ortofoto de prova (classe 13): a foto ja nao mostra o chao de hoje'
+                  % (100 * ardido))
+        elif len(F) >= 20 and len(NF) >= 20:
             dB = coesao(F[:, 0], NF[:, 0]); dC = coesao(F[:, 1], NF[:, 1])
             ok = bool((dB or 0) > 1.0 or (dC or 0) > 1.0)
             B.ver('floresta', ok, 'contra a textura do ortofoto, %d+%d celulas em nucleo de %d m: '

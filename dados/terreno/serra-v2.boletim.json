@@ -1,0 +1,128 @@
+{
+ "terreno": "/home/user/sombra-na-estrela/dados/terreno/serra-v2.terr.gz",
+ "linhas": [
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cotas",
+   "passa": true,
+   "texto": "correlacao 0.9996 com o Copernicus 30 m; vies -0.6 m, P90 do desvio 11.9 m",
+   "valor": {
+    "r": 0.9996024852403281,
+    "vies": -0.620849609375
+   }
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "floresta",
+   "passa": null,
+   "texto": "textura do ortofoto nao se aplica a celulas de 50 m; ver coerencia com zonas finas",
+   "valor": null
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "coerencia com zonas finas",
+   "passa": true,
+   "texto": "floresta grossa e floresta na zona fina verificada: c6r4 98% (2957 celulas), c3r5 97% (3695 celulas), c4r6 98% (3037 celulas), c5r0 98% (411 celulas), c0r3 95% (4130 celulas), c4r2 98% (2719 celulas), c3r2 95% (447 celulas), c0r4 95% (1638 celulas), c6r5 97% (2647 celulas), c1r1 97% (2612 celulas), c1r2 96% (2058 celulas), c2r3 97% (3311 celulas), c2r4 98% (1231 celulas), c2r6 97% (6123 celulas), c6r2 99% (5455 celulas), c3r6 97% (3578 celulas), c7r6 95% (299 celulas), c2r2 96% (786 celulas), c5r1 98% (3472 celulas), c0r0 99% (11125 celulas), c0r2 97% (6778 celulas), c4r1 98% (1175 celulas), c5r5 97% (3032 celulas), c7r5 97% (2677 celulas), c2r0 96% (2216 celulas), c1r4 96% (2181 celulas), c1r5 97% (6903 celulas), c2r1 97% (697 celulas), c2r5 97% (4260 celulas), c0r5 95% (4991 celulas), c6r3 97% (1512 celulas), c3r1 96% (1134 celulas), c1r0 97% (3227 celulas), c7r1 99% (212 celulas), c3r4 98% (4443 celulas), c4r5 96% (3075 celulas), c4r4 98% (1473 celulas), c6r1 98% (1752 celulas), c7r4 97% (2838 celulas), c5r6 97% (766 celulas), c5r4 99% (6116 celulas), c7r3 96% (358 celulas), c5r2 98% (2878 celulas), c3r0 96% (2618 celulas), c0r1 99% (13992 celulas), c5r3 98% (4975 celulas), c1r6 97% (3610 celulas), c4r0 96% (657 celulas), torre 98% (5720 celulas), manteigas 99% (5456 celulas), c7r2 99% (3685 celulas), c0r6 95% (1397 celulas), c6r6 96% (673 celulas), c1r3 96% (2627 celulas)",
+   "valor": {
+    "zonas": {
+     "c6r4": 0.9753128170443016,
+     "c3r5": 0.96914749661705,
+     "c4r6": 0.9762923938096806,
+     "c5r0": 0.975669099756691,
+     "c0r3": 0.9493946731234867,
+     "c4r2": 0.9783008458992276,
+     "c3r2": 0.9485458612975392,
+     "c0r4": 0.9542124542124543,
+     "c6r5": 0.9701548923309407,
+     "c1r1": 0.9709035222052067,
+     "c1r2": 0.9601554907677357,
+     "c2r3": 0.9682875264270613,
+     "c2r4": 0.9780666125101544,
+     "c2r6": 0.9732157439163809,
+     "c6r2": 0.9862511457378552,
+     "c3r6": 0.965902738960313,
+     "c7r6": 0.9464882943143813,
+     "c2r2": 0.9643765903307888,
+     "c5r1": 0.9838709677419355,
+     "c0r0": 0.9875056179775281,
+     "c0r2": 0.9747713189731484,
+     "c4r1": 0.9761702127659575,
+     "c5r5": 0.974934036939314,
+     "c7r5": 0.9708629062383265,
+     "c2r0": 0.9598375451263538,
+     "c1r4": 0.9605685465382852,
+     "c1r5": 0.9676952049833406,
+     "c2r1": 0.9670014347202296,
+     "c2r5": 0.9692488262910798,
+     "c0r5": 0.9519134441995593,
+     "c6r3": 0.9682539682539683,
+     "c3r1": 0.9638447971781305,
+     "c1r0": 0.9727300898667492,
+     "c7r1": 0.9905660377358491,
+     "c3r4": 0.9813189286518118,
+     "c4r5": 0.9639024390243902,
+     "c4r4": 0.9762389680923286,
+     "c6r1": 0.9834474885844748,
+     "c7r4": 0.9704016913319239,
+     "c5r6": 0.9686684073107049,
+     "c5r4": 0.9921517331589274,
+     "c7r3": 0.9608938547486033,
+     "c5r2": 0.9788047255038221,
+     "c3r0": 0.9598930481283422,
+     "c0r1": 0.9909233847913094,
+     "c5r3": 0.984321608040201,
+     "c1r6": 0.967590027700831,
+     "c4r0": 0.9619482496194824,
+     "torre": 0.975,
+     "manteigas": 0.9930351906158358,
+     "c7r2": 0.9858887381275441,
+     "c0r6": 0.9470293486041518,
+     "c6r6": 0.962852897473997,
+     "c1r3": 0.9577464788732394
+    }
+   }
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "rocha / chao nu / mato",
+   "passa": null,
+   "texto": "quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); vem da COS e nao esta verificada",
+   "valor": null
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "altura da vegetacao",
+   "passa": null,
+   "texto": "vista geral sem plantas: a altura medida nao se guarda",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "paredes sao ingremes",
+   "passa": true,
+   "texto": "100.0% das paredes tem declive >= 40 graus",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "agua e plana",
+   "passa": true,
+   "texto": "100.0% da agua tem declive < 12 graus",
+   "valor": null
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "posicao da carta",
+   "passa": null,
+   "texto": "sem contornos de edificios nao ha com que conferir a posicao",
+   "valor": null
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "casas",
+   "passa": null,
+   "texto": "a zona foi cozida sem contornos de edificios",
+   "valor": null
+  }
+ ]
+}

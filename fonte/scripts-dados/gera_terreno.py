@@ -117,15 +117,28 @@ def amostra_grossa(z, cx, lons, lats, k, modo):
     CHM de 5 m): k x k sub-amostras por celula e um resumo. Amostrar por
     PONTO deixava a floresta ao acaso -- o ponto caia numa clareira e a celula
     inteira deixava de ser floresta (2 690 km2 da COS -> 701).
+      modo 'p50'   mediana: a celula e floresta se METADE das sub-amostras
+                   tiverem copa (21/09/2026: o 3.o quartil dizia floresta com
+                   4 copas em 16 e a vista geral desmentia as zonas finas --
+                   coerencia 18-66% em c6r0, c5r0, c3r5, c0r3; a fina, por
+                   maioria, punha matagal)
       modo 'p75'   3.o quartil: a copa dominante da celula
       modo 'media' fraccao/media (agua: celula e agua se metade for)"""
     def fino(v):
         d = (v[1] - v[0]) if len(v) > 1 else 0
         return (v[:, None] + d * (np.arange(k) + 0.5) / k - d / 2).ravel()
-    A = amostra(z, cx, fino(lons), fino(lats))
-    A = A.reshape(len(lats), k, len(lons), k).transpose(0, 2, 1, 3).reshape(len(lats), len(lons), k * k)
-    if modo == 'p75': return np.percentile(A, 75, axis=2).astype(np.float32)
-    return A.mean(axis=2).astype(np.float32)
+    # por blocos de linhas: com k=10 sobre a serra inteira (1548 x 1612
+    # celulas) a amostra de uma vez eram 250 M pontos e varios GB de temporarios
+    out = np.empty((len(lats), len(lons)), dtype=np.float32)
+    B = max(1, 2000 // (k * k))
+    for j0 in range(0, len(lats), B):
+        ls = lats[j0:j0 + B]
+        A = amostra(z, cx, fino(lons), fino(ls))
+        A = A.reshape(len(ls), k, len(lons), k).transpose(0, 2, 1, 3).reshape(len(ls), len(lons), k * k)
+        if modo == 'p75': out[j0:j0 + B] = np.percentile(A, 75, axis=2)
+        elif modo == 'p50': out[j0:j0 + B] = np.median(A, axis=2)
+        else: out[j0:j0 + B] = A.mean(axis=2)
+    return out
 
 
 def tapa_caixa(cx, caixa, quem):
@@ -666,12 +679,22 @@ def main():
         if a.chm == 'armazem:chm5': zc, cc = fontes.raster_mosaico(a.fontes, 'chm5', a.caixa)
         else: zc, cc = le_mdt(a.chm)
         tapa_caixa(cc, a.caixa, 'CHM')
-        lonsC = np.linspace(lo0, lo1, mx); latsC = np.linspace(la1, la0, my)
+        # CENTROS das celulas, nao nos: a classe i cobre [i, i+1)/mx e o
+        # motor desenha-a assim; amostrar no no (linspace edge a edge) punha a
+        # medicao meia celula ao lado. A 5 m sao 2,5 m; a 50 m sao 25 m, e o
+        # teste de coerencia da vista geral apanhava-o nas bordas da floresta
+        # (c7r1 64%, 21/09/2026). As cotas ficam em nos: la e o que o motor le.
+        lonsC = lo0 + (np.arange(mx) + 0.5) * (lo1 - lo0) / mx
+        latsC = la1 - (np.arange(my) + 0.5) * (la1 - la0) / my
         passo_chm = abs(cc[2] - cc[0]) / zc.shape[1] * mlon
         if a.classe >= 4 * passo_chm:
-            h = amostra_grossa(zc, cc, lonsC, latsC, 4, 'p75')
-            print('CHM agregado: celula de %.0f m sobre copa de %.0f m, 4x4 sub-amostras, 3.o quartil'
-                  % (a.classe, passo_chm))
+            # k = todas as celulas do CHM dentro da celula grossa (10x10 a 50 m
+            # sobre 5 m): a mediana e exacta, sem o acaso de 16 pontos em 100
+            # (com 4x4 a coerencia com as finas ficava em 64% em c7r1)
+            kk = max(4, int(round(a.classe / passo_chm)))
+            h = amostra_grossa(zc, cc, lonsC, latsC, kk, 'p50')
+            print('CHM agregado: celula de %.0f m sobre copa de %.0f m, %dx%d sub-amostras, mediana'
+                  % (a.classe, passo_chm, kk, kk))
         else:
             h = amostra(zc, cc, lonsC, latsC)
         # o CHM traz lixo: ramos soltos a 60 m e valores negativos
@@ -904,7 +927,8 @@ def main():
         else:
             za, ca = le_mdt(a.agua)
         tapa_caixa(ca, a.caixa, 'mapa de agua')
-        lonsA = np.linspace(lo0, lo1, mx); latsA = np.linspace(la1, la0, my)
+        lonsA = lo0 + (np.arange(mx) + 0.5) * (lo1 - lo0) / mx      # centros, como o CHM
+        latsA = la1 - (np.arange(my) + 0.5) * (la1 - la0) / my
         passo_ag = abs(ca[2] - ca[0]) / za.shape[1] * mlon
         if a.classe >= 4 * passo_ag:
             mask = amostra_grossa(za, ca, lonsA, latsA, 4, 'media') >= 0.5
@@ -1161,7 +1185,10 @@ def main():
     bol = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                        'confere.py'), dest,
                           '--casas-fonte', ' + '.join(sorted(fontes_casas)) or 'nenhuma',
-                          '--classes-fonte', fonte_cos],
+                          '--classes-fonte', fonte_cos,
+                          # o boletim fica gravado ao pe da zona: e por ele que a
+                          # vista geral sabe que zonas finas estao aprovadas
+                          '--json', os.path.relpath(dest.replace('.terr.gz', '.boletim.json'), RAIZ)],
                          capture_output=True, text=True)
     print(bol.stdout, end='')
     if bol.stderr.strip(): print(bol.stderr.strip())

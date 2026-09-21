@@ -3,7 +3,7 @@
   {
    "nome": "c6r4",
    "titulo": "Albardeiros e arredores",
-   "ficheiro": "c6r4-v1.terr.gz",
+   "ficheiro": "c6r4-v16.terr.gz",
    "caixa": [
     -7.36,
     40.42,
@@ -25,12 +25,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.07 km2"
    },
-   "bytes": 8749871,
+   "bytes": 8777823,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -39,13 +41,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r5",
    "titulo": "Aldeia Nova e arredores",
-   "ficheiro": "c3r5-v1.terr.gz",
+   "ficheiro": "c3r5-v16.terr.gz",
    "caixa": [
     -7.75,
     40.53,
@@ -67,12 +70,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 13 poligonos recentes, 37.08 km2"
    },
-   "bytes": 8956216,
+   "bytes": 8218242,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -81,13 +86,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r0",
    "titulo": "Aldeia de Santa Margarida e arredores",
-   "ficheiro": "c6r0-v1.terr.gz",
+   "ficheiro": "c6r0-v16.terr.gz",
    "caixa": [
     -7.36,
     40.0,
@@ -109,12 +115,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 1.57 km2"
    },
-   "bytes": 6185349,
+   "bytes": 6180317,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -123,13 +131,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r6",
    "titulo": "Antas e arredores",
-   "ficheiro": "c4r6-v1.terr.gz",
+   "ficheiro": "c4r6-v16.terr.gz",
    "caixa": [
     -7.62,
     40.64,
@@ -151,12 +160,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 8.86 km2"
    },
-   "bytes": 4883009,
+   "bytes": 4713431,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -165,13 +176,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r0",
    "titulo": "Atalaia do Campo e arredores",
-   "ficheiro": "c5r0-v1.terr.gz",
+   "ficheiro": "c5r0-v16.terr.gz",
    "caixa": [
     -7.49,
     40.0,
@@ -193,12 +205,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 4.87 km2"
    },
-   "bytes": 5760439,
+   "bytes": 5704115,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -207,13 +221,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r3",
    "titulo": "Boiço e arredores",
-   "ficheiro": "c0r3-v1.terr.gz",
+   "ficheiro": "c0r3-v16.terr.gz",
    "caixa": [
     -8.1,
     40.31,
@@ -235,12 +250,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 1.08 km2"
    },
-   "bytes": 6641107,
+   "bytes": 6640081,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -249,13 +266,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r2",
    "titulo": "Bouça e arredores",
-   "ficheiro": "c4r2-v1.terr.gz",
+   "ficheiro": "c4r2-v16.terr.gz",
    "caixa": [
     -7.62,
     40.2,
@@ -277,12 +295,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 101
+    "penedos_rejeitados": 101,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 29.95 km2"
    },
-   "bytes": 8962017,
+   "bytes": 8404056,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -291,13 +311,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r2",
    "titulo": "Cabeço do Bulde e arredores",
-   "ficheiro": "c3r2-v1.terr.gz",
+   "ficheiro": "c3r2-v16.terr.gz",
    "caixa": [
     -7.75,
     40.2,
@@ -319,12 +340,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 4
+    "penedos_rejeitados": 4,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 116.79 km2"
    },
-   "bytes": 9166625,
+   "bytes": 6914221,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -333,13 +356,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r4",
    "titulo": "Carvalhal e arredores",
-   "ficheiro": "c0r4-v1.terr.gz",
+   "ficheiro": "c0r4-v16.terr.gz",
    "caixa": [
     -8.1,
     40.42,
@@ -361,12 +385,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 5.21 km2"
    },
-   "bytes": 6784878,
+   "bytes": 6616030,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -375,13 +401,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r5",
    "titulo": "Cavadoude e arredores",
-   "ficheiro": "c6r5-v1.terr.gz",
+   "ficheiro": "c6r5-v16.terr.gz",
    "caixa": [
     -7.36,
     40.53,
@@ -403,12 +430,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 2.06 km2"
    },
-   "bytes": 8848754,
+   "bytes": 8843779,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -417,13 +446,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r1",
    "titulo": "Cavaleiros de Baixo e arredores",
-   "ficheiro": "c1r1-v1.terr.gz",
+   "ficheiro": "c1r1-v16.terr.gz",
    "caixa": [
     -8.01,
     40.09,
@@ -445,12 +475,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 6.35 km2"
    },
-   "bytes": 8887828,
+   "bytes": 8693989,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -459,13 +491,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r2",
    "titulo": "Cerdeira e arredores",
-   "ficheiro": "c1r2-v1.terr.gz",
+   "ficheiro": "c1r2-v16.terr.gz",
    "caixa": [
     -8.01,
     40.2,
@@ -487,12 +520,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 62.72 km2"
    },
-   "bytes": 9658281,
+   "bytes": 8386973,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -501,13 +536,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r3",
    "titulo": "Chamusca da Beira e arredores",
-   "ficheiro": "c2r3-v1.terr.gz",
+   "ficheiro": "c2r3-v16.terr.gz",
    "caixa": [
     -7.88,
     40.31,
@@ -529,12 +565,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 14.44 km2"
    },
-   "bytes": 9362596,
+   "bytes": 9105084,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -543,13 +581,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r4",
    "titulo": "Chaveiral e arredores",
-   "ficheiro": "c2r4-v1.terr.gz",
+   "ficheiro": "c2r4-v16.terr.gz",
    "caixa": [
     -7.88,
     40.42,
@@ -571,12 +610,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 13.01 km2"
    },
-   "bytes": 8363250,
+   "bytes": 8060092,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -585,13 +626,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r6",
    "titulo": "Corvos-à-Nogueira e arredores",
-   "ficheiro": "c2r6-v1.terr.gz",
+   "ficheiro": "c2r6-v16.terr.gz",
    "caixa": [
     -7.88,
     40.64,
@@ -613,12 +655,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2"
    },
-   "bytes": 5418695,
+   "bytes": 5440322,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -627,13 +671,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r2",
    "titulo": "Escarigo e arredores",
-   "ficheiro": "c6r2-v1.terr.gz",
+   "ficheiro": "c6r2-v16.terr.gz",
    "caixa": [
     -7.36,
     40.2,
@@ -655,12 +700,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 3.52 km2"
    },
-   "bytes": 7641390,
+   "bytes": 7589603,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -669,13 +716,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r6",
    "titulo": "Esmolfe e arredores",
-   "ficheiro": "c3r6-v1.terr.gz",
+   "ficheiro": "c3r6-v16.terr.gz",
    "caixa": [
     -7.75,
     40.64,
@@ -697,12 +745,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 25.74 km2"
    },
-   "bytes": 5231097,
+   "bytes": 4527427,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -711,13 +761,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r6",
    "titulo": "Espedrada e arredores",
-   "ficheiro": "c7r6-v1.terr.gz",
+   "ficheiro": "c7r6-v16.terr.gz",
    "caixa": [
     -7.23,
     40.64,
@@ -739,12 +790,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 20.85 km2"
    },
-   "bytes": 2809721,
+   "bytes": 2353253,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -753,13 +806,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r2",
    "titulo": "Fajoeira e arredores",
-   "ficheiro": "c2r2-v1.terr.gz",
+   "ficheiro": "c2r2-v16.terr.gz",
    "caixa": [
     -7.88,
     40.2,
@@ -781,12 +835,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 1
+    "penedos_rejeitados": 1,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 115.00 km2"
    },
-   "bytes": 9097542,
+   "bytes": 7413581,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -795,13 +851,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r1",
    "titulo": "Fatela e arredores",
-   "ficheiro": "c5r1-v1.terr.gz",
+   "ficheiro": "c5r1-v16.terr.gz",
    "caixa": [
     -7.49,
     40.09,
@@ -823,12 +880,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.64 km2"
    },
-   "bytes": 7662205,
+   "bytes": 7668388,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -837,13 +896,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r0",
    "titulo": "Fonte Limpa e arredores",
-   "ficheiro": "c0r0-v1.terr.gz",
+   "ficheiro": "c0r0-v16.terr.gz",
    "caixa": [
     -8.1,
     40.0,
@@ -865,12 +925,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2"
    },
-   "bytes": 5746614,
+   "bytes": 5764701,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -879,13 +941,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r2",
    "titulo": "Fontão e arredores",
-   "ficheiro": "c0r2-v1.terr.gz",
+   "ficheiro": "c0r2-v16.terr.gz",
    "caixa": [
     -8.1,
     40.2,
@@ -907,12 +970,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.05 km2"
    },
-   "bytes": 6722586,
+   "bytes": 6761015,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -921,13 +986,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r1",
    "titulo": "Freixial e arredores",
-   "ficheiro": "c4r1-v1.terr.gz",
+   "ficheiro": "c4r1-v16.terr.gz",
    "caixa": [
     -7.62,
     40.09,
@@ -949,12 +1015,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 45.74 km2"
    },
-   "bytes": 8259617,
+   "bytes": 7488739,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -963,13 +1031,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r5",
    "titulo": "Galisteu e arredores",
-   "ficheiro": "c5r5-v1.terr.gz",
+   "ficheiro": "c5r5-v16.terr.gz",
    "caixa": [
     -7.49,
     40.53,
@@ -991,12 +1060,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 2
+    "penedos_rejeitados": 2,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 1.06 km2"
    },
-   "bytes": 8336737,
+   "bytes": 8345315,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1005,13 +1076,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r5",
    "titulo": "Gonçalo Bocas e arredores",
-   "ficheiro": "c7r5-v1.terr.gz",
+   "ficheiro": "c7r5-v16.terr.gz",
    "caixa": [
     -7.23,
     40.53,
@@ -1033,12 +1105,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.52 km2"
    },
-   "bytes": 5286404,
+   "bytes": 5257977,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1047,13 +1121,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r0",
    "titulo": "Janeiro de Baixo e arredores",
-   "ficheiro": "c2r0-v1.terr.gz",
+   "ficheiro": "c2r0-v16.terr.gz",
    "caixa": [
     -7.88,
     40.0,
@@ -1075,12 +1150,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 3.82 km2"
    },
-   "bytes": 7914580,
+   "bytes": 7851028,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1089,13 +1166,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r4",
    "titulo": "Laceiras e arredores",
-   "ficheiro": "c1r4-v1.terr.gz",
+   "ficheiro": "c1r4-v16.terr.gz",
    "caixa": [
     -8.01,
     40.42,
@@ -1117,12 +1195,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 34.81 km2"
    },
-   "bytes": 9416312,
+   "bytes": 8571958,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1131,13 +1211,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r5",
    "titulo": "Largo Eirô e arredores",
-   "ficheiro": "c1r5-v1.terr.gz",
+   "ficheiro": "c1r5-v16.terr.gz",
    "caixa": [
     -8.01,
     40.53,
@@ -1159,12 +1240,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 0.89 km2"
    },
-   "bytes": 9824430,
+   "bytes": 9742746,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1173,13 +1256,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r0",
    "titulo": "Medelim e arredores",
-   "ficheiro": "c7r0-v1.terr.gz",
+   "ficheiro": "c7r0-v16.terr.gz",
    "caixa": [
     -7.23,
     40.0,
@@ -1201,12 +1285,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.44 km2"
    },
-   "bytes": 3847768,
+   "bytes": 3631118,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1215,13 +1301,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r1",
    "titulo": "Meãs e arredores",
-   "ficheiro": "c2r1-v1.terr.gz",
+   "ficheiro": "c2r1-v16.terr.gz",
    "caixa": [
     -7.88,
     40.09,
@@ -1243,12 +1330,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 78.32 km2"
    },
-   "bytes": 8892233,
+   "bytes": 7667334,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1257,13 +1346,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r5",
    "titulo": "Moimenta de Maceira Dão e arredores",
-   "ficheiro": "c2r5-v1.terr.gz",
+   "ficheiro": "c2r5-v16.terr.gz",
    "caixa": [
     -7.88,
     40.53,
@@ -1285,12 +1375,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 10.54 km2"
    },
-   "bytes": 9052367,
+   "bytes": 8926001,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1299,13 +1391,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r5",
    "titulo": "Mosteiro e arredores",
-   "ficheiro": "c0r5-v1.terr.gz",
+   "ficheiro": "c0r5-v16.terr.gz",
    "caixa": [
     -8.1,
     40.53,
@@ -1327,12 +1420,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2"
    },
-   "bytes": 6489662,
+   "bytes": 6495562,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1341,13 +1436,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r3",
    "titulo": "Olas e arredores",
-   "ficheiro": "c6r3-v1.terr.gz",
+   "ficheiro": "c6r3-v16.terr.gz",
    "caixa": [
     -7.36,
     40.31,
@@ -1369,12 +1465,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 26.10 km2"
    },
-   "bytes": 7998073,
+   "bytes": 7711738,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1383,13 +1481,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r1",
    "titulo": "Ourondo e arredores",
-   "ficheiro": "c3r1-v1.terr.gz",
+   "ficheiro": "c3r1-v16.terr.gz",
    "caixa": [
     -7.75,
     40.09,
@@ -1411,12 +1510,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 90.44 km2"
    },
-   "bytes": 9522414,
+   "bytes": 7494054,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1425,13 +1526,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r0",
    "titulo": "Pampilhosa da Serra e arredores",
-   "ficheiro": "c1r0-v1.terr.gz",
+   "ficheiro": "c1r0-v16.terr.gz",
    "caixa": [
     -8.01,
     40.0,
@@ -1453,12 +1555,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2"
    },
-   "bytes": 7810799,
+   "bytes": 7668467,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1467,13 +1571,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r1",
    "titulo": "Penamacor e arredores",
-   "ficheiro": "c7r1-v1.terr.gz",
+   "ficheiro": "c7r1-v16.terr.gz",
    "caixa": [
     -7.23,
     40.09,
@@ -1495,12 +1600,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 4.54 km2"
    },
-   "bytes": 4694279,
+   "bytes": 4632791,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1509,13 +1616,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r4",
    "titulo": "Pinhanços e arredores",
-   "ficheiro": "c3r4-v1.terr.gz",
+   "ficheiro": "c3r4-v16.terr.gz",
    "caixa": [
     -7.75,
     40.42,
@@ -1537,12 +1645,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 16
+    "penedos_rejeitados": 16,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 1.86 km2"
    },
-   "bytes": 8110305,
+   "bytes": 7946826,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1551,13 +1661,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r5",
    "titulo": "Ponte Nova e arredores",
-   "ficheiro": "c4r5-v1.terr.gz",
+   "ficheiro": "c4r5-v16.terr.gz",
    "caixa": [
     -7.62,
     40.53,
@@ -1579,12 +1690,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 0.88 km2"
    },
-   "bytes": 8523229,
+   "bytes": 8574346,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1593,13 +1706,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r4",
    "titulo": "Portela de Folgosinho e arredores",
-   "ficheiro": "c4r4-v1.terr.gz",
+   "ficheiro": "c4r4-v16.terr.gz",
    "caixa": [
     -7.62,
     40.42,
@@ -1621,12 +1735,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 85
+    "penedos_rejeitados": 85,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 0.58 km2"
    },
-   "bytes": 8100124,
+   "bytes": 8131260,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1635,13 +1751,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r1",
    "titulo": "Póvoa Palhaça e arredores",
-   "ficheiro": "c6r1-v1.terr.gz",
+   "ficheiro": "c6r1-v16.terr.gz",
    "caixa": [
     -7.36,
     40.09,
@@ -1663,12 +1780,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2"
    },
-   "bytes": 7354372,
+   "bytes": 7354818,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1677,13 +1796,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r4",
    "titulo": "Quinta da Caravella e arredores",
-   "ficheiro": "c7r4-v1.terr.gz",
+   "ficheiro": "c7r4-v16.terr.gz",
    "caixa": [
     -7.23,
     40.42,
@@ -1705,12 +1825,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 4.92 km2"
    },
-   "bytes": 5127606,
+   "bytes": 5019790,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1719,13 +1841,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r6",
    "titulo": "Quinta da Marvela e arredores",
-   "ficheiro": "c5r6-v1.terr.gz",
+   "ficheiro": "c5r6-v16.terr.gz",
    "caixa": [
     -7.49,
     40.64,
@@ -1747,12 +1870,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 6.24 km2"
    },
-   "bytes": 4631950,
+   "bytes": 4557748,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1761,13 +1886,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r4",
    "titulo": "Quinta da Taberna e arredores",
-   "ficheiro": "c5r4-v1.terr.gz",
+   "ficheiro": "c5r4-v16.terr.gz",
    "caixa": [
     -7.49,
     40.42,
@@ -1789,12 +1915,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 5
+    "penedos_rejeitados": 5,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 0 poligonos recentes, 0.00 km2"
    },
-   "bytes": 8212165,
+   "bytes": 8236002,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1803,13 +1931,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r3",
    "titulo": "Quinta do Clérigo e arredores",
-   "ficheiro": "c7r3-v1.terr.gz",
+   "ficheiro": "c7r3-v16.terr.gz",
    "caixa": [
     -7.23,
     40.31,
@@ -1831,12 +1960,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 60.24 km2"
    },
-   "bytes": 5197309,
+   "bytes": 4285675,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1845,13 +1976,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r2",
    "titulo": "Quinta dos Alvercões e arredores",
-   "ficheiro": "c5r2-v1.terr.gz",
+   "ficheiro": "c5r2-v16.terr.gz",
    "caixa": [
     -7.49,
     40.2,
@@ -1873,12 +2005,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 0.65 km2"
    },
-   "bytes": 7821036,
+   "bytes": 7831829,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1887,13 +2021,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r0",
    "titulo": "Rochas de Cima e arredores",
-   "ficheiro": "c3r0-v1.terr.gz",
+   "ficheiro": "c3r0-v16.terr.gz",
    "caixa": [
     -7.75,
     40.0,
@@ -1915,12 +2050,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.90 km2"
    },
-   "bytes": 7885757,
+   "bytes": 7440258,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1929,13 +2066,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r1",
    "titulo": "Sandinha e arredores",
-   "ficheiro": "c0r1-v1.terr.gz",
+   "ficheiro": "c0r1-v16.terr.gz",
    "caixa": [
     -8.1,
     40.09,
@@ -1957,12 +2095,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2"
    },
-   "bytes": 6985742,
+   "bytes": 7026228,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1971,13 +2111,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r3",
    "titulo": "Sarzedo e arredores",
-   "ficheiro": "c5r3-v1.terr.gz",
+   "ficheiro": "c5r3-v16.terr.gz",
    "caixa": [
     -7.49,
     40.31,
@@ -1999,12 +2140,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.10 km2"
    },
-   "bytes": 8380759,
+   "bytes": 8409884,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2013,13 +2156,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "serra",
    "titulo": "Serra da Estrela (vista geral)",
-   "ficheiro": "serra-v1.terr.gz",
+   "ficheiro": "serra-v2.terr.gz",
    "caixa": [
     -8.1,
     40.0,
@@ -2041,12 +2185,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": null,
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 152 poligonos recentes, 983.43 km2"
    },
-   "bytes": 7943036,
+   "bytes": 7960226,
    "tem": {
     "curvas": false,
     "pontos": true,
@@ -2055,13 +2201,14 @@
     "sombra": true,
     "casas": false,
     "plantas": false,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r6",
    "titulo": "São Martinho e arredores",
-   "ficheiro": "c1r6-v1.terr.gz",
+   "ficheiro": "c1r6-v16.terr.gz",
    "caixa": [
     -8.01,
     40.64,
@@ -2083,12 +2230,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.01 km2"
    },
-   "bytes": 6279340,
+   "bytes": 6323482,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2097,13 +2246,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r0",
    "titulo": "São Vicente da Beira e arredores",
-   "ficheiro": "c4r0-v1.terr.gz",
+   "ficheiro": "c4r0-v16.terr.gz",
    "caixa": [
     -7.62,
     40.0,
@@ -2125,12 +2275,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 1
+    "penedos_rejeitados": 1,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 55.38 km2"
    },
-   "bytes": 7089796,
+   "bytes": 6156809,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2139,13 +2291,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "torre",
    "titulo": "Torre e Lagoa Comprida",
-   "ficheiro": "torre-v3.terr.gz",
+   "ficheiro": "torre-v16.terr.gz",
    "caixa": [
     -7.75,
     40.31,
@@ -2167,12 +2320,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 163
+    "penedos_rejeitados": 163,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 13.29 km2"
    },
-   "bytes": 8937081,
+   "bytes": 8756813,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2181,13 +2336,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v15.terr.gz",
+   "ficheiro": "manteigas-v16.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -2209,12 +2365,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 742
+    "penedos_rejeitados": 742,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.21 km2"
    },
-   "bytes": 8618643,
+   "bytes": 8637162,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2223,13 +2381,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r2",
    "titulo": "Vale da Senhora da Póvoa e arredores",
-   "ficheiro": "c7r2-v1.terr.gz",
+   "ficheiro": "c7r2-v16.terr.gz",
    "caixa": [
     -7.23,
     40.2,
@@ -2251,12 +2410,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 13.02 km2"
    },
-   "bytes": 5181167,
+   "bytes": 4936169,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2265,13 +2426,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r6",
    "titulo": "Vasconha e arredores",
-   "ficheiro": "c0r6-v1.terr.gz",
+   "ficheiro": "c0r6-v16.terr.gz",
    "caixa": [
     -8.1,
     40.64,
@@ -2293,12 +2455,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.07 km2"
    },
-   "bytes": 3627766,
+   "bytes": 3628380,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2307,13 +2471,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r6",
    "titulo": "Velosa e arredores",
-   "ficheiro": "c6r6-v1.terr.gz",
+   "ficheiro": "c6r6-v16.terr.gz",
    "caixa": [
     -7.36,
     40.64,
@@ -2335,12 +2500,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "azulejos (5 tipos)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 11.31 km2"
    },
-   "bytes": 4585952,
+   "bytes": 4367164,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2349,13 +2516,14 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r3",
    "titulo": "Vila Chã e arredores",
-   "ficheiro": "c1r3-v1.terr.gz",
+   "ficheiro": "c1r3-v16.terr.gz",
    "caixa": [
     -8.01,
     40.31,
@@ -2377,12 +2545,14 @@
     "classes": "COS 2025 Serie 2",
     "mdt": "armazem:mdt8",
     "chm": "armazem:chm5",
+    "vias": "OSM (armazem, highway original)",
     "agua": "armazem:agua",
     "horizonte_km": 15,
     "casas": "ms + osm",
-    "penedos_rejeitados": 0
+    "penedos_rejeitados": 0,
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 12.36 km2"
    },
-   "bytes": 9241912,
+   "bytes": 8775595,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2391,6 +2561,7 @@
     "sombra": true,
     "casas": true,
     "plantas": true,
+    "ardidas": true,
     "altura_medida": true
    }
   }
