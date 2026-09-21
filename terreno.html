@@ -139,7 +139,7 @@
 
   <h3>Densidade</h3>
   <div class=lin><span>Detalhe da vegetação<small id=d0txt></small></span>
-    <input class=esc id=d0 type=range min=120 max=900 step=10></div>
+    <input class=esc id=d0 type=range min=120 max=2500 step=10></div>
 
   <h3>Onde estou</h3>
   <div class=lin><span>Localização ao vivo<small id=gpsTxt>desligada</small></span>
@@ -226,11 +226,12 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=46"></script>
+<script src="fonte/terreno.js?v=47"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
 let V = null, T = null, ZONAS = [], zonaAberta = null;
+const LIDAS = new Map();   // zonas ja descodificadas nesta sessao (ficheiro -> terreno)
 const $ = (id) => document.getElementById(id);   // definido aqui em cima: tudo o que vem depois usa-o
 // Um erro de arranque ficava mudo: a pagina dizia "a carregar..." para sempre
 // (21/09/2026). Agora o erro aparece na propria caixa, com a linha, para se
@@ -277,13 +278,15 @@ async function arranca() {
   const q = new URLSearchParams(location.search);
   let pedido = null;
   if (q.get('trilho')) {
-    const [fonte, id] = q.get('trilho').split(':');
+    const [fonte, idT] = q.get('trilho').split(':');
+    // os ids (da BD e dos meus) sao numeros; na URL vem como texto
+    const id = /^-?\d+$/.test(idT) ? +idT : idT;
     leMeus(); await carregaBD();
-    const t = trilhoDe({ fonte, id: fonte === 'meu' ? +id : id });
+    const t = trilhoDe({ fonte, id });
     if (t && t.centro) {
       const z = zonaFinaEm(t.centro[0], t.centro[1]) || zonaGeralEm(t.centro[0], t.centro[1]);
       if (z) { sel.value = String(ZONAS.indexOf(z)); }
-      pedido = () => escolhe({ fonte, id: fonte === 'meu' ? +id : id });
+      pedido = () => escolhe({ fonte, id });
     }
   } else if (q.get('ir')) {
     const [lo, la, d] = q.get('ir').split(',').map(Number);
@@ -400,11 +403,18 @@ async function abreZona(z, camIni) {
     // "null" (21/09/2026, ao afastar de Manteigas para a serra). Tela nova.
     const nova = cv.cloneNode(false); cv.parentNode.replaceChild(nova, cv); cv = nova;
   }
-  diz('a ler ' + z.titulo + '… (' + (z.bytes / 1e6).toFixed(1) + ' MB)');
   const t0 = performance.now();
-  try {
-    T = await carregaTerreno('dados/terreno/' + z.ficheiro + '?v=' + VER);
-  } catch (e) { diz('erro: ' + e.message); return; }
+  if (LIDAS.has(z.ficheiro)) {
+    // ja foi lida nesta sessao: nao se volta a descarregar nem a descodificar
+    T = LIDAS.get(z.ficheiro); LIDAS.delete(z.ficheiro); LIDAS.set(z.ficheiro, T);
+  } else {
+    diz('a ler ' + z.titulo + '… (' + (z.bytes / 1e6).toFixed(1) + ' MB)');
+    try {
+      T = await carregaTerreno('dados/terreno/' + z.ficheiro + '?v=' + VER);
+    } catch (e) { diz('erro: ' + e.message); return; }
+    LIDAS.set(z.ficheiro, T);
+    while (LIDAS.size > 3) LIDAS.delete(LIDAS.keys().next().value);   // as 3 mais recentes
+  }
   const ler = performance.now() - t0;
   diz('a construir a malha e a semear a caixa toda, uma vez…');
   await new Promise((r) => setTimeout(r, 0));
@@ -703,7 +713,6 @@ function pintaLista() {
     if (so && !tocaZona(r)) continue;
     if (q && !((r.nome || '') + ' ' + (r.ref || '')).toLowerCase().includes(q)) continue;
     n++;
-    if (n > 60) continue;
     const sel = escolhido && escolhido.fonte === 'bd' && escolhido.id === r.id;
     html += '<div class="tr' + (sel ? ' sel' : '') + '" data-bd="' + r.id + '">'
       + '<div style="flex:1;min-width:0">'
@@ -715,7 +724,7 @@ function pintaLista() {
       + (sel ? '<div class=estat id=estatLinha></div>' : '') + '</div></div>';
   }
   el.innerHTML = html || '<div class=vazio>Nenhum trilho com esse nome' + (so ? ' nesta zona.' : '.') + '</div>';
-  $('nTrilhos').textContent = n > 60 ? '(' + n + ', a mostrar 60)' : '(' + n + ')';
+  $('nTrilhos').textContent = '(' + n + ')';
 }
 const esc = (t) => String(t).replace(/[<&>"]/g, (c) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -750,13 +759,13 @@ async function escolhe(q) {
 
 function trilhoDe(q) {
   if (q.fonte === 'bd') {
-    const r = BD.find((x) => x.id === q.id); if (!r) return null;
+    const r = BD.find((x) => String(x.id) === String(q.id)); if (!r) return null;
     const partes = geoDe(r), pts = paraPontos(partes);
     const meio = pts[Math.floor(pts.length / 2)];
     return { nome: r.nome, ref: r.ref, km: r.km, r, pts, fita: paraFita(partes),
              cor: [0.10, 0.36, 0.78], centro: meio ? [meio.lo, meio.la] : null };
   }
-  const m = MEUS.find((x) => x.id === q.id); if (!m) return null;
+  const m = MEUS.find((x) => String(x.id) === String(q.id)); if (!m) return null;
   const pts = m.pts;
   const meio = pts[Math.floor(pts.length / 2)];
   return { nome: m.nome, km: (m.est && m.est.km) || 0, meu: m, pts,

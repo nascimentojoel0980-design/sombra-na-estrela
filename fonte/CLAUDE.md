@@ -431,3 +431,9 @@ Vias: quando existe `sne-dados-fonte/osm-vias/`, o construtor lê as ways do
 OSM com o `highway` original (`HIGHWAY` → autoestrada, nacional, municipal,
 urbana, rural, estradão, trilho); sem elas, os azulejos com 5 tipos. O motor
 infere "urbana" para caminhos sem piso em urbano da COS.
+
+## Página e ficha (21/09/2026, v47)
+- `terreno.html` guarda em memória as 3 últimas zonas descodificadas (`LIDAS`): voltar a uma zona não volta a descarregar nem a ler o .terr.gz; o que resta é construir a malha (2–4 s no PC). "a ler…" só aparece quando se lê mesmo.
+- Ids de trilho na URL (`?trilho=bd:0`) chegam como texto; os da BD são números. Comparar sempre com `String()` (`trilhoDe`), senão a entrada da ficha cai na serra sem trilho.
+- Listas de trilhos sem tecto de 60 linhas: a pesquisa só filtra.
+- `trilho.html`: tempo estimado por tipo de chão (Tobler × factor do chão lido de `T.classe`, corredor de caminho até ~10 m ao lado × altitude), previsão Open-Meteo (7 dias + hoje hora a hora) no meio do trilho à altitude média, botão de regresso ao mapa.

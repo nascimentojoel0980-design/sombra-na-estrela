@@ -26,6 +26,15 @@
   th{color:var(--fraco);font-weight:600}
   .nota{color:var(--fraco);font-size:12px}
   #estado{color:var(--fraco);font-size:13px}
+  .topo{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .bt.volta{padding:6px 10px;font-size:13px}
+  .tempo td{white-space:nowrap}
+  .tempo .ico{font-size:18px}
+  .hoje{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+  .hoje .h{flex:0 0 auto;min-width:58px;text-align:center;border:1px solid var(--linha);border-radius:10px;padding:6px 4px;background:#fff;font-size:12px}
+  .hoje .h b{display:block;font-size:14px}
+  .hoje .h .ico{font-size:20px;display:block;margin:2px 0}
+  .hoje .h .ch{color:var(--azul)}
   #mapaCx{position:relative}
   #mapa2d{width:100%;display:block;border-radius:12px;border:1px solid var(--linha);background:#dcd8cc;touch-action:none}
   #mapaNota{position:absolute;right:8px;bottom:6px;background:rgba(255,253,246,.85);padding:2px 6px;border-radius:6px;font-size:10px}
@@ -34,7 +43,7 @@
 </head>
 <body>
 <main>
-  <div id=estado>a ler…</div>
+  <div class=topo><a class="bt volta" id=voltar href="terreno.html">← voltar ao mapa</a><span id=estado>a ler…</span></div>
   <h1 id=nome></h1>
   <div class=sub id=sub></div>
   <div class=bts>
@@ -46,6 +55,10 @@
   <div class=grade id=cartoes></div>
   <h2>Vista de cima (satélite) <span class=nota>Esri World Imagery · arrasta no perfil para ver o ponto</span></h2>
   <div id=mapaCx><canvas id=mapa2d></canvas><div id=mapaNota class=nota></div></div>
+  <h2>Tempo estimado por terreno <span class=nota id=tempoNota></span></h2>
+  <div id=estimado></div>
+  <h2>Previsão do tempo <span class=nota id=metNota></span></h2>
+  <div id=met class=nota>a pedir a previsão…</div>
   <h2>Perfil de altitude <span class=nota id=perfilNota></span></h2>
   <div id=perfil></div>
   <h2>Sol ao longo do dia <span class=nota id=solNota></span></h2>
@@ -53,7 +66,7 @@
   <h2>Zonas do terreno usadas</h2>
   <div id=zonas class=nota></div>
 </main>
-<script src="fonte/terreno.js?v=46"></script>
+<script src="fonte/terreno.js?v=47"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -101,11 +114,121 @@ function compoe(zs) {
   return C;
 }
 
+// classe do chao no ponto (a zona fina que o contem, senao a geral)
+function classeEm(Ts, lo, la) {
+  for (const T of Ts) {
+    if (!T.classe || lo < T.lo0 || lo > T.lo1 || la < T.la0 || la > T.la1) continue;
+    const m = T.emM(lo, la);
+    const i = Math.min(T.mx - 1, Math.max(0, Math.floor(m[0] / T.larg * T.mx)));
+    const j = Math.min(T.my - 1, Math.max(0, Math.floor((T.alt - m[1]) / T.alt * T.my)));
+    const c = T.classe[j * T.mx + i];
+    if (c & 128) return c;
+    // o tracado (GPS ou base de dados) anda uns metros ao lado do corredor
+    // cozido: se ha caminho ate ~10 m, e por ele que se anda
+    const r = Math.max(1, Math.round(10 / (T.larg / T.mx)));
+    for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= T.mx || jj >= T.my) continue;
+      if (T.classe[jj * T.mx + ii] & 128) return c | 128;
+    }
+    return c;
+  }
+  return -1;
+}
+// tipo de chao para andar: [nome, factor sobre a velocidade de Tobler]
+const CHAO_ANDAR = {
+  caminho: ['caminho, estrada ou trilho marcado', 1.0], urbano: ['povoação / campo agrícola', 1.0],
+  erva: ['erva, pastagem ou chão nu', 0.85], humida: ['zona húmida / lameiro', 0.7], rasteiro: ['mato rasteiro', 0.8],
+  matagal: ['matagal alto (giesta, urze alta)', 0.55], arv: ['floresta aberta', 0.8], mata: ['floresta densa', 0.7],
+  rocha: ['blocos de rocha', 0.6], parede: ['escarpa / parede', 0.4], agua: ['água', 0.5], fora: ['fora do mapa', 0.85],
+};
+function tipoChao(c) {
+  if (c < 0) return 'fora';
+  if (c & 128) return 'caminho';
+  return { 0: 'erva', 1: 'urbano', 2: 'urbano', 3: 'erva', 4: 'arv', 5: 'mata', 6: 'rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua', 10: 'erva', 11: 'matagal', 12: 'humida' }[c & 127] || 'erva';
+}
+function estimaTempo(Ts, pts, e) {
+  const ps = simplificaTrilho(pts, 5);          // os mesmos pontos que medeTrilho usou (e.z alinha)
+  const zs = e.z, n = Math.min(ps.length, zs.length);
+  const soma = {}; let total = 0, m = 0;
+  for (let i = 1; i < n; i++) {
+    const d = metros(ps[i - 1], ps[i]); if (!(d > 0)) continue;
+    const s = (zs[i] - zs[i - 1]) / d;
+    let v = 6 * Math.exp(-3.5 * Math.abs(s + 0.05));                 // km/h, Tobler
+    const c = classeEm(Ts, (ps[i - 1].lo + ps[i].lo) / 2, (ps[i - 1].la + ps[i].la) / 2);
+    const tipo = tipoChao(c);
+    v *= CHAO_ANDAR[tipo][1];
+    const zm = (zs[i] + zs[i - 1]) / 2;
+    if (zm > 1200) v *= Math.max(0.7, 1 - 0.04 * (zm - 1200) / 300);
+    const seg = d / (v / 3.6);
+    (soma[tipo] = soma[tipo] || { nome: CHAO_ANDAR[tipo][0], m: 0, s: 0 }); soma[tipo].m += d; soma[tipo].s += seg;
+    total += seg; m += d;
+  }
+  const linhas = Object.values(soma).sort((a, b) => b.m - a.m);
+  return { total, m, n: n - 1, linhas };
+}
+// codigos WMO -> texto e simbolo
+const WMO = { 0: ['céu limpo', '☀️'], 1: ['quase limpo', '🌤️'], 2: ['parcialmente nublado', '⛅'], 3: ['encoberto', '☁️'],
+  45: ['nevoeiro', '🌫️'], 48: ['nevoeiro gelado', '🌫️'], 51: ['chuvisco fraco', '🌦️'], 53: ['chuvisco', '🌦️'], 55: ['chuvisco forte', '🌧️'],
+  56: ['chuvisco gelado', '🌧️'], 57: ['chuvisco gelado forte', '🌧️'], 61: ['chuva fraca', '🌦️'], 63: ['chuva', '🌧️'], 65: ['chuva forte', '🌧️'],
+  66: ['chuva gelada', '🌧️'], 67: ['chuva gelada forte', '🌧️'], 71: ['neve fraca', '🌨️'], 73: ['neve', '🌨️'], 75: ['neve forte', '❄️'], 77: ['grãos de neve', '🌨️'],
+  80: ['aguaceiros fracos', '🌦️'], 81: ['aguaceiros', '🌧️'], 82: ['aguaceiros fortes', '⛈️'], 85: ['aguaceiros de neve', '🌨️'], 86: ['aguaceiros de neve fortes', '❄️'],
+  95: ['trovoada', '⛈️'], 96: ['trovoada com granizo', '⛈️'], 99: ['trovoada com granizo forte', '⛈️'] };
+const wmo = (c) => WMO[c] || ['—', '·'];
+const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+async function previsao(meio, alt) {
+  const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + meio.la.toFixed(4) + '&longitude=' + meio.lo.toFixed(4) + '&elevation=' + alt
+    + '&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,cloud_cover'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset'
+    + '&wind_speed_unit=kmh&timezone=Europe%2FLisbon&forecast_days=7';
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 15000);
+  let r; try { r = await fetch(u, { signal: ctl.signal }); } finally { clearTimeout(tm); }
+  if (!r.ok) throw new Error('Open-Meteo ' + r.status);
+  const d = await r.json();
+  const H = d.hourly, D = d.daily;
+  const agora = new Date(); const hojeStr = H.time[0].slice(0, 10);
+  const hIni = Math.max(0, agora.getHours() - 1);
+  let hoje = '<div class=hoje>';
+  for (let i = 0; i < H.time.length; i++) {
+    if (!H.time[i].startsWith(hojeStr)) break;
+    const h = +H.time[i].slice(11, 13); if (h < hIni) continue;
+    const [txt, ico] = wmo(H.weather_code[i]);
+    hoje += '<div class=h title="' + esc(txt) + '"><span>' + String(h).padStart(2, '0') + 'h</span><span class=ico>' + ico + '</span><b>' + Math.round(H.temperature_2m[i]) + '°</b>'
+      + '<span class=ch>' + (H.precipitation_probability[i] != null ? H.precipitation_probability[i] + ' %' : '') + (H.precipitation[i] ? ' ' + H.precipitation[i].toFixed(1).replace('.', ',') + ' mm' : '') + '</span>'
+      + '<span>' + Math.round(H.wind_speed_10m[i]) + ' km/h</span></div>';
+  }
+  hoje += '</div>';
+  let tab = '<table class=tempo><tr><th>dia</th><th></th><th>mín / máx</th><th>chuva</th><th>vento (rajada)</th><th>sol</th></tr>';
+  for (let i = 0; i < D.time.length; i++) {
+    const dt = new Date(D.time[i] + 'T12:00:00'); const [txt, ico] = wmo(D.weather_code[i]);
+    tab += '<tr><td><b>' + (i === 0 ? 'hoje' : DIAS[dt.getDay()]) + '</b> ' + dt.getDate() + '/' + (dt.getMonth() + 1) + '</td>'
+      + '<td><span class=ico title="' + esc(txt) + '">' + ico + '</span> <span class=nota>' + esc(txt) + '</span></td>'
+      + '<td>' + Math.round(D.temperature_2m_min[i]) + '° / <b>' + Math.round(D.temperature_2m_max[i]) + '°</b></td>'
+      + '<td>' + (D.precipitation_sum[i] || 0).toFixed(1).replace('.', ',') + ' mm' + (D.precipitation_probability_max[i] != null ? ' <span class=nota>(' + D.precipitation_probability_max[i] + ' %)</span>' : '') + '</td>'
+      + '<td>' + Math.round(D.wind_speed_10m_max[i]) + ' <span class=nota>(' + Math.round(D.wind_gusts_10m_max[i]) + ')</span> km/h</td>'
+      + '<td class=nota>' + D.sunrise[i].slice(11, 16) + '–' + D.sunset[i].slice(11, 16) + '</td></tr>';
+  }
+  tab += '</table>';
+  $('met').className = '';
+  $('met').innerHTML = '<p class=nota style="margin:0 0 6px"><b>Hoje, hora a hora</b> (temperatura, probabilidade e quantidade de chuva, vento):</p>' + hoje
+    + '<p class=nota style="margin:10px 0 6px"><b>Próximos 7 dias</b>:</p>' + tab;
+  $('metNota').textContent = '(Open-Meteo, para ' + meio.la.toFixed(3) + ', ' + meio.lo.toFixed(3) + ' a ' + alt + ' m de altitude; hora de Lisboa)';
+}
+
 (async () => {
   try {
     const t = await trilho();
     $('nome').textContent = t.nome; $('sub').textContent = t.sub; document.title = t.nome + ' — ficha';
     $('mapa').href = 'terreno.html?trilho=' + t.chave;
+    // regresso ao menu: a ficha abre em separador novo a partir da lista; se
+    // ha quem a abriu, fecha-se e volta-se la; senao vai-se ao mapa com o trilho
+    $('voltar').href = 'terreno.html?trilho=' + t.chave;
+    $('voltar').addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (window.opener && !window.opener.closed) { window.close(); }
+      if (document.referrer.includes('terreno.html') && history.length > 1) history.back();
+      else location.href = 'terreno.html?trilho=' + t.chave;
+    });
     // ficheiros
     const gpx = ['<?xml version="1.0" encoding="UTF-8"?>', '<gpx version="1.1" creator="Sombra na Estrela" xmlns="http://www.topografix.com/GPX/1/1">',
       '<trk><name>' + esc(t.nome) + '</name><trkseg>']
@@ -147,7 +270,24 @@ function compoe(zs) {
       [den ? Math.round(100 * sob / den) + ' %' : '—', 'debaixo de árvores (copa ≥ 5 m)'],
       [e.pontos.toLocaleString('pt-PT'), 'pontos'],
     ];
+    // ---- tempo estimado: Tobler pela inclinacao de cada troco, vezes um
+    // factor do tipo de chao (lido do mapa) e da altitude. Sem paragens.
+    const est = estimaTempo(Ts, t.pts, e);
+    cartoes.push([hm(est.total), 'tempo estimado (a andar)']);
+    if (e.dur) cartoes.push([Math.round(100 * e.dur / est.total) + ' %', 'registado / estimado']);
     $('cartoes').innerHTML = cartoes.map(([v, l]) => '<div class=c><b>' + esc(v) + '</b><i>' + esc(l) + '</i></div>').join('');
+    let te = '<table><tr><th>terreno</th><th>km</th><th>tempo</th><th>ritmo</th></tr>';
+    for (const r of est.linhas) te += '<tr><td>' + esc(r.nome) + '</td><td>' + (r.m / 1000).toFixed(1).replace('.', ',') + '</td><td>' + hm(r.s) + '</td><td>' + (r.m ? (r.s / 60 / (r.m / 1000)).toFixed(0) + ' min/km' : '—') + '</td></tr>';
+    te += '<tr><th>total a andar</th><th>' + (est.m / 1000).toFixed(1).replace('.', ',') + '</th><th>' + hm(est.total) + '</th><th>' + (est.total / 60 / (est.m / 1000)).toFixed(0) + ' min/km</th></tr>';
+    if (e.dur) te += '<tr><td>registado (do início ao fim, com paragens)</td><td></td><td>' + hm(e.dur) + '</td><td>' + (e.dur / 60 / (est.m / 1000)).toFixed(0) + ' min/km</td></tr>';
+    te += '</table><p class=nota>Velocidade de Tobler pela inclinação de cada troço (6 km/h no plano suave), '
+      + 'vezes o factor do tipo de chão lido do mapa (caminho 1,0 · erva/chão nu 0,85 · mato rasteiro 0,8 · floresta 0,7–0,8 · blocos de rocha 0,6 · matagal 0,55) '
+      + 'e menos 4 % por cada 300 m acima dos 1200 m. É tempo a andar, sem paragens'
+      + (e.dur ? '; o registado inclui as paragens.' : '.') + '</p>';
+    $('estimado').innerHTML = te;
+    $('tempoNota').textContent = '(' + est.n + ' troços)';
+    // ---- previsao: Open-Meteo no meio do trilho, a altitude media do trilho
+    previsao(meio, Math.round((e.zmin + e.zmax) / 2)).catch((err) => { $('met').textContent = 'Sem previsão agora (' + err.message + '). Precisa de rede.'; });
     // ---- vista de cima: azulejos Esri (Web Mercator) num canvas, o trilho por cima
     const merc = (lo, la) => [lo / 180 * 20037508.342789244, Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360)) * 6378137];
     const M2 = 20037508.342789244;

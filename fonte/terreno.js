@@ -1763,7 +1763,7 @@ function abreVista(canvas, T, op) {
     roda: (d) => cam.rumo += d,
     // O alcance da densidade cheia muda a quente: e so um uniform e o numero
     // de instancias que se manda desenhar. O buffer nao se toca.
-    d0: (v) => { op.d0 = Math.max(60, Math.min(900, v)); return op.d0; },
+    d0: (v) => { op.d0 = Math.max(60, Math.min(2500, v)); return op.d0; },
     inclina: (d) => cam.incl = trava(cam.incl + d, 0.06, 1.45),
     // O zoom escala tambem a altura do elevador (dz): depois de subir 3 km,
     // aproximar sem isto ia ao encontro de um alvo que ficou no ar e a altura
