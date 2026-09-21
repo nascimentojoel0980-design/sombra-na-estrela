@@ -1412,8 +1412,17 @@ function abreVista(canvas, T, op) {
   const merc = (lo, la) => [lo / 180 * 20037508.342789244,
                             Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360)) * 6378137];
   function nivelPara(d) { return d < 600 ? 18 : d < 1800 ? 17 : d < 5000 ? 16 : 15; }
+  // o nivel nunca pede mais de ~1100 px por bloco: num bloco de 1 km isso e
+  // z17 (20 azulejos); z18 seriam 81 azulejos por bloco e a fila encravava.
+  // Na vista geral (blocos de 3,2 km) fica z15/z16.
+  function nivelMax(b) {
+    const larg = b.x1 - b.x0, laM = T.la0 + (b.y0 + b.y1) / 2 / T.mlat;
+    let z = 19;
+    while (z > 12 && larg / (40075016.68557849 * Math.cos(laM * Math.PI / 180) / Math.pow(2, z) / 256) > 1100) z--;
+    return z;
+  }
   function fotoDoBloco(bi, b, d, fonte) {
-    const z = Math.min(fonte.zmax || 18, nivelPara(d));
+    const z = Math.min(fonte.zmax || 18, nivelPara(d), nivelMax(b));
     for (let zz = z; zz >= 14; zz--) {
       const k = bi + ':' + zz, e = fotos.get(k);
       if (e && e.pronta) { if (zz < z) pedeFoto(bi, b, z, fonte); return e.tex; }
@@ -1423,8 +1432,8 @@ function abreVista(canvas, T, op) {
   }
   function pedeFoto(bi, b, z, fonte) {
     const k = bi + ':' + z;
-    if (fotos.has(k) || fotosAPedir > 6) return;
-    const e = { tex: null, pronta: false }; fotos.set(k, e); fotosAPedir++;
+    if (fotos.has(k) || fotosAPedir >= 4) return;
+    const e = { tex: null, pronta: false, t0: agoraMs() }; fotos.set(k, e); fotosAPedir++;
     const ll0 = T.emLL(b.x0, b.y0), ll1 = T.emLL(b.x1, b.y1);
     const m0 = merc(ll0[0], ll0[1]), m1 = merc(ll1[0], ll1[1]);
     const N = Math.pow(2, z), tam = 40075016.68557849 / N;          // m por azulejo
@@ -1439,16 +1448,22 @@ function abreVista(canvas, T, op) {
     for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) {
       pedidos.push(new Promise((ok) => {
         const im = new Image(); im.crossOrigin = 'anonymous';
+        let feito = false;
+        const fim = (v) => { if (!feito) { feito = true; ok(v); } };
         im.onload = () => {
           const ex0 = tx * tam - 20037508.342789244, ey1 = 20037508.342789244 - ty * tam;
-          cx2.drawImage(im, (ex0 - m0[0]) * sx, (m1[1] - ey1) * sy, tam * sx, tam * sy); ok(true);
+          try { cx2.drawImage(im, (ex0 - m0[0]) * sx, (m1[1] - ey1) * sy, tam * sx, tam * sy); } catch (err) {}
+          fim(true);
         };
-        im.onerror = () => ok(false);
+        im.onerror = () => fim(false);
+        // um azulejo que nunca responde nao pode prender a fila: ao mexer a
+        // camara paravam de chegar fotos e ficava tudo a meio (21/09/2026)
+        setTimeout(() => { if (!feito) { im.src = ''; fim(false); } }, 12000);
         im.src = fonte.url(z, tx, ty);
       }));
     }
     Promise.all(pedidos).then((rs) => {
-      fotosAPedir--;
+      fotosAPedir = Math.max(0, fotosAPedir - 1);
       if (!rs.some(Boolean)) { fotos.delete(k); return; }
       const tex = gl.createTexture(); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, cv2.width, cv2.height, 0, gl.RGB, gl.UNSIGNED_BYTE, cv2);
