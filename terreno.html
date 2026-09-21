@@ -100,6 +100,15 @@
     padding:14px 18px;text-align:center;max-width:82%}
 #versao{font-size:11px;opacity:.55;margin-left:8px;white-space:nowrap;font-variant-numeric:tabular-nums}
   a.ficha{color:#1E5BD8;text-decoration:none;font-weight:600}
+  details.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center}
+  details.sec>summary::-webkit-details-marker{display:none}
+  details.sec>summary h3{flex:1}
+  details.sec>summary::after{content:'▾';margin-right:14px;color:#8A8270;transition:transform .15s}
+  details.sec[open]>summary::after{transform:rotate(180deg)}
+  .tr .estat{display:block;margin-top:6px;padding:8px 10px;background:#fff;border:1px solid var(--linha);border-radius:10px;color:var(--tinta)}
+  .tr .estat i{display:block;font-size:12px;color:#5b5346}
+  .tr .estat .barra{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0 3px}
+  .tr .estat .barra i{flex:1;display:block}
 </style>
 
 <canvas id=c></canvas>
@@ -147,20 +156,24 @@
   <div class=lin><button class=bt id=gravar>Gravar trilho</button>
     <button class=bt id=verMe hidden>Ir para mim</button></div>
 
-  <h3>Trilhos <small id=nTrilhos></small></h3>
+  <details class=sec id=secTrilhos>
+  <summary><h3>Trilhos <small id=nTrilhos></small></h3></summary>
   <div class=lin><input class=busca id=busca type=search placeholder="Procurar por nome ou código"></div>
   <div class=lin><span>Só os desta zona</span>
     <label class=int><input type=checkbox id=soZona checked><i></i></label></div>
   <div id=lista></div>
+  </details>
 
-  <h3>Meus trilhos <small id=nMeus></small></h3>
+  <details class=sec id=secMeus open>
+  <summary><h3>Meus trilhos <small id=nMeus></small></h3></summary>
   <div class=lin>
     <label class="bt" for=gpx>Importar GPX</label>
     <input id=gpx type=file accept=".gpx,application/gpx+xml" hidden>
   </div>
   <div id=meus></div>
+  </details>
 
-  <div id=estat></div>
+  <div id=estat hidden></div>
 
   <h3>No telemóvel <small id=offInfo></small></h3>
   <div class=lin><span>Guardar para usar sem rede<small>a página, a vista geral e as zonas que marcares ficam no aparelho</small></span></div>
@@ -200,7 +213,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=38"></script>
+<script src="fonte/terreno.js?v=39"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
@@ -618,7 +631,8 @@ function pintaLista() {
       + '<b>' + esc(r.nome || 'sem nome') + '</b>'
       + '<i>' + km1(r.km || 0) + ' · ' + (r.el ? '↗ ' + r.el.up + ' m · ' : '')
       + (r.zmin != null ? r.zmin + '–' + r.zmax + ' m' : '')
-      + ' · <a class=ficha href="trilho.html?bd=' + encodeURIComponent(r.id) + '" target=_blank>ficha ↗</a></i></div></div>';
+      + ' · <a class=ficha href="trilho.html?bd=' + encodeURIComponent(r.id) + '" target=_blank>ficha completa ↗</a></i>'
+      + (sel ? '<div class=estat id=estatLinha></div>' : '') + '</div></div>';
   }
   el.innerHTML = html || '<div class=vazio>Nenhum trilho com esse nome' + (so ? ' nesta zona.' : '.') + '</div>';
   $('nTrilhos').textContent = n > 60 ? '(' + n + ', a mostrar 60)' : '(' + n + ')';
@@ -637,6 +651,8 @@ async function escolhe(q) {
   pintaLista(); pintaMeus();
   if (!V) return;
   if (!escolhido) { V.destaque([]); $('estat').innerHTML = ''; return; }
+  // abre a seccao onde o escolhido vive
+  $(escolhido.fonte === 'bd' ? 'secTrilhos' : 'secMeus').open = true;
   const t = trilhoDe(escolhido);
   if (!t) return;
   const dist = Math.max(700, Math.min(4000, (t.km || 3) * 320));
@@ -724,7 +740,11 @@ function mostraEstat(t) {
   } else {
     html += '<i>o trilho está fora desta zona — a sombra não se pode calcular aqui</i>';
   }
-  $('estat').innerHTML = html + '</div></div>';
+  // as estatisticas abrem DENTRO da linha escolhida (so ha uma escolhida de
+  // cada vez, portanto escolher outra fecha a anterior)
+  const alvo = $('estatLinha') || $('estat');
+  alvo.innerHTML = html + '</div></div>';
+  if (alvo.id === 'estatLinha') alvo.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 function barraSol(sol) {
   // uma tira com 60 bocados: quanto de cada bocado esta ao sol
@@ -775,7 +795,7 @@ function pintaMeus() {
       + ' · <a class=ficha href="trilho.html?meu=' + m.id + '" target=_blank>ficha ↗</a>'
       + '<br><label data-ver="' + m.id + '" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px">'
       + '<input type=checkbox' + (m.ver ? ' checked' : '') + '> ver no terreno</label>'
-      + '</i></div><div class=x data-apaga="' + m.id + '">✕</div></div>';
+      + '</i>' + (sel ? '<div class=estat id=estatLinha></div>' : '') + '</div><div class=x data-apaga="' + m.id + '">✕</div></div>';
   }).join('');
 }
 // os trilhos com "ver no terreno" ficam sempre desenhados, cada um na sua cor
