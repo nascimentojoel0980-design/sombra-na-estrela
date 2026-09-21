@@ -1460,16 +1460,21 @@ function abreVista(canvas, T, op) {
   }
   function fotoDoBloco(bi, b, d, fonte) {
     const z = Math.min(fonte.zmax || 18, nivelPara(d), nivelMax(b));
-    for (let zz = z; zz >= 14; zz--) {
-      const k = bi + ':' + zz, e = fotos.get(k);
-      if (e && e.pronta) { if (zz < z) pedeFoto(bi, b, z, fonte); return e.tex; }
+    // Grosso primeiro: z13 sao 1-2 azulejos por bloco e cobre a vista inteira
+    // num instante; o nivel bom vem a seguir e substitui. Antes cada bloco
+    // esperava pelo seu nivel fino e a vista ficava em manta de retalhos.
+    let pronto = null;
+    for (let zz = z; zz >= 12; zz--) {
+      const e = fotos.get(bi + ':' + zz);
+      if (e && e.pronta) { pronto = e.tex; if (zz >= z) return pronto; break; }
     }
-    pedeFoto(bi, b, z, fonte);
-    return null;
+    if (!pronto) pedeFoto(bi, b, Math.min(z, 13), fonte);
+    else pedeFoto(bi, b, z, fonte);
+    return pronto;
   }
   function pedeFoto(bi, b, z, fonte) {
     const k = bi + ':' + z;
-    if (fotos.has(k) || fotosAPedir >= 4) return;
+    if (fotos.has(k) || fotosAPedir >= 6) return;
     const e = { tex: null, pronta: false, t0: agoraMs() }; fotos.set(k, e); fotosAPedir++;
     const ll0 = T.emLL(b.x0, b.y0), ll1 = T.emLL(b.x1, b.y1);
     const m0 = merc(ll0[0], ll0[1]), m1 = merc(ll1[0], ll1[1]);
@@ -1480,6 +1485,7 @@ function abreVista(canvas, T, op) {
     const W = Math.min(2048, Math.round((m1[0] - m0[0]) / mpp)), Hh = Math.min(2048, Math.round((m1[1] - m0[1]) / mpp));
     const cv2 = document.createElement('canvas'); cv2.width = Math.max(16, W); cv2.height = Math.max(16, Hh);
     const cx2 = cv2.getContext('2d');
+    cx2.fillStyle = '#8a8f7a'; cx2.fillRect(0, 0, cv2.width, cv2.height);   // onde faltar azulejo: verde-cinza, nao preto
     const sx = cv2.width / (m1[0] - m0[0]), sy = cv2.height / (m1[1] - m0[1]);
     const pedidos = [];
     for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) {

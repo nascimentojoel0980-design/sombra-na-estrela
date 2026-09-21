@@ -114,9 +114,10 @@
     max-height:80vh;overflow:auto;padding-bottom:6px}
   #visMenu h3{margin:12px 14px 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8270;font-weight:700}
   /* left/top explicitos: a regra generica de canvas (a tela grande) poe inset:0 e ganhava */
-  #mini{position:fixed;left:8px;right:auto;top:auto;bottom:64px;z-index:7;width:min(62vw,360px);height:150px;
+  #mini{position:fixed;left:8px;right:auto;top:auto;bottom:64px;z-index:7;width:300px;height:150px;
     border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.18);background:#E8E2D2;pointer-events:none}
-  @media (max-height:700px){#mini{height:110px}}
+  /* telemovel: largo e baixo, para nao subir acima do ultimo botao da coluna */
+  @media (max-width:640px){#mini{width:62vw;height:92px}}
 </style>
 
 <canvas id=c></canvas>
@@ -225,7 +226,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=43"></script>
+<script src="fonte/terreno.js?v=44"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
@@ -566,7 +567,11 @@ const MINI_CX = [-8.10, 40.00, -7.15, 40.70];
 const miniImg = new Image(); miniImg.src = 'dados/relevo.jpg';
 function pintaMini() {
   const c = $('mini'); if (!c) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
+  if (cw && ch && (c.width !== cw || c.height !== ch)) { c.width = cw; c.height = ch; }
   const g = c.getContext('2d'), W = c.width, H = c.height;
+  g.setTransform(1, 0, 0, 1, 0, 0);
   // Janela do minimapa: centrada na camara e a acompanhar o zoom do mapa
   // grande, mas sempre mais alta (e de apoio, nao se navega nele): meia-largura
   // = 5x a distancia da camara, entre 2 km e a serra inteira. Encosta-se aos
@@ -574,7 +579,7 @@ function pintaMini() {
   const mlon = 111320 * Math.cos(40.35 * Math.PI / 180), mlat = 110540;
   let cm = null; if (V && T) cm = V.camara();
   let meiaW = (MINI_CX[2] - MINI_CX[0]) / 2;                       // graus de lon
-  if (cm) meiaW = Math.min(meiaW, Math.max(2000, cm.dist * 5) / mlon);
+  if (cm) meiaW = Math.min(meiaW, Math.max(6000, cm.dist * 12) / mlon);
   const meiaH = meiaW * mlon / mlat * H / W;                         // graus de lat
   let clo = cm ? cm.lo : (MINI_CX[0] + MINI_CX[2]) / 2, cla = cm ? cm.la : (MINI_CX[1] + MINI_CX[3]) / 2;
   clo = Math.min(MINI_CX[2] - meiaW, Math.max(MINI_CX[0] + meiaW, clo));
@@ -610,9 +615,9 @@ function pintaMini() {
   const kmJan = (jan[2] - jan[0]) * mlon / 1000;
   const passo = kmJan > 40 ? 20 : kmJan > 16 ? 10 : kmJan > 8 ? 5 : kmJan > 3 ? 2 : 1;
   const px = passo * 1000 / mlon / (jan[2] - jan[0]) * W;
-  g.fillStyle = 'rgba(255,253,246,.85)'; g.fillRect(6, H - 14, px + 8, 10);
-  g.fillStyle = '#3A3226'; g.fillRect(10, H - 9, px, 2);
-  g.font = '9px system-ui'; g.fillText(passo + ' km', 10, H - 15);
+  g.fillStyle = 'rgba(255,253,246,.85)'; g.fillRect(6, H - 14 * dpr, px + 8, 10 * dpr);
+  g.fillStyle = '#3A3226'; g.fillRect(10, H - 9 * dpr, px, 2 * dpr);
+  g.font = Math.round(9 * dpr) + 'px system-ui'; g.fillText(passo + ' km', 10, H - 15);
 }
 miniImg.onload = pintaMini;
 
