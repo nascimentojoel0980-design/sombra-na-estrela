@@ -26,6 +26,10 @@
   th{color:var(--fraco);font-weight:600}
   .nota{color:var(--fraco);font-size:12px}
   #estado{color:var(--fraco);font-size:13px}
+  #mapaCx{position:relative}
+  #mapa2d{width:100%;display:block;border-radius:12px;border:1px solid var(--linha);background:#dcd8cc;touch-action:none}
+  #mapaNota{position:absolute;right:8px;bottom:6px;background:rgba(255,253,246,.85);padding:2px 6px;border-radius:6px;font-size:10px}
+  #perfil svg{touch-action:none;cursor:crosshair}
 </style>
 </head>
 <body>
@@ -40,7 +44,9 @@
     <a class=bt id=earth href="#" target=_blank>Google Earth</a>
   </div>
   <div class=grade id=cartoes></div>
-  <h2>Perfil de altitude</h2>
+  <h2>Vista de cima (satélite) <span class=nota>Esri World Imagery · arrasta no perfil para ver o ponto</span></h2>
+  <div id=mapaCx><canvas id=mapa2d></canvas><div id=mapaNota class=nota></div></div>
+  <h2>Perfil de altitude <span class=nota id=perfilNota></span></h2>
   <div id=perfil></div>
   <h2>Sol ao longo do dia <span class=nota id=solNota></span></h2>
   <div id=sol></div>
@@ -142,6 +148,57 @@ function compoe(zs) {
       [e.pontos.toLocaleString('pt-PT'), 'pontos'],
     ];
     $('cartoes').innerHTML = cartoes.map(([v, l]) => '<div class=c><b>' + esc(v) + '</b><i>' + esc(l) + '</i></div>').join('');
+    // ---- vista de cima: azulejos Esri (Web Mercator) num canvas, o trilho por cima
+    const merc = (lo, la) => [lo / 180 * 20037508.342789244, Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360)) * 6378137];
+    const M2 = 20037508.342789244;
+    const mapaC = $("mapa2d"), gm = mapaC.getContext('2d');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const larguraCss = Math.min(720, mapaC.parentNode.clientWidth || 700);
+    mapaC.width = Math.round(larguraCss * dpr); mapaC.height = Math.round(larguraCss * 0.75 * dpr);
+    mapaC.style.height = Math.round(larguraCss * 0.75) + 'px';
+    const mm = t.pts.map((p) => merc(p.lo, p.la));
+    let x0 = Math.min(...mm.map((q) => q[0])), x1 = Math.max(...mm.map((q) => q[0]));
+    let y0 = Math.min(...mm.map((q) => q[1])), y1 = Math.max(...mm.map((q) => q[1]));
+    const marg = Math.max(300, (x1 - x0) * 0.12, (y1 - y0) * 0.12);
+    x0 -= marg; x1 += marg; y0 -= marg; y1 += marg;
+    // manter a proporcao do canvas
+    const razao = mapaC.height / mapaC.width;
+    if ((y1 - y0) / (x1 - x0) < razao) { const c = (y0 + y1) / 2, h2 = (x1 - x0) * razao / 2; y0 = c - h2; y1 = c + h2; }
+    else { const c = (x0 + x1) / 2, w2 = (y1 - y0) / razao / 2; x0 = c - w2; x1 = c + w2; }
+    // zoom: o que da ~1 px de ecra por pixel de azulejo
+    let z = 17;
+    while (z > 12 && (x1 - x0) / (2 * M2 / Math.pow(2, z) / 256) > mapaC.width) z--;
+    const tam = 2 * M2 / Math.pow(2, z), sx = mapaC.width / (x1 - x0), sy = mapaC.height / (y1 - y0);
+    const X2 = (x) => (x - x0) * sx, Y2 = (y) => (y1 - y) * sy;
+    const tx0 = Math.floor((x0 + M2) / tam), tx1 = Math.floor((x1 + M2) / tam);
+    const ty0 = Math.floor((M2 - y1) / tam), ty1 = Math.floor((M2 - y0) / tam);
+    let cursorIdx = 0;
+    const pintaMapa = () => {
+      gm.setTransform(1, 0, 0, 1, 0, 0);
+      // fundo ja tem os azulejos (desenhados a medida que chegam); trilho por cima
+      gm.lineWidth = 4 * dpr; gm.lineJoin = 'round'; gm.lineCap = 'round';
+      gm.strokeStyle = 'rgba(255,253,246,.9)'; gm.beginPath();
+      mm.forEach((q, i) => i ? gm.lineTo(X2(q[0]), Y2(q[1])) : gm.moveTo(X2(q[0]), Y2(q[1]))); gm.stroke();
+      gm.lineWidth = 2.2 * dpr; gm.strokeStyle = '#D8302B'; gm.stroke();
+      const pt = (q, cor, r) => { gm.beginPath(); gm.arc(X2(q[0]), Y2(q[1]), r * dpr, 0, 6.283); gm.fillStyle = cor; gm.fill(); gm.strokeStyle = '#fff'; gm.lineWidth = 1.5 * dpr; gm.stroke(); };
+      pt(mm[0], '#2a8f4a', 5); pt(mm[mm.length - 1], '#3A3226', 5);
+      pt(mm[Math.min(mm.length - 1, cursorIdx)], '#1E5BD8', 6);
+    };
+    const fundo = document.createElement('canvas'); fundo.width = mapaC.width; fundo.height = mapaC.height;
+    const gf = fundo.getContext('2d'); gf.fillStyle = '#8a8f7a'; gf.fillRect(0, 0, fundo.width, fundo.height);
+    const redesenha = () => { gm.setTransform(1, 0, 0, 1, 0, 0); gm.drawImage(fundo, 0, 0); pintaMapa(); };
+    redesenha();
+    let azFaltam = 0;
+    for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) {
+      azFaltam++;
+      const im = new Image(); im.crossOrigin = 'anonymous';
+      im.onload = () => { const ex0 = tx * tam - M2, ey1 = M2 - ty * tam;
+        gf.drawImage(im, X2(ex0), Y2(ey1), tam * sx, tam * sy); azFaltam--; redesenha(); };
+      im.onerror = () => { azFaltam--; };
+      im.src = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + ty + '/' + tx;
+    }
+    $('mapaNota').textContent = 'Esri, Maxar, Earthstar Geographics · z' + z;
+
     // perfil
     const W = 700, H = 220, m = { l: 44, r: 10, t: 10, b: 26 };
     const zs = e.z, ac = e.acum, n = zs.length, zmin = e.zmin - 20, zmax = e.zmax + 20;
@@ -150,7 +207,28 @@ function compoe(zs) {
     let eixos = '';
     for (let z = Math.ceil(zmin / 100) * 100; z <= zmax; z += 100) eixos += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(z) + '" y2="' + Y(z) + '" stroke="#eee"/><text x="4" y="' + (Y(z) + 4) + '" font-size="11" fill="#8A8270">' + z + '</text>';
     for (let k = 0; k <= Math.floor(ac[n - 1] / 1000); k++) { const x = m.l + k * 1000 / ac[n - 1] * (W - m.l - m.r); eixos += '<text x="' + x + '" y="' + (H - 8) + '" font-size="11" fill="#8A8270" text-anchor="middle">' + k + '</text>'; }
-    $('perfil').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + eixos + '<path d="' + d + 'L' + X(n - 1) + ',' + Y(zmin) + 'L' + X(0) + ',' + Y(zmin) + 'Z" fill="#E8DFC8"/><path d="' + d + '" fill="none" stroke="#A0522D" stroke-width="2"/></svg>';
+    $('perfil').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '">' + eixos + '<path d="' + d + 'L' + X(n - 1) + ',' + Y(zmin) + 'L' + X(0) + ',' + Y(zmin) + 'Z" fill="#E8DFC8"/><path d="' + d + '" fill="none" stroke="#A0522D" stroke-width="2"/>'
+      + '<line id=cur x1="' + X(0) + '" x2="' + X(0) + '" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="#1E5BD8" stroke-width="1.5"/>'
+      + '<circle id=curP cx="' + X(0) + '" cy="' + Y(zs[0]) + '" r="4" fill="#1E5BD8" stroke="#fff" stroke-width="1.5"/></svg>';
+    // cursor: arrastar no perfil move a linha e o ponto no mapa (o perfil e
+    // sobre os pontos simplificados; o mapa usa os originais -> mapear por distancia)
+    const svg = $('perfil').querySelector('svg');
+    const acumOrig = [0]; for (let i = 1; i < t.pts.length; i++) acumOrig.push(acumOrig[i - 1] + metros(t.pts[i - 1], t.pts[i]));
+    const idxOrig = (dist) => { let lo = 0, hi = acumOrig.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (acumOrig[mid] < dist) lo = mid + 1; else hi = mid; } return lo; };
+    const move = (ev) => {
+      const r = svg.getBoundingClientRect(); const fx = (ev.clientX - r.left) / r.width * W;
+      let i = Math.round((fx - m.l) / (W - m.l - m.r) * (n - 1)); i = Math.max(0, Math.min(n - 1, i));
+      svg.querySelector('#cur').setAttribute('x1', X(i)); svg.querySelector('#cur').setAttribute('x2', X(i));
+      svg.querySelector('#curP').setAttribute('cx', X(i)); svg.querySelector('#curP').setAttribute('cy', Y(zs[i]));
+      cursorIdx = idxOrig(ac[i] / acumOrig[acumOrig.length - 1] * acumOrig[acumOrig.length - 1]);
+      $('perfilNota').textContent = '(' + (ac[i] / 1000).toFixed(2).replace('.', ',') + ' km · ' + Math.round(zs[i]) + ' m)';
+      redesenha();
+    };
+    let aArrastar = false;
+    svg.addEventListener('pointerdown', (ev) => { aArrastar = true; svg.setPointerCapture(ev.pointerId); move(ev); });
+    svg.addEventListener('pointermove', (ev) => { if (aArrastar) move(ev); });
+    svg.addEventListener('pointerup', () => { aArrastar = false; });
+    svg.addEventListener('pointercancel', () => { aArrastar = false; });
     // sol por hora (sombra do monte), com a data de hoje ou a do trilho
     const dia = t.pts.find((p) => p.t) ? new Date(t.pts.find((p) => p.t).t) : new Date();
     let tab = '<table><tr><th>hora</th><th>ao sol (monte)</th><th></th></tr>';
