@@ -95,8 +95,12 @@ const CAMINHOS = [
   // ou sem classificacao no OSM) sem piso conhecido cuja maioria dos vertices
   // cai em URBANO da COS. Uma rua dentro de uma povoacao esta alcatroada,
   // e pintava-se de cinzento claro como um caminho rural (21/09/2026).
-  { n: 'urbana',   limpo:  5, larg: 4.0, cor: [0.38, 0.38, 0.40], inferida: 'caminho em zona urbana da COS' },
+  { n: 'urbana',   limpo:  5, larg: 4.0, cor: [0.38, 0.38, 0.40], inferida: 'rua residencial ou de serviço; ou caminho em urbano da COS', legenda: 'urbana' },
+  { n: 'autoestrada', limpo: 14, larg: 12.0, cor: [0.14, 0.14, 0.16], eixo: true, legenda: 'auto-estrada / IP' },
 ];
+// nomes que a legenda mostra (o codigo interno fica)
+const NOME_CAMINHO = { nacional: 'nacional (N)', estrada: 'municipal / secundária', estradao: 'estradão',
+                       caminho: 'rural sem classificação', trilho: 'trilho', rio: 'rio', ribeira: 'ribeira', levada: 'levada' };
 // Os pontos com nome agrupam-se por cor: a legenda da pagina le isto.
 const GRUPO_PONTO = {
   cume: 'cume', povoacao: 'povoacao', aldeia: 'povoacao',
@@ -487,7 +491,7 @@ function semeiaTudo(T, op) {
 if (typeof module !== 'undefined') module.exports = { carregaTerreno, malhaTerreno, semeiaTudo, CLASSES, BLOCO, D0 };
 // ARMADILHA 11: um const de topo NAO esta no window. A pagina precisa destas
 // tabelas para desenhar a legenda, por isso pendura-se aqui explicitamente.
-if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, PONTOS_LEGENDA, PISOS, FOTO_FONTES };
+if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, NOME_CAMINHO, PONTOS_LEGENDA, PISOS, FOTO_FONTES };
 
 // ===========================================================================
 // O desenho. WebGL2 directo, sem biblioteca de mapa por baixo.

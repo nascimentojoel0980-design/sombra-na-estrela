@@ -226,7 +226,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=44"></script>
+<script src="fonte/terreno.js?v=45"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
@@ -495,8 +495,9 @@ const d0 = document.getElementById('d0');
        + esc(nome) + '<span class=md>' + q + '</span></div>';
   }
   h += '</div><div class=g><div class=t>Caminhos e água</div>';
-  for (const c of L.CAMINHOS) {
-    const nome = c.n === 'estradao' ? 'estradão' : c.n;
+  const ordem = ['autoestrada', 'nacional', 'estrada', 'urbana', 'caminho', 'estradao', 'trilho', 'rio', 'ribeira', 'levada'];
+  for (const c of L.CAMINHOS.slice().sort((a, b) => ordem.indexOf(a.n) - ordem.indexOf(b.n))) {
+    const nome = c.legenda || (L.NOME_CAMINHO && L.NOME_CAMINHO[c.n]) || c.n;
     const fundo = c.eixo
       ? 'linear-gradient(' + hex(c.cor) + ' 40%, #f4f0db 40%, #f4f0db 60%, ' + hex(c.cor) + ' 60%)'
       : hex(c.cor);

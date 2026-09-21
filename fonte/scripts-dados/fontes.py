@@ -223,3 +223,30 @@ def agua_permanente(pasta, caixa, minimo=0.75, meses_min=6):
         raise SystemExit('agua mensal: nenhuma folha toca a caixa')
     frac = np.where(vistos >= meses_min, agua / np.maximum(vistos, 1), 0.0)
     return (frac >= minimo).astype(np.float32), cx, meses
+
+
+# ------------------------------------------------------------------ vias OSM
+# osm-vias/vias_<lon>_<lat>.geojson: ways do OSM com a classe ORIGINAL
+# (highway), por folha de 0,3 graus, ways inteiras (repetidas entre folhas:
+# dedup pelo id). Propriedades: id, h, ref, n, s, tt, d, oneway.
+def vias(pasta, caixa):
+    """(h, s, ref, linha [(lon,lat),...]) por way que toca a caixa, sem repetidos."""
+    lo0, la0, lo1, la1 = caixa
+    fs = folhas(os.path.join(pasta, 'osm-vias'), 'vias', 'geojson', caixa)
+    vistos = set()
+    for f in fs:
+        with open(f, encoding='utf-8') as fh:
+            for lin in fh:
+                lin = lin.strip().rstrip(',')
+                if not lin.startswith('{"type":"Feature"'): continue
+                ft = json.loads(lin); p = ft.get('properties') or {}
+                if p.get('id') in vistos: continue
+                cs = ft['geometry']['coordinates']
+                xs = [c[0] for c in cs]; ys = [c[1] for c in cs]
+                if max(xs) < lo0 or min(xs) > lo1 or max(ys) < la0 or min(ys) > la1: continue
+                vistos.add(p.get('id'))
+                yield p.get('h'), p.get('s'), p.get('ref'), [(float(x), float(y)) for x, y in cs]
+
+
+def ha_vias(pasta, caixa):
+    return bool(folhas(os.path.join(pasta, 'osm-vias'), 'vias', 'geojson', caixa))

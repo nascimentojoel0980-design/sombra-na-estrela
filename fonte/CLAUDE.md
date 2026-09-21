@@ -414,3 +414,20 @@ Regras acrescentadas a 20/09/2026 depois da fotografia do Covão da Ametade
   não se desenha (10/11 eram granito no ortofoto). O OSM passa sempre.
 - **lagoa do OSM sem água na COS** é zona húmida (12), não espelho de água.
 - o boletim tem **prova de posição**: telhados sobre urbano/agrícola ≥ 50 %.
+
+### Serra inteira (21/09/2026)
+
+`fonte/scripts-dados/coze_serra.py` coze a área de construção em 56 zonas finas
+(grelha 8 × 7 ancorada em Manteigas, 0,13° × 0,11°, título pela povoação mais
+perto do centro) e salta as que já estão no índice; correr até não sobrar
+nenhuma. A vista geral (`serra`, 50 m, sem plantas) é cozida à parte com
+`--sem-plantas --sem-curvas --so-caminhos nacional,estrada,rio`. As zonas
+grossas (≥ 20 m) têm boletim próprio: coerência de floresta com as finas
+aprovadas em vez de textura do ortofoto. **Cuidado com `pkill -f`/`pgrep -f`
+em comandos que contenham o próprio padrão** — matou a shell duas vezes; usar
+padrões ancorados (`^python3 …`).
+
+Vias: quando existe `sne-dados-fonte/osm-vias/`, o construtor lê as ways do
+OSM com o `highway` original (`HIGHWAY` → autoestrada, nacional, municipal,
+urbana, rural, estradão, trilho); sem elas, os azulejos com 5 tipos. O motor
+infere "urbana" para caminhos sem piso em urbano da COS.

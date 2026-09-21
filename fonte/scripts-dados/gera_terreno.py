@@ -59,9 +59,19 @@ PONTOS = ['cume', 'povoacao', 'aldeia', 'abrigo', 'agua', 'miradouro', 'info',
 # cada lado do eixo: uma nacional abre mais do que um trilho de cabras.
 # Nao e enfeite -- e o que faz o caminho ler-se de cima por entre as copas.
 TIPO_CAM = {'nacional': 0, 'estrada': 1, 'estradao': 2, 'caminho': 3, 'trilho': 4,
-            'rio': 5, 'ribeira': 6, 'levada': 7}
+            'rio': 5, 'ribeira': 6, 'levada': 7, 'urbana': 8, 'autoestrada': 9}
 LIMPO = {'nacional': 11.0, 'estrada': 9.0, 'estradao': 6.0, 'caminho': 5.0, 'trilho': 4.0,
-         'rio': 4.0, 'ribeira': 2.0, 'levada': 1.5}
+         'rio': 4.0, 'ribeira': 2.0, 'levada': 1.5, 'urbana': 5.0, 'autoestrada': 14.0}
+# highway do OSM (vias do armazem) -> tipo do motor. Os azulejos antigos so
+# tinham 5 tipos; com a classe original separam-se autoestrada, nacional,
+# municipal (estrada), urbana e rural (caminho).
+HIGHWAY = {'motorway': 'autoestrada', 'motorway_link': 'autoestrada', 'trunk': 'autoestrada', 'trunk_link': 'autoestrada',
+           'primary': 'nacional', 'primary_link': 'nacional',
+           'secondary': 'estrada', 'secondary_link': 'estrada', 'tertiary': 'estrada', 'tertiary_link': 'estrada',
+           'residential': 'urbana', 'living_street': 'urbana', 'service': 'urbana', 'pedestrian': 'urbana',
+           'unclassified': 'caminho', 'road': 'caminho',
+           'track': 'estradao',
+           'path': 'trilho', 'footway': 'trilho', 'bridleway': 'trilho', 'steps': 'trilho', 'cycleway': 'trilho'}
 # linhas de agua do OSM (camada aguaL): w=river/stream/canal -> tipo do motor
 TIPO_AGUA = {'river': 'rio', 'stream': 'ribeira', 'canal': 'levada', 'drain': 'levada', 'ditch': 'levada'}
 # piso (surface do OSM), guardado ao lado do tipo no bloco CAMS: 0 sem
@@ -584,12 +594,24 @@ def main():
     print('percursos: %d tracados, %s pontos' % (len(rotas), f'{npt:,}'))
 
     # --- estradas, estradoes, caminhos e trilhos
+    # Do armazem (osm-vias, classe original do OSM) quando existe; senao dos
+    # azulejos, que so trazem 5 tipos.
     cams = []
-    for props, g in sem_repetir(
-            (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'caminhos') if gt == 2):
-        t = props.get('t') or 'caminho'
-        if a.so_caminhos and t not in a.so_caminhos.split(','): continue
-        cams.append((TIPO_CAM.get(t, 3), t, g, PISO.get((props.get('s') or '').split(';')[0], 0)))
+    if usa_fontes and fontes.ha_vias(a.fontes, a.caixa):
+        fonte_vias = 'OSM (armazem, highway original)'
+        for h, sup, ref, linha in fontes.vias(a.fontes, a.caixa):
+            t = HIGHWAY.get(h)
+            if not t: continue
+            if a.so_caminhos and t not in a.so_caminhos.split(','): continue
+            cams.append((TIPO_CAM[t], t, linha, PISO.get((sup or '').split(';')[0], 0)))
+    else:
+        fonte_vias = 'azulejos (5 tipos)'
+        for props, g in sem_repetir(
+                (p, gt, gs) for p, gt, gs in varre(pm, a.caixa, a.zsolo, 'caminhos') if gt == 2):
+            t = props.get('t') or 'caminho'
+            if a.so_caminhos and t not in a.so_caminhos.split(','): continue
+            cams.append((TIPO_CAM.get(t, 3), t, g, PISO.get((props.get('s') or '').split(';')[0], 0)))
+    print('vias: %s' % fonte_vias)
     # --- linhas de agua (OSM aguaL). A COS so tem cursos com 20 m de largura
     # e o Sentinel nao ve 3 m: o Zezere no Covao da Ametade nao existia no
     # mapa. Vao no mesmo bloco dos caminhos, com o seu tipo, e o motor
@@ -1114,7 +1136,7 @@ def main():
         'passo': a.passo, 'classe': a.classe,
         'cota': [round(z0), round(z1)],
         'fonte': fonte,
-        'fontes': {'classes': fonte_cos, 'mdt': a.mdt or 'Copernicus 30 m', 'chm': a.chm,
+        'fontes': {'classes': fonte_cos, 'mdt': a.mdt or 'Copernicus 30 m', 'chm': a.chm, 'vias': fonte_vias,
                    'agua': a.agua, 'horizonte_km': round((margem or min(a.alcance, 4000.0)) / 1000) if H is not None else None,
                    'casas': ' + '.join(sorted(fontes_casas)) or None,
                    'penedos_rejeitados': n_penedo},
