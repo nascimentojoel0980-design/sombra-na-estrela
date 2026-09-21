@@ -310,6 +310,23 @@ async function carregaTerreno(url) {
     const ax = d.getUint16(q, true), ay = d.getUint16(q + 2, true);
     T.altv = new Uint8Array(buf.slice(q + 4, q + 4 + ax * ay));
   }
+  // Rugosidade do chao (RMS do residuo do MDT a 2 m, em cm, por celula de
+  // classe): e o que diz onde ha campo de blocos. O CHM nao ve pedras.
+  T.rugo = null;
+  if (B.RUGO) {
+    const q = B.RUGO.o;
+    const rx = d.getUint16(q, true), ry = d.getUint16(q + 2, true);
+    T.rugo = new Uint8Array(buf.slice(q + 4, q + 4 + rx * ry));
+  }
+  // Penedos com posicao medida: pegadas da Microsoft que o cozedor recusou
+  // como casas (pequenas, altas, fora de urbano/agricola). [lo, la, m2]
+  T.penedos = [];
+  if (B.PENE) {
+    let q = B.PENE.o;
+    const n = d.getUint32(q, true); q += 4;
+    for (let i = 0; i < n; i++, q += 12)
+      T.penedos.push({ lo: d.getFloat32(q, true), la: d.getFloat32(q + 4, true), m2: d.getFloat32(q + 8, true) });
+  }
 
   // Mapa de horizonte: por cada no e cada direccao, a que altura o terreno
   // tapa o ceu. E com isto que a sombra e sombra e nao sombreado.
@@ -413,11 +430,19 @@ function semeiaTudo(T, op) {
   // classe rocha (tipo 2) por causa disso seria o erro simetrico.
   const MED_MIN = 3;                   // 0,3 m em decimetros
   const vegetal = (cod) => { const E = CLASSES[cod]; return E && (E.tipo === 0 || E.tipo === 1); };
+  const pedra = (cod) => { const E = CLASSES[cod]; return E && E.tipo === 2; };
   const medido = (i, j) => (T.altv ? T.altv[j * mx + i] : -1);
+  // Blocos: onde ha rugosidade medida, e ela que manda -- nada abaixo de 8 cm
+  // (chao liso, erva sobre laje), densidade a crescer com ela (0,35 m de RMS
+  // = a densidade da classe; ate 3x), e a altura do bloco proporcional
+  // (0,5 a 3,5 m). Sem medicao fica a densidade uniforme da classe, como antes.
+  const RUG_MIN = 8, RUG_REF = 35;
+  const rugo = (i, j) => (T.rugo ? T.rugo[j * mx + i] : -1);
   const quantos = (i, j, cod) => {
-    const m = porCelula[cod];
+    let m = porCelula[cod];
     if (!m) return 0;
     if (vegetal(cod)) { const q = medido(i, j); if (q >= 0 && q < MED_MIN) return 0; }
+    if (pedra(cod)) { const r = rugo(i, j); if (r >= 0) { if (r < RUG_MIN) return 0; m *= Math.min(3, r / RUG_REF); } }
     const n = Math.floor(m);
     return n + (baralha(i, j, 11) < (m - n) ? 1 : 0);
   };
@@ -429,6 +454,10 @@ function semeiaTudo(T, op) {
       if (n) conta[bloco(cx(i), cy(j))] += n;
     }
   }
+  // os penedos medidos, um por pegada
+  const pen = (T.penedos || []).map((p) => { const m = T.emM(p.lo, p.la); return { x: m[0], y: m[1], m2: p.m2 }; })
+    .filter((p) => p.x >= 0 && p.x <= T.larg && p.y >= 0 && p.y <= T.alt);
+  for (const p of pen) conta[bloco(p.x, p.y)]++;
   let total = 0;
   const ini = new Uint32Array(nB + 1);
   for (let b = 0; b < nB; b++) { ini[b] = total; total += conta[b]; }
@@ -463,7 +492,8 @@ function semeiaTudo(T, op) {
       // A altura medida manda em tudo o que e vegetal. A da classe so entra
       // onde nao ha medicao nenhuma -- zonas cozidas sem LiDAR.
       const q = vegetal(cod) ? medido(i, j) : -1;
-      const hBase = q >= MED_MIN ? q / 10 : E.h;
+      let hBase = q >= MED_MIN ? q / 10 : E.h;
+      if (pedra(cod)) { const r = rugo(i, j); if (r >= RUG_MIN) hBase = Math.max(0.5, Math.min(3.5, 3.0 * r / 100)); }
       for (let k = 0; k < n; k++) {
         const x = (i + baralha(i, j, 20 + k)) * larguraCel;
         const y = T.alt - (j + baralha(i, j, 40 + k)) * alturaCel;
@@ -483,6 +513,16 @@ function semeiaTudo(T, op) {
       }
     }
   }
+  // penedos: bola de granito com o raio da pegada, altura 1,2 x raio, posto 0
+  // (e o que se ve sempre: sao os blocos grandes que dao nome ao sitio)
+  pen.forEach((p, k) => {
+    const b = bloco(p.x, p.y), o = cursor[b]++ * 12, o2 = o >> 1;
+    const raio = Math.max(0.8, Math.sqrt(p.m2 / Math.PI)), alt = Math.min(25, raio * 1.2);
+    U16[o2] = Math.min(65535, p.x * kx); U16[o2 + 1] = Math.min(65535, p.y * ky);
+    U16[o2 + 2] = Math.max(0, Math.min(65535, (cotaEm(p.x, p.y) - T.z0) * kz));
+    U8[o + 6] = Math.min(255, Math.round(alt * 10)); U8[o + 7] = Math.min(255, Math.round(raio * 20));
+    U8[o + 8] = 2 | 4; U8[o + 9] = Math.round(baralha(k, 7, 1) * 255); U8[o + 10] = Math.round(baralha(k, 7, 2) * 255); U8[o + 11] = 0;
+  });
   // dentro de cada bloco, ordenar por posto: assim desenhar um prefixo do
   // bloco e desenhar "os primeiros x% de todo o bloco", nao um canto dele.
   const tmp = new Uint8Array(12);
@@ -1640,7 +1680,7 @@ function abreVista(canvas, T, op) {
     }
   }
 
-  let ultimo = 0; const ritmos = [];
+  let ultimo = 0; const ritmos = []; let ultimaProj = null;
   function desenha(ts) {
     if (!vivo) return;
     requestAnimationFrame(desenha);
@@ -1655,6 +1695,7 @@ function abreVista(canvas, T, op) {
     const longe = Math.max(9000, cam.dist * 6);
     const MVP = mult(perspetiva(1.0, W / H, Math.max(2, cam.dist * 0.01), longe),
                      olhar(olho, alvo, [0, 0, 1]));
+    ultimaProj = { MVP, olho, W, H, dpr };            // para api.aoEcra
     const nevoa = longe * 0.75;
     const comuns = (u) => {
       gl.uniformMatrix4fv(u.uMVP, false, MVP);
@@ -1823,6 +1864,18 @@ function abreVista(canvas, T, op) {
   const trava = (v, a, b) => Math.max(a, Math.min(b, v));
   const api = {
     cam, mostrar, conta, T,
+    // onde cai no ecra (px CSS) um ponto do terreno, com a ultima camara
+    // desenhada; null antes do primeiro quadro. 'atras' = fora do campo.
+    aoEcra(lo, la, dz) {
+      if (!ultimaProj) return null;
+      const { MVP, W, H, dpr } = ultimaProj;
+      const m = T.emM(lo, la), x = m[0], y = m[1], z = T.cotaEm(x, y) + (dz || 0);
+      const cx = MVP[0]*x + MVP[4]*y + MVP[8]*z + MVP[12];
+      const cy = MVP[1]*x + MVP[5]*y + MVP[9]*z + MVP[13];
+      const cw = MVP[3]*x + MVP[7]*y + MVP[11]*z + MVP[15];
+      if (cw <= 0) return { x: 0, y: 0, atras: true };
+      return { x: (cx / cw * 0.5 + 0.5) * W / dpr, y: (1 - (cy / cw * 0.5 + 0.5)) * H / dpr, atras: false };
+    },
     ritmo: () => ritmos.length ? ritmos.slice().sort((a, b) => a - b)[ritmos.length >> 1] : 0,
     hora: (quando) => poeSol(quando),
     sol: () => ({ alt: solAlt, az: solAz }),

@@ -1,0 +1,82 @@
+{
+ "terreno": "/home/user/sombra-na-estrela/dados/terreno/c3r6-v17.terr.gz",
+ "linhas": [
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cotas",
+   "passa": true,
+   "texto": "correlacao 0.9984 com o Copernicus 30 m; vies -1.1 m, P90 do desvio 7.3 m",
+   "valor": {
+    "r": 0.9983877352028041,
+    "vies": -1.13348388671875
+   }
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "floresta",
+   "passa": null,
+   "texto": "35% da zona ardeu depois do ortofoto de prova (classe 13): a foto ja nao mostra o chao de hoje",
+   "valor": null
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "cobertura do ortofoto",
+   "passa": null,
+   "texto": "so 0% da caixa tem ortofoto de detalhe: as provas por foto nao se fazem aqui",
+   "valor": null
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "rocha / chao nu / mato",
+   "passa": null,
+   "texto": "quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); vem da COS e nao esta verificada",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "floresta tem copa",
+   "passa": true,
+   "texto": "99.7% das celulas de floresta medem >= 5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "matagal tem copa",
+   "passa": true,
+   "texto": "98.8% do matagal mede >= 1,5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "paredes sao ingremes",
+   "passa": true,
+   "texto": "100.0% das paredes tem declive >= 40 graus",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "agua e plana",
+   "passa": true,
+   "texto": "100.0% da agua tem declive < 12 graus",
+   "valor": null
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "posicao da carta",
+   "passa": true,
+   "texto": "93% dos telhados (21,297) assentam em urbano ou agricola da COS (com a grelha espelhada eram 0,3%)",
+   "valor": {
+    "p": 0.9281588956191013
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "casas",
+   "passa": true,
+   "texto": "282,849 vertices de contorno (ms + osm); 4.12 km2 de urbano na carta. Densidade NAO verificada contra o ortofoto; alturas modeladas onde a fonte nao mede",
+   "valor": {
+    "urbano_km2": 4.116350000000001
+   }
+  }
+ ]
+}

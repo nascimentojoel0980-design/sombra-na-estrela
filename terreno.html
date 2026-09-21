@@ -129,6 +129,13 @@
   .tr .estat .barra{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0 3px}
   .tr .estat .barra i{flex:1;display:block}
   #bts button svg{display:block;margin:auto}
+  #trilhoInfo{position:fixed;z-index:9;padding:10px 12px 8px;max-width:min(300px,calc(100vw - 24px));font-size:13px;line-height:1.4}
+  #trilhoInfo b{display:block;font-size:14px;margin-right:22px}
+  #trilhoInfo i{font-style:normal;color:#8A8270;font-size:12px;display:block}
+  #trilhoInfo .bts{display:flex;gap:6px;margin-top:8px}
+  #trilhoInfo .bt{padding:5px 10px;font-size:12.5px}
+  #trilhoInfo .x{position:absolute;right:6px;top:4px;border:0;background:none;font-size:18px;color:#A0361F;cursor:pointer}
+  #trilhoDica{position:fixed;z-index:9;padding:3px 8px;font-size:12px;pointer-events:none;white-space:nowrap}
   #visMenu{position:fixed;right:60px;top:50%;transform:translateY(-50%);z-index:9;width:min(320px,calc(100vw - 76px));
     max-height:80vh;overflow:auto;padding-bottom:6px}
   #visMenu h3{margin:12px 14px 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8270;font-weight:700}
@@ -236,6 +243,8 @@
 </div>
 <canvas id=mini width=360 height=150 title="onde estás na serra (apoio)"></canvas>
 
+<div id=trilhoInfo class=caixa hidden></div>
+<div id=trilhoDica class=caixa hidden></div>
 <div id=legBox class=caixa>
   <details id=legenda>
     <summary>Legenda</summary>
@@ -251,7 +260,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=49"></script>
+<script src="fonte/terreno.js?v=50"></script>
 <script src="fonte/previsao.js?v=3"></script>
 <script>
 const VER = '11';
@@ -706,6 +715,86 @@ for (const b of document.querySelectorAll('#bts button[data-a]')) {
   b.addEventListener('pointerleave', para);
 }
 cv.addEventListener('pointerdown', () => document.getElementById('menu').classList.remove('on'));
+
+// ---- tocar num trilho no mapa: atalho e resumo. Um toque curto (sem
+// arrastar) procura o trilho mais perto do dedo, em pixeis de ecra, entre os
+// que tocam a zona; no PC, passar o rato mostra so o nome.
+const pick = { chave: null, itens: [] };
+function pickItens() {
+  const chave = zonaObj ? zonaObj.nome + '|' + MEUS.length + '|' + BD.length : null;
+  if (pick.chave === chave) return pick.itens;
+  pick.chave = chave; pick.itens = [];
+  if (!T) return pick.itens;
+  for (const r of BD) {
+    if (!tocaZona(r)) continue;
+    const pts = simplificaTrilho(paraPontos(geoDe(r)), 20);
+    pick.itens.push({ fonte: 'bd', id: r.id, nome: r.nome || 'sem nome', ref: r.ref, km: r.km, el: r.el, zmin: r.zmin, zmax: r.zmax, pts });
+  }
+  for (const m of MEUS) {
+    const pts = simplificaTrilho(m.pts, 20);
+    if (!pts.some((p) => p.lo >= T.lo0 && p.lo <= T.lo1 && p.la >= T.la0 && p.la <= T.la1)) continue;
+    pick.itens.push({ fonte: 'meu', id: m.id, nome: m.nome, km: m.est && m.est.km, el: m.est && { up: m.est.sobe, down: m.est.desce }, zmin: m.est && m.est.zmin, zmax: m.est && m.est.zmax, pts, meu: m });
+  }
+  return pick.itens;
+}
+function trilhoPerto(x, y, raio) {
+  if (!V) return null;
+  let melhor = null, dm = raio;
+  for (const it of pickItens()) {
+    let ant = null;
+    for (const p of it.pts) {
+      const e = V.aoEcra(p.lo, p.la, 1.5);
+      if (!e || e.atras) { ant = null; continue; }
+      if (ant) {
+        // distancia ponto-segmento no ecra
+        const vx = e.x - ant.x, vy = e.y - ant.y, l2 = vx * vx + vy * vy;
+        const t = l2 ? Math.max(0, Math.min(1, ((x - ant.x) * vx + (y - ant.y) * vy) / l2)) : 0;
+        const d = Math.hypot(x - (ant.x + t * vx), y - (ant.y + t * vy));
+        if (d < dm) { dm = d; melhor = it; }
+      } else { const d = Math.hypot(x - e.x, y - e.y); if (d < dm) { dm = d; melhor = it; } }
+      ant = e;
+    }
+  }
+  return melhor;
+}
+function mostraTrilhoInfo(it, x, y) {
+  const el = $('trilhoInfo');
+  const ficha = it.fonte === 'bd' ? 'trilho.html?bd=' + encodeURIComponent(it.id) : 'trilho.html?meu=' + it.id;
+  el.innerHTML = '<button class=x aria-label="fechar">×</button><b>' + esc(it.nome) + '</b>'
+    + (it.ref ? '<i>' + esc(it.ref) + '</i>' : '')
+    + '<i>' + (it.km != null ? km1(it.km) : '—') + (it.el && it.el.up != null ? ' · ↗ ' + Math.round(it.el.up) + ' m' : '') + (it.el && it.el.down != null ? ' · ↘ ' + Math.round(it.el.down) + ' m' : '')
+    + (it.zmin != null ? ' · ' + Math.round(it.zmin) + '–' + Math.round(it.zmax) + ' m' : '') + '</i>'
+    + '<div class=bts><a class="bt" href="' + ficha + '" target=_blank>Ficha completa ↗</a><button class=bt data-esc>' + (escolhido && escolhido.fonte === it.fonte && String(escolhido.id) === String(it.id) ? 'Largar' : 'Escolher') + '</button></div>';
+  el.hidden = false;
+  const w = el.offsetWidth, h = el.offsetHeight;
+  el.style.left = Math.max(8, Math.min(innerWidth - w - 8, x + 12)) + 'px';
+  el.style.top = Math.max(8, Math.min(innerHeight - h - 8, y - h - 12 > 8 ? y - h - 12 : y + 16)) + 'px';
+  el.querySelector('.x').onclick = () => { el.hidden = true; };
+  el.querySelector('[data-esc]').onclick = () => { el.hidden = true; escolhe({ fonte: it.fonte, id: it.id }); };
+}
+let toque = null;
+document.addEventListener('pointerdown', (e) => {
+  if (e.target !== cv) { if (!e.target.closest('#trilhoInfo')) $('trilhoInfo').hidden = true; return; }
+  toque = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, n: 1 };
+}, true);
+document.addEventListener('pointerup', (e) => {
+  if (!toque || e.pointerId !== toque.id) return;
+  const t = toque; toque = null;
+  if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 6 || performance.now() - t.t > 600) return;
+  const it = trilhoPerto(e.clientX, e.clientY, 18);
+  $('trilhoDica').hidden = true;
+  if (it) mostraTrilhoInfo(it, e.clientX, e.clientY); else $('trilhoInfo').hidden = true;
+}, true);
+let dicaT = 0;
+document.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse' || e.buttons || e.target !== cv) { if (e.target !== cv) $('trilhoDica').hidden = true; return; }
+  const agora = performance.now(); if (agora - dicaT < 120) return; dicaT = agora;
+  const it = trilhoPerto(e.clientX, e.clientY, 12);
+  const d = $('trilhoDica');
+  if (!it) { d.hidden = true; return; }
+  d.textContent = it.nome + (it.km != null ? ' · ' + km1(it.km) : '');
+  d.hidden = false; d.style.left = Math.min(innerWidth - d.offsetWidth - 8, e.clientX + 14) + 'px'; d.style.top = (e.clientY - 28) + 'px';
+});
 
 // ===========================================================================
 // TRILHOS

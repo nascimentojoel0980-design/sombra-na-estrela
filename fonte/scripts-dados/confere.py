@@ -136,7 +136,7 @@ def main():
     ap.add_argument('terreno')
     ap.add_argument('--ortos', default='dados/det')
     ap.add_argument('--dem', default='dados/dem.webp')
-    ap.add_argument('--amostra', type=int, default=300)
+    ap.add_argument('--amostra', type=int, default=2000)
     ap.add_argument('--semente', type=int, default=20260920)
     ap.add_argument('--json', default=None)
     ap.add_argument('--casas-fonte', default='OSM',
@@ -286,9 +286,15 @@ def main():
                   % (100 * ardido))
         elif len(F) >= 20 and len(NF) >= 20:
             dB = coesao(F[:, 0], NF[:, 0]); dC = coesao(F[:, 1], NF[:, 1])
-            ok = bool((dB or 0) > 1.0 or (dC or 0) > 1.0)
+            # d e o d de Cohen entre floresta e chao aberto. O limiar e 0,8 --
+            # o "efeito grande" de Cohen -- e nao 1,0: com 300 amostras o d
+            # tinha +-0,1 de sorteio e a zona c5r4 (montado com pasto) entrava e
+            # saia do indice consoante a tiragem (1,03 na v16, 0,89 na v17;
+            # 0,96 com 2000 amostras, 21/09/2026). Amostra de 2000 por defeito:
+            # o d passa a ter +-0,03 e a decisao deixa de ser sorte.
+            ok = bool((dB or 0) >= 0.8 or (dC or 0) >= 0.8)
             B.ver('floresta', ok, 'contra a textura do ortofoto, %d+%d celulas em nucleo de %d m: '
-                  'brilho d=%.2f, contraste d=%.2f (>1 separa)' % (len(F), len(NF), nuc * T['pc'], dB or 0, dC or 0),
+                  'brilho d=%.2f, contraste d=%.2f (>=0,8 separa, efeito grande de Cohen)' % (len(F), len(NF), nuc * T['pc'], dB or 0, dC or 0),
                   {'d_brilho': dB, 'd_contraste': dC, 'nucleo_m': nuc * T['pc']})
         else:
             B.nao('floresta', 'o ortofoto nao cobre celulas suficientes')
