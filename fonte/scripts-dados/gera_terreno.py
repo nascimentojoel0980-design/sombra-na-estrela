@@ -869,6 +869,10 @@ def main():
         else:
             mask = amostra(za, ca, lonsA, latsA) > 0.5
         base = C & 127; corr = C & 128
+        # tambem a agua medida obedece ao declive: agua persistente numa encosta
+        # de 12 graus e o registo do satelite a escorregar na margem de uma
+        # albufeira, nao agua (c4r6, 21/09/2026: 'agua e plana' chumbava por isso)
+        mask = mask & plano
         novo_ag = mask & (base != 9)
         C = (np.where(mask, 9, base) | corr).astype(np.uint8)
         ac = a.classe * a.classe / 1e6

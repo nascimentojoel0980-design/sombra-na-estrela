@@ -252,19 +252,33 @@ def main():
                 v.append([g.mean(), g.std()])
                 if len(v) >= n: break
             return np.array(v), len(cand)
-        F, nF = amostra(C == 5, a.amostra)
         # Chao ABERTO: erva, chao nu, rocha, e rasteiro onde o laser mede menos
         # de 0,5 m. O rasteiro ate 1,5 m tem textura de arbusto e nas zonas
         # ardidas em 2017 (oeste) confundia-se com a floresta na foto (d=0,8);
         # a pergunta certa e "floresta vs chao aberto", nao "vs tudo o resto".
         aberto = np.isin(C, [3, 7, 10]) | ((C == 6) & ((ALTV < 5) if ALTV is not None else True))
-        NF, _ = amostra(aberto, a.amostra)
+        # E so em NUCLEO: o recorte tem 40 m e a celula 5 m; no carvalhal aberto
+        # do planalto da Guarda uma celula "floresta" e uma copa com pasto a
+        # volta, e o recorte media as duas (d=0,7 em c5r3 sem nucleo, 2,0 com
+        # nucleo de 20 m; Manteigas 1,5 -> 2,3). Compara-se so onde a classe
+        # enche o recorte; se nao houver celulas que cheguem, recua-se.
+        def nucleo(m, n):
+            from numpy.lib.stride_tricks import sliding_window_view as swv
+            if n == 0: return m
+            p = np.pad(m, n, constant_values=False)
+            return swv(p, (2 * n + 1, 2 * n + 1)).all(axis=(2, 3))
+        F = NF = np.array([]); nF = 0
+        for n in (4, 2, 0):
+            F, nF = amostra(nucleo(C == 5, n), a.amostra)
+            NF, _ = amostra(nucleo(aberto, n), a.amostra)
+            if len(F) >= 60 and len(NF) >= 60: nuc = n; break
+        else: nuc = 0
         if len(F) >= 20 and len(NF) >= 20:
             dB = coesao(F[:, 0], NF[:, 0]); dC = coesao(F[:, 1], NF[:, 1])
             ok = bool((dB or 0) > 1.0 or (dC or 0) > 1.0)
-            B.ver('floresta', ok, 'contra a textura do ortofoto, %d+%d celulas: '
-                  'brilho d=%.2f, contraste d=%.2f (>1 separa)' % (len(F), len(NF), dB or 0, dC or 0),
-                  {'d_brilho': dB, 'd_contraste': dC})
+            B.ver('floresta', ok, 'contra a textura do ortofoto, %d+%d celulas em nucleo de %d m: '
+                  'brilho d=%.2f, contraste d=%.2f (>1 separa)' % (len(F), len(NF), nuc * T['pc'], dB or 0, dC or 0),
+                  {'d_brilho': dB, 'd_contraste': dC, 'nucleo_m': nuc * T['pc']})
         else:
             B.nao('floresta', 'o ortofoto nao cobre celulas suficientes')
         cob = 0
