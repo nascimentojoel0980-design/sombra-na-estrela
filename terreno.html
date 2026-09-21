@@ -113,7 +113,6 @@
 <div id=menu class=caixa>
   <div class=lin><span>Troca de zona automática<small>ao aproximar entra na zona fina; ao afastar volta à geral</small></span>
     <label class=int><input type=checkbox id=autoZona checked><i></i></label></div>
-  <div class=lin><button class=bt id=earth type=button>Abrir esta vista no Google Earth</button></div>
   <h3>O que se vê</h3>
   <div class=lin><span>Chão<small id=fotoNota>carta de ocupação (COS + medição)</small></span>
     <select class=esc id=chao><option value="">carta</option><option value="esri">ortofoto (Esri)</option></select></div>
@@ -163,6 +162,11 @@
 
   <div id=estat></div>
 
+  <h3>No telemóvel <small id=offInfo></small></h3>
+  <div class=lin><span>Guardar para usar sem rede<small>a página, a vista geral e as zonas que marcares ficam no aparelho</small></span></div>
+  <div id=offLista></div>
+  <div class=lin><button class=bt id=offTudo type=button>Guardar todas as zonas</button>
+    <button class=bt id=offLimpa type=button>Libertar espaço</button></div>
   <h3>Esta zona</h3>
   <div id=info></div>
   <div class=aviso id=aviso hidden></div>
@@ -178,6 +182,7 @@
   <button data-a=sobe title="subir na vertical">⇧</button>
   <button data-a=desce title="descer na vertical">⇩</button>
   <button id=ecra title="ecrã inteiro">⛶</button>
+  <button id=earth title="abrir esta vista no Google Earth">🌍</button>
 </div>
 
 <div id=legBox class=caixa>
@@ -195,11 +200,12 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=37"></script>
+<script src="fonte/terreno.js?v=38"></script>
 <script>
 const VER = '11';
-const cv = document.getElementById('c'), estado = document.getElementById('estado');
+let cv = document.getElementById('c'); const estado = document.getElementById('estado');
 let V = null, T = null, ZONAS = [], zonaAberta = null;
+const $ = (id) => document.getElementById(id);   // definido aqui em cima: tudo o que vem depois usa-o
 // Um erro de arranque ficava mudo: a pagina dizia "a carregar..." para sempre
 // (21/09/2026). Agora o erro aparece na propria caixa, com a linha, para se
 // poder ler no telemovel e mandar.
@@ -235,11 +241,12 @@ async function arranca() {
     '<option value="' + i + '">' + z.titulo + ' · ' + z.km[0] + '×' + z.km[1] + ' km</option>').join('');
   sel.addEventListener('change', () => abreZona(ZONAS[+sel.value]));
   try { const c = localStorage.getItem('sne-chao'); if (c) { document.getElementById('chao').value = c; document.getElementById('chao').dispatchEvent(new Event('change')); } } catch (e) {}
+  // Comeca-se SEMPRE pela vista geral: e dela que se entra nas finas ao
+  // aproximar ("primeiro serra e depois zona"). A zona guardada so conta se
+  // nao houver geral.
   const guardada = ZONAS.findIndex((z) => z.nome === localStorage.getItem('sne-zona'));
-  // sem zona guardada, abre-se a vista geral (se existir): e dela que se
-  // entra nas finas ao aproximar
   const geral = ZONAS.findIndex((z) => z.classe >= 20);
-  sel.value = String(guardada >= 0 ? guardada : (geral >= 0 ? geral : 0));
+  sel.value = String(geral >= 0 ? geral : (guardada >= 0 ? guardada : 0));
   // vindo da ficha de um trilho ("mostrar no mapa") ou com um sitio pedido
   const q = new URLSearchParams(location.search);
   let pedido = null;
@@ -260,7 +267,64 @@ async function arranca() {
   }
   await abreZona(ZONAS[+sel.value]);
   if (pedido) pedido();
+  pintaOffline();
 }
+
+// ---- no telemovel: a mesma cache do service worker ('ce-v3'), preenchida
+// daqui. Os .terr.gz tem a versao no nome, por isso guardar e so pedir; a
+// pagina, o motor e o indice ja ficam guardados de cada vez que se abre.
+const CACHE_SW = 'ce-v3';
+const urlZona = (z) => 'dados/terreno/' + z.ficheiro + '?v=' + VER;
+async function guardadas() {
+  const out = new Set();
+  try { const c = await caches.open(CACHE_SW);
+    for (const z of ZONAS) if (await c.match(urlZona(z), { ignoreSearch: true })) out.add(z.nome); } catch (e) {}
+  return out;
+}
+async function pintaOffline() {
+  if (!('caches' in window)) { $('offLista').innerHTML = '<div class=vazio>este navegador não guarda para uso sem rede</div>'; return; }
+  const tem = await guardadas();
+  const ordem = ZONAS.slice().sort((a, b) => (b.classe >= 20) - (a.classe >= 20) || a.titulo.localeCompare(b.titulo));
+  $('offLista').innerHTML = ordem.map((z) =>
+    '<label class=lin style="cursor:pointer"><span>' + esc(z.titulo) + '<small>' + (z.bytes / 1e6).toFixed(1) + ' MB'
+    + (z.classe >= 20 ? ' · vista geral' : '') + '</small></span>'
+    + '<input type=checkbox data-off="' + esc(z.nome) + '"' + (tem.has(z.nome) ? ' checked' : '') + '></label>').join('');
+  const mb = ZONAS.filter((z) => tem.has(z.nome)).reduce((a, z) => a + z.bytes, 0) / 1e6;
+  let livre = '';
+  try { const e = await navigator.storage.estimate(); if (e && e.quota) livre = ' · livre ' + ((e.quota - e.usage) / 1e9).toFixed(1) + ' GB'; } catch (e) {}
+  $('offInfo').textContent = tem.size + ' de ' + ZONAS.length + ' zonas, ' + mb.toFixed(0) + ' MB' + livre;
+}
+async function guardaZona(z, cx) {
+  const c = await caches.open(CACHE_SW);
+  if (cx.checked) {
+    cx.disabled = true;
+    try { const r = await fetch(urlZona(z)); if (r.ok) await c.put(urlZona(z), r); else cx.checked = false; }
+    catch (e) { cx.checked = false; alert('Não deu para descarregar ' + z.titulo + ': ' + e.message); }
+    cx.disabled = false;
+  } else {
+    const ks = await c.keys();
+    for (const k of ks) if (k.url.includes('/' + z.ficheiro)) await c.delete(k);
+  }
+  pintaOffline();
+}
+$('offLista').addEventListener('change', (e) => {
+  const cx = e.target.closest('[data-off]'); if (!cx) return;
+  const z = ZONAS.find((zz) => zz.nome === cx.dataset.off); if (z) guardaZona(z, cx);
+});
+$('offTudo').addEventListener('click', async () => {
+  const total = ZONAS.reduce((a, z) => a + z.bytes, 0) / 1e6;
+  if (!confirm('Descarregar todas as zonas (' + total.toFixed(0) + ' MB)? Melhor em Wi-Fi.')) return;
+  for (const cx of $('offLista').querySelectorAll('[data-off]')) {
+    if (cx.checked) continue;
+    cx.checked = true; const z = ZONAS.find((zz) => zz.nome === cx.dataset.off); if (z) await guardaZona(z, cx);
+  }
+});
+$('offLimpa').addEventListener('click', async () => {
+  if (!confirm('Apagar as zonas guardadas no telemóvel? A página volta a ir buscá-las à rede quando forem precisas.')) return;
+  const c = await caches.open(CACHE_SW); const ks = await c.keys();
+  for (const k of ks) if (/\.terr\.gz/.test(k.url)) await c.delete(k);
+  pintaOffline();
+});
 
 // Google Earth na mesma vista: latitude, longitude, altitude do alvo, distancia,
 // campo de visao, rumo, inclinacao. Abre a app no telemovel e o site no PC.
@@ -302,7 +366,14 @@ async function abreZona(z, camIni) {
   if (!z || zonaAberta === z.nome) return;
   zonaAberta = z.nome; zonaObj = z;
   try { localStorage.setItem('sne-zona', z.nome); } catch (e) {}
-  if (V) { V.desliga(); V = null; }
+  if (V) {
+    V.desliga(); V = null;
+    // O desliga() perde o contexto WebGL de proposito (liberta a memoria da
+    // zona anterior). No telemovel, pedir outra vez um contexto a MESMA tela
+    // devolve o contexto perdido e a compilacao dos programas rebenta com
+    // "null" (21/09/2026, ao afastar de Manteigas para a serra). Tela nova.
+    const nova = cv.cloneNode(false); cv.parentNode.replaceChild(nova, cv); cv = nova;
+  }
   diz('a ler ' + z.titulo + '… (' + (z.bytes / 1e6).toFixed(1) + ' MB)');
   const t0 = performance.now();
   try {
@@ -493,7 +564,6 @@ let BD = [];              // os percursos da base de dados
 let MEUS = [];            // os que ele importou ou gravou
 let escolhido = null;     // { fonte: 'bd'|'meu', id }
 
-const $ = (id) => document.getElementById(id);
 const km1 = (v) => v.toFixed(v < 10 ? 1 : 0) + ' km';
 const hm = (s) => s == null ? '' : (s / 3600 | 0) + 'h' + String(Math.round(s / 60) % 60).padStart(2, '0');
 
