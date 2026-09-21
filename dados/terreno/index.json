@@ -3,7 +3,7 @@
   {
    "nome": "c6r4",
    "titulo": "Albardeiros e arredores",
-   "ficheiro": "c6r4-v17.terr.gz",
+   "ficheiro": "c6r4-v18.terr.gz",
    "caixa": [
     -7.36,
     40.42,
@@ -30,9 +30,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.07 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.07 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8810139,
+   "bytes": 8836768,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -42,13 +43,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r5",
    "titulo": "Aldeia Nova e arredores",
-   "ficheiro": "c3r5-v17.terr.gz",
+   "ficheiro": "c3r5-v18.terr.gz",
    "caixa": [
     -7.75,
     40.53,
@@ -75,9 +78,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 13 poligonos recentes, 37.08 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 13 poligonos recentes, 37.08 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8292198,
+   "bytes": 8298822,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -87,13 +91,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r0",
    "titulo": "Aldeia de Santa Margarida e arredores",
-   "ficheiro": "c6r0-v17.terr.gz",
+   "ficheiro": "c6r0-v18.terr.gz",
    "caixa": [
     -7.36,
     40.0,
@@ -120,9 +126,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 1.57 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 1.57 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6214697,
+   "bytes": 6219519,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -132,13 +139,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r6",
    "titulo": "Antas e arredores",
-   "ficheiro": "c4r6-v17.terr.gz",
+   "ficheiro": "c4r6-v18.terr.gz",
    "caixa": [
     -7.62,
     40.64,
@@ -165,9 +174,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 8.86 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 8.86 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4729508,
+   "bytes": 4733240,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -177,13 +187,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r0",
    "titulo": "Atalaia do Campo e arredores",
-   "ficheiro": "c5r0-v17.terr.gz",
+   "ficheiro": "c5r0-v18.terr.gz",
    "caixa": [
     -7.49,
     40.0,
@@ -210,9 +222,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 4.87 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 4.87 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 5720540,
+   "bytes": 5727092,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -222,13 +235,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r3",
    "titulo": "Boiço e arredores",
-   "ficheiro": "c0r3-v17.terr.gz",
+   "ficheiro": "c0r3-v18.terr.gz",
    "caixa": [
     -8.1,
     40.31,
@@ -255,9 +270,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 1.08 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 1.08 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6697928,
+   "bytes": 6701323,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -267,13 +283,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r2",
    "titulo": "Bouça e arredores",
-   "ficheiro": "c4r2-v17.terr.gz",
+   "ficheiro": "c4r2-v18.terr.gz",
    "caixa": [
     -7.62,
     40.2,
@@ -300,9 +318,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 101,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 29.95 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 29.95 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8433746,
+   "bytes": 8456189,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -312,13 +331,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 101,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r2",
    "titulo": "Cabeço do Bulde e arredores",
-   "ficheiro": "c3r2-v17.terr.gz",
+   "ficheiro": "c3r2-v18.terr.gz",
    "caixa": [
     -7.75,
     40.2,
@@ -345,9 +366,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 4,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 116.79 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 116.79 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6948883,
+   "bytes": 6967996,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -357,13 +379,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 4,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r4",
    "titulo": "Carvalhal e arredores",
-   "ficheiro": "c0r4-v17.terr.gz",
+   "ficheiro": "c0r4-v18.terr.gz",
    "caixa": [
     -8.1,
     40.42,
@@ -390,9 +414,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 5.21 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 5.21 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6726308,
+   "bytes": 6728964,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -402,13 +427,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r5",
    "titulo": "Cavadoude e arredores",
-   "ficheiro": "c6r5-v17.terr.gz",
+   "ficheiro": "c6r5-v18.terr.gz",
    "caixa": [
     -7.36,
     40.53,
@@ -435,9 +462,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 2.06 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 2.06 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8855560,
+   "bytes": 8863392,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -447,13 +475,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r1",
    "titulo": "Cavaleiros de Baixo e arredores",
-   "ficheiro": "c1r1-v17.terr.gz",
+   "ficheiro": "c1r1-v18.terr.gz",
    "caixa": [
     -8.01,
     40.09,
@@ -480,9 +510,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 6.35 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 6.35 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8847068,
+   "bytes": 8877984,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -492,13 +523,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r2",
    "titulo": "Cerdeira e arredores",
-   "ficheiro": "c1r2-v17.terr.gz",
+   "ficheiro": "c1r2-v18.terr.gz",
    "caixa": [
     -8.01,
     40.2,
@@ -525,9 +558,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 62.72 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 62.72 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8655756,
+   "bytes": 8662659,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -537,13 +571,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r3",
    "titulo": "Chamusca da Beira e arredores",
-   "ficheiro": "c2r3-v17.terr.gz",
+   "ficheiro": "c2r3-v18.terr.gz",
    "caixa": [
     -7.88,
     40.31,
@@ -570,9 +606,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 14.44 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 14.44 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 9170882,
+   "bytes": 9176843,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -582,13 +619,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r4",
    "titulo": "Chaveiral e arredores",
-   "ficheiro": "c2r4-v17.terr.gz",
+   "ficheiro": "c2r4-v18.terr.gz",
    "caixa": [
     -7.88,
     40.42,
@@ -615,9 +654,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 13.01 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 13.01 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8276519,
+   "bytes": 8280995,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -627,13 +667,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r6",
    "titulo": "Corvos-à-Nogueira e arredores",
-   "ficheiro": "c2r6-v17.terr.gz",
+   "ficheiro": "c2r6-v18.terr.gz",
    "caixa": [
     -7.88,
     40.64,
@@ -660,9 +702,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 5449220,
+   "bytes": 5453563,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -672,13 +715,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r2",
    "titulo": "Escarigo e arredores",
-   "ficheiro": "c6r2-v17.terr.gz",
+   "ficheiro": "c6r2-v18.terr.gz",
    "caixa": [
     -7.36,
     40.2,
@@ -705,9 +750,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 3.52 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 3.52 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7595834,
+   "bytes": 7606887,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -717,13 +763,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r6",
    "titulo": "Esmolfe e arredores",
-   "ficheiro": "c3r6-v17.terr.gz",
+   "ficheiro": "c3r6-v18.terr.gz",
    "caixa": [
     -7.75,
     40.64,
@@ -750,9 +798,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 25.74 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 25.74 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4577596,
+   "bytes": 4586657,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -762,13 +811,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r6",
    "titulo": "Espedrada e arredores",
-   "ficheiro": "c7r6-v17.terr.gz",
+   "ficheiro": "c7r6-v18.terr.gz",
    "caixa": [
     -7.23,
     40.64,
@@ -795,9 +846,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 20.85 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 20.85 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 2364338,
+   "bytes": 2366502,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -807,13 +859,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r2",
    "titulo": "Fajoeira e arredores",
-   "ficheiro": "c2r2-v17.terr.gz",
+   "ficheiro": "c2r2-v18.terr.gz",
    "caixa": [
     -7.88,
     40.2,
@@ -840,9 +894,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 1,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 115.00 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 115.00 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7460743,
+   "bytes": 7463495,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -852,13 +907,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 1,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r1",
    "titulo": "Fatela e arredores",
-   "ficheiro": "c5r1-v17.terr.gz",
+   "ficheiro": "c5r1-v18.terr.gz",
    "caixa": [
     -7.49,
     40.09,
@@ -885,9 +942,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.64 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.64 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7697855,
+   "bytes": 7708731,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -897,13 +955,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r0",
    "titulo": "Fonte Limpa e arredores",
-   "ficheiro": "c0r0-v17.terr.gz",
+   "ficheiro": "c0r0-v18.terr.gz",
    "caixa": [
     -8.1,
     40.0,
@@ -930,9 +990,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 5801914,
+   "bytes": 5806057,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -942,13 +1003,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r2",
    "titulo": "Fontão e arredores",
-   "ficheiro": "c0r2-v17.terr.gz",
+   "ficheiro": "c0r2-v18.terr.gz",
    "caixa": [
     -8.1,
     40.2,
@@ -975,9 +1038,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.05 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.05 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6728585,
+   "bytes": 6733072,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -987,13 +1051,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r1",
    "titulo": "Freixial e arredores",
-   "ficheiro": "c4r1-v17.terr.gz",
+   "ficheiro": "c4r1-v18.terr.gz",
    "caixa": [
     -7.62,
     40.09,
@@ -1020,9 +1086,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 45.74 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 45.74 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7517627,
+   "bytes": 7558889,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1032,13 +1099,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r5",
    "titulo": "Galisteu e arredores",
-   "ficheiro": "c5r5-v17.terr.gz",
+   "ficheiro": "c5r5-v18.terr.gz",
    "caixa": [
     -7.49,
     40.53,
@@ -1065,9 +1134,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 2,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 1.06 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 1.06 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8360631,
+   "bytes": 8367365,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1077,13 +1147,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 2,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r5",
    "titulo": "Gonçalo Bocas e arredores",
-   "ficheiro": "c7r5-v17.terr.gz",
+   "ficheiro": "c7r5-v18.terr.gz",
    "caixa": [
     -7.23,
     40.53,
@@ -1110,9 +1182,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.52 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.52 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 5256723,
+   "bytes": 5267864,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1122,13 +1195,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r0",
    "titulo": "Janeiro de Baixo e arredores",
-   "ficheiro": "c2r0-v17.terr.gz",
+   "ficheiro": "c2r0-v18.terr.gz",
    "caixa": [
     -7.88,
     40.0,
@@ -1155,9 +1230,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 3.82 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 3.82 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7932862,
+   "bytes": 7950021,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1167,13 +1243,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r4",
    "titulo": "Laceiras e arredores",
-   "ficheiro": "c1r4-v17.terr.gz",
+   "ficheiro": "c1r4-v18.terr.gz",
    "caixa": [
     -8.01,
     40.42,
@@ -1200,9 +1278,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 34.81 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 34.81 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8808685,
+   "bytes": 8816312,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1212,13 +1291,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r5",
    "titulo": "Largo Eirô e arredores",
-   "ficheiro": "c1r5-v17.terr.gz",
+   "ficheiro": "c1r5-v18.terr.gz",
    "caixa": [
     -8.01,
     40.53,
@@ -1245,9 +1326,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 0.89 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 0.89 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 9825622,
+   "bytes": 9831119,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1257,13 +1339,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r0",
    "titulo": "Medelim e arredores",
-   "ficheiro": "c7r0-v17.terr.gz",
+   "ficheiro": "c7r0-v18.terr.gz",
    "caixa": [
     -7.23,
     40.0,
@@ -1290,9 +1374,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.44 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.44 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 3642209,
+   "bytes": 3646727,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1302,13 +1387,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r1",
    "titulo": "Meãs e arredores",
-   "ficheiro": "c2r1-v17.terr.gz",
+   "ficheiro": "c2r1-v18.terr.gz",
    "caixa": [
     -7.88,
     40.09,
@@ -1335,9 +1422,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 78.32 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 78.32 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7692751,
+   "bytes": 7710626,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1347,13 +1435,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c2r5",
    "titulo": "Moimenta de Maceira Dão e arredores",
-   "ficheiro": "c2r5-v17.terr.gz",
+   "ficheiro": "c2r5-v18.terr.gz",
    "caixa": [
     -7.88,
     40.53,
@@ -1380,9 +1470,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 10.54 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 10.54 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8920615,
+   "bytes": 8928003,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1392,13 +1483,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r5",
    "titulo": "Mosteiro e arredores",
-   "ficheiro": "c0r5-v17.terr.gz",
+   "ficheiro": "c0r5-v18.terr.gz",
    "caixa": [
     -8.1,
     40.53,
@@ -1425,9 +1518,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6487727,
+   "bytes": 6492532,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1437,13 +1531,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r3",
    "titulo": "Olas e arredores",
-   "ficheiro": "c6r3-v17.terr.gz",
+   "ficheiro": "c6r3-v18.terr.gz",
    "caixa": [
     -7.36,
     40.31,
@@ -1470,9 +1566,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 26.10 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 26.10 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7770434,
+   "bytes": 7829901,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1482,13 +1579,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r1",
    "titulo": "Ourondo e arredores",
-   "ficheiro": "c3r1-v17.terr.gz",
+   "ficheiro": "c3r1-v18.terr.gz",
    "caixa": [
     -7.75,
     40.09,
@@ -1515,9 +1614,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 90.44 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 90.44 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7700036,
+   "bytes": 7706741,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1527,13 +1627,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r0",
    "titulo": "Pampilhosa da Serra e arredores",
-   "ficheiro": "c1r0-v17.terr.gz",
+   "ficheiro": "c1r0-v18.terr.gz",
    "caixa": [
     -8.01,
     40.0,
@@ -1560,9 +1662,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7889659,
+   "bytes": 7894839,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1572,13 +1675,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r1",
    "titulo": "Penamacor e arredores",
-   "ficheiro": "c7r1-v17.terr.gz",
+   "ficheiro": "c7r1-v18.terr.gz",
    "caixa": [
     -7.23,
     40.09,
@@ -1605,9 +1710,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 4.54 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 4.54 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4637497,
+   "bytes": 4645140,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1617,13 +1723,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r4",
    "titulo": "Pinhanços e arredores",
-   "ficheiro": "c3r4-v17.terr.gz",
+   "ficheiro": "c3r4-v18.terr.gz",
    "caixa": [
     -7.75,
     40.42,
@@ -1650,9 +1758,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 16,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 1.86 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 1.86 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8166029,
+   "bytes": 8173017,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1662,13 +1771,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 16,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r5",
    "titulo": "Ponte Nova e arredores",
-   "ficheiro": "c4r5-v17.terr.gz",
+   "ficheiro": "c4r5-v18.terr.gz",
    "caixa": [
     -7.62,
     40.53,
@@ -1695,9 +1806,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 0.88 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 0.88 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8573438,
+   "bytes": 8579747,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1707,13 +1819,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r4",
    "titulo": "Portela de Folgosinho e arredores",
-   "ficheiro": "c4r4-v17.terr.gz",
+   "ficheiro": "c4r4-v18.terr.gz",
    "caixa": [
     -7.62,
     40.42,
@@ -1740,9 +1854,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 85,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 0.58 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 0.58 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8187239,
+   "bytes": 8194621,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1752,13 +1867,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 85,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r1",
    "titulo": "Póvoa Palhaça e arredores",
-   "ficheiro": "c6r1-v17.terr.gz",
+   "ficheiro": "c6r1-v18.terr.gz",
    "caixa": [
     -7.36,
     40.09,
@@ -1785,9 +1902,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7362537,
+   "bytes": 7368646,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1797,13 +1915,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r4",
    "titulo": "Quinta da Caravella e arredores",
-   "ficheiro": "c7r4-v17.terr.gz",
+   "ficheiro": "c7r4-v18.terr.gz",
    "caixa": [
     -7.23,
     40.42,
@@ -1830,9 +1950,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 4.92 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 4.92 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 5057571,
+   "bytes": 5066231,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1842,13 +1963,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r6",
    "titulo": "Quinta da Marvela e arredores",
-   "ficheiro": "c5r6-v17.terr.gz",
+   "ficheiro": "c5r6-v18.terr.gz",
    "caixa": [
     -7.49,
     40.64,
@@ -1875,9 +1998,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 6.24 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 6.24 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4572194,
+   "bytes": 4580020,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1887,13 +2011,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r4",
    "titulo": "Quinta da Taberna e arredores",
-   "ficheiro": "c5r4-v17.terr.gz",
+   "ficheiro": "c5r4-v18.terr.gz",
    "caixa": [
     -7.49,
     40.42,
@@ -1920,9 +2046,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 5,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 0 poligonos recentes, 0.00 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 0 poligonos recentes, 0.00 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8276122,
+   "bytes": 8283750,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1932,13 +2059,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 5,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r3",
    "titulo": "Quinta do Clérigo e arredores",
-   "ficheiro": "c7r3-v17.terr.gz",
+   "ficheiro": "c7r3-v18.terr.gz",
    "caixa": [
     -7.23,
     40.31,
@@ -1965,9 +2094,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 60.24 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 60.24 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4303005,
+   "bytes": 4430529,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1977,13 +2107,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r2",
    "titulo": "Quinta dos Alvercões e arredores",
-   "ficheiro": "c5r2-v17.terr.gz",
+   "ficheiro": "c5r2-v18.terr.gz",
    "caixa": [
     -7.49,
     40.2,
@@ -2010,9 +2142,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 0.65 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 0.65 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7836996,
+   "bytes": 7843641,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2022,13 +2155,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c3r0",
    "titulo": "Rochas de Cima e arredores",
-   "ficheiro": "c3r0-v17.terr.gz",
+   "ficheiro": "c3r0-v18.terr.gz",
    "caixa": [
     -7.75,
     40.0,
@@ -2055,9 +2190,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.90 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.90 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7649722,
+   "bytes": 7655195,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2067,13 +2203,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r1",
    "titulo": "Sandinha e arredores",
-   "ficheiro": "c0r1-v17.terr.gz",
+   "ficheiro": "c0r1-v18.terr.gz",
    "caixa": [
     -8.1,
     40.09,
@@ -2100,9 +2238,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 7014125,
+   "bytes": 7017218,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2112,13 +2251,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c5r3",
    "titulo": "Sarzedo e arredores",
-   "ficheiro": "c5r3-v17.terr.gz",
+   "ficheiro": "c5r3-v18.terr.gz",
    "caixa": [
     -7.49,
     40.31,
@@ -2145,9 +2286,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.10 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.10 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8420800,
+   "bytes": 8426260,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2157,13 +2299,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "serra",
    "titulo": "Serra da Estrela (vista geral)",
-   "ficheiro": "serra-v3.terr.gz",
+   "ficheiro": "serra-v4.terr.gz",
    "caixa": [
     -8.1,
     40.0,
@@ -2190,7 +2334,8 @@
     "horizonte_km": 15,
     "casas": null,
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 152 poligonos recentes, 983.43 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 152 poligonos recentes, 983.43 km2",
+    "rugosidade": null
    },
    "bytes": 8554439,
    "tem": {
@@ -2202,13 +2347,15 @@
     "casas": false,
     "plantas": false,
     "ardidas": true,
+    "rugosidade": false,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r6",
    "titulo": "São Martinho e arredores",
-   "ficheiro": "c1r6-v17.terr.gz",
+   "ficheiro": "c1r6-v18.terr.gz",
    "caixa": [
     -8.01,
     40.64,
@@ -2235,9 +2382,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.01 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.01 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6414204,
+   "bytes": 6418999,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2247,13 +2395,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c4r0",
    "titulo": "São Vicente da Beira e arredores",
-   "ficheiro": "c4r0-v17.terr.gz",
+   "ficheiro": "c4r0-v18.terr.gz",
    "caixa": [
     -7.62,
     40.0,
@@ -2280,9 +2430,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 1,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 55.38 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 55.38 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 6175194,
+   "bytes": 6193211,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2292,13 +2443,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 1,
     "altura_medida": true
    }
   },
   {
    "nome": "torre",
    "titulo": "Torre e Lagoa Comprida",
-   "ficheiro": "torre-v17.terr.gz",
+   "ficheiro": "torre-v18.terr.gz",
    "caixa": [
     -7.75,
     40.31,
@@ -2325,9 +2478,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 163,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 13.29 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 13.29 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8854356,
+   "bytes": 8910643,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2337,13 +2491,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 163,
     "altura_medida": true
    }
   },
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v17.terr.gz",
+   "ficheiro": "manteigas-v18.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -2370,9 +2526,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 742,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.21 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.21 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 8651808,
+   "bytes": 8694461,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2382,13 +2539,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 742,
     "altura_medida": true
    }
   },
   {
    "nome": "c7r2",
    "titulo": "Vale da Senhora da Póvoa e arredores",
-   "ficheiro": "c7r2-v17.terr.gz",
+   "ficheiro": "c7r2-v18.terr.gz",
    "caixa": [
     -7.23,
     40.2,
@@ -2415,9 +2574,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 13.02 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 13.02 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4913842,
+   "bytes": 4918501,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2427,13 +2587,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c0r6",
    "titulo": "Vasconha e arredores",
-   "ficheiro": "c0r6-v17.terr.gz",
+   "ficheiro": "c0r6-v18.terr.gz",
    "caixa": [
     -8.1,
     40.64,
@@ -2460,9 +2622,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.07 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.07 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 3643055,
+   "bytes": 3647425,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2472,13 +2635,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c6r6",
    "titulo": "Velosa e arredores",
-   "ficheiro": "c6r6-v17.terr.gz",
+   "ficheiro": "c6r6-v18.terr.gz",
    "caixa": [
     -7.36,
     40.64,
@@ -2505,9 +2670,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 11.31 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 11.31 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 4386876,
+   "bytes": 4391969,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2517,13 +2683,15 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   },
   {
    "nome": "c1r3",
    "titulo": "Vila Chã e arredores",
-   "ficheiro": "c1r3-v17.terr.gz",
+   "ficheiro": "c1r3-v18.terr.gz",
    "caixa": [
     -8.01,
     40.31,
@@ -2550,9 +2718,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 12.36 km2"
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 12.36 km2",
+    "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m)"
    },
-   "bytes": 9008514,
+   "bytes": 9016424,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2562,6 +2731,8 @@
     "casas": true,
     "plantas": true,
     "ardidas": true,
+    "rugosidade": true,
+    "penedos": 0,
     "altura_medida": true
    }
   }

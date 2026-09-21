@@ -432,11 +432,13 @@ function semeiaTudo(T, op) {
   const vegetal = (cod) => { const E = CLASSES[cod]; return E && (E.tipo === 0 || E.tipo === 1); };
   const pedra = (cod) => { const E = CLASSES[cod]; return E && E.tipo === 2; };
   const medido = (i, j) => (T.altv ? T.altv[j * mx + i] : -1);
-  // Blocos: onde ha rugosidade medida, e ela que manda -- nada abaixo de 8 cm
-  // (chao liso, erva sobre laje), densidade a crescer com ela (0,35 m de RMS
-  // = a densidade da classe; ate 3x), e a altura do bloco proporcional
-  // (0,5 a 3,5 m). Sem medicao fica a densidade uniforme da classe, como antes.
-  const RUG_MIN = 8, RUG_REF = 35;
+  // Blocos: onde ha rugosidade medida, e ela que manda. Calibrado no rug8
+  // real (21/09/2026, Torre e Manteigas): a rocha da COS tem mediana 53-58 cm
+  // e P25 35; a pastagem 18-21; o rasteiro 26-27. Abaixo de 25 cm nao ha
+  // blocos (laje lisa ou erva sobre a laje); 55 cm e a densidade da classe;
+  // sobe ate 3x a 165 cm. Altura do bloco 3 x RMS (0,5 a 3,5 m). Sem medicao
+  // fica a densidade uniforme da classe, como antes.
+  const RUG_MIN = 25, RUG_REF = 55;
   const rugo = (i, j) => (T.rugo ? T.rugo[j * mx + i] : -1);
   const quantos = (i, j, cod) => {
     let m = porCelula[cod];
@@ -1857,7 +1859,7 @@ function abreVista(canvas, T, op) {
 
     if (ultimo) { ritmos.push(ts - ultimo); if (ritmos.length > 60) ritmos.shift(); }
     ultimo = ts;
-    if (op.aoDesenhar) op.aoDesenhar(conta);
+    if (op.aoDesenhar && !soUm) op.aoDesenhar(conta);   // o instantaneo() nao e um quadro da pagina: sem vigiaZona la dentro (abria uma zona dentro de abreZona)
   }
   requestAnimationFrame(desenha);
 

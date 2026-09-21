@@ -962,6 +962,9 @@ def main():
         R = np.where(np.isnan(R), 0, R)
         RUGO = np.clip(np.round(R * 100), 0, 253).astype(np.uint8)
         b7 = (C & 127) == 7
+        # so nas celulas de rocha: e so ai que o motor a usa (blocos), e um
+        # bloco cheio custava 2,5 MB comprimidos por zona (c0r0: 5,8 -> 8,0 MB)
+        RUGO = np.where(b7, RUGO, 0).astype(np.uint8)
         print('rugosidade (rug8): media %.0f cm; nas celulas de rocha %.0f cm, %.0f%% delas >= 8 cm'
               % (RUGO.mean(), RUGO[b7].mean() if b7.any() else 0, 100 * (RUGO[b7] >= 8).mean() if b7.any() else 0))
 
