@@ -64,12 +64,12 @@ def main():
     for cod, cx in zs:
         nome = NOMES.get(cod, cod)
         if a.so and cod != a.so and nome != a.so: continue
-        if nome in feitas and not a.refaz and nome != 'torre':
+        if nome in feitas and not a.refaz:
             print('  %s (%s): ja no indice' % (cod, nome)); continue
         t = titulo(pm, cod, cx)
         cmd = [sys.executable, os.path.join(AQUI, 'gera_terreno.py'), '--nome', nome, '--titulo', t,
                '--caixa'] + ['%.4f' % v for v in cx] + ['--passo', '8', '--classe', '5',
-               '--passo-horizonte', '25', '--versao', str(3 if nome == 'torre' else a.versao)]
+               '--passo-horizonte', '25', '--versao', str(a.versao)]
         if nome == 'manteigas': cmd += ['--ndvi', 'dados/lidar/ndvi2024.tif']
         t0 = time.time()
         print('  %s  %s  %s' % (cod, t, ' '.join('%.2f' % v for v in cx)), flush=True)

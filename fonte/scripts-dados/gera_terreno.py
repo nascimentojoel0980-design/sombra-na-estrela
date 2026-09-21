@@ -45,7 +45,7 @@ DEM_CAIXA = (-8.1, 40.0, -7.15, 40.7)
 
 TAB_G = {'urbano': 1, 'agricola': 2, 'floresta': 3, 'matos': 4,
          'rocha': 5, 'agua': 6, 'outro': 7}
-NOME = {0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
+NOME = {13: 'ardido recente', 0: 'nada', 1: 'urbano', 2: 'agricola', 3: 'pastagens', 4: 'montado',
         5: 'floresta', 6: 'matos', 7: 'rocha', 8: 'parede', 9: 'agua',
         10: 'chao nu', 11: 'matagal', 12: 'zona humida'}
 # COS 2025 nivel 1 -> classe do motor. Igual excepto o 8: no motor o 8 e
@@ -278,6 +278,26 @@ def pinta(destino, gs, cod, caixa, mx, my):
             i0 = max(0, int(math.ceil(xs[k] - 0.5)))
             i1 = min(mx - 1, int(math.floor(xs[k + 1] - 0.5)))
             if i1 >= i0: destino[j, i0:i1 + 1] = cod
+
+
+def recorta_anel(anel, caixa, tol_m=0.0):
+    """Trocos de um anel que ficam dentro da caixa (fechando o anel). Os
+    poligonos das ardidas passam a fronteira; o contorno para na fronteira.
+    tol_m: pontos a menos de tol_m do ultimo guardado saltam-se (os poligonos
+    do ICNF tem vertices de metro em metro; a 50 m de celula isso e so peso)."""
+    lo0, la0, lo1, la1 = caixa
+    mlat = 110540.0; mlon = 111320.0 * math.cos((la0 + la1) / 2 * math.pi / 180)
+    pts = list(anel) + [anel[0]]
+    out, cur = [], []
+    for (x, y) in pts:
+        if lo0 <= x <= lo1 and la0 <= y <= la1:
+            if cur and tol_m > 0 and math.hypot((x - cur[-1][0]) * mlon, (y - cur[-1][1]) * mlat) < tol_m: continue
+            cur.append((float(x), float(y)))
+        else:
+            if len(cur) >= 2: out.append(cur)
+            cur = []
+    if len(cur) >= 2: out.append(cur)
+    return out
 
 
 def abre_corredor(classes, rotas, caixa, mx, my, raio_m):
@@ -901,6 +921,37 @@ def main():
         print('agua medida: %.2f km2  (%.2f km2 que a COS nao tinha)'
               % (mask.sum() * ac, novo_ag.sum() * ac))
 
+    # --- areas ardidas (ICNF), depois de tudo o que decide o chao
+    # Um fogo posterior as fontes (LiDAR Abr-Set 2024, COS 2025) deixa a carta
+    # e o laser a dizer floresta onde ja so ha cinza: classe 13, 'ardido
+    # recente', sem nada de pe. O que ardeu ANTES das fontes ja esta medido
+    # por elas (o laser ve o que ficou); esse fica so como contorno, por ano,
+    # desde 2017, para se ver a historia. Urbano, agricola, agua e parede nao
+    # se pintam de ardido: a casa e a albufeira nao ardem no mapa.
+    ardidas = []                 # (ano, anel recortado a caixa) para o ficheiro
+    n_ardido_rec = 0; km2_ardido = 0.0
+    if not a.sem_fontes and fontes.ha_ardidas(a.fontes):
+        base = C & 127; corr = C & 128
+        Q = np.zeros((my, mx), dtype=np.uint8)
+        n_pol = 0
+        for ano, ini, aneis in fontes.ardidas_poligonos(a.fontes, a.caixa):
+            n_pol += 1
+            if ano >= 2017:
+                for anel in aneis:
+                    for troco in recorta_anel(anel, a.caixa, max(4.0, a.classe)):
+                        ardidas.append((ano, troco))
+            if fontes.ardido_recente(ano, ini):
+                pinta(Q, aneis, 1, a.caixa, mx, my); n_ardido_rec += 1
+        queimado = (Q == 1) & ~np.isin(base, [1, 2, 8, 9])
+        base = np.where(queimado, 13, base)
+        C = (base | corr).astype(np.uint8)
+        if ALTV is not None: ALTV[queimado] = 0
+        km2_ardido = float(queimado.sum()) * a.classe * a.classe / 1e6
+        print('areas ardidas ICNF: %d poligonos tocam a caixa, %d recentes (desde 07/2024) -> %.2f km2 de ardido recente; %d contornos desde 2017'
+              % (n_pol, n_ardido_rec, km2_ardido, len(ardidas)))
+    fonte_ardidas = ('ICNF areas ardidas (recente = fogo desde 07/2024): %d poligonos recentes, %.2f km2'
+                     % (n_ardido_rec, km2_ardido)) if not a.sem_fontes and fontes.ha_ardidas(a.fontes) else None
+
     # --- curvas de nivel (ja vem dos azulejos: nao ha nada a calcular)
     curvas = []
     for props, g in ([] if a.sem_curvas else sem_repetir(
@@ -1068,6 +1119,9 @@ def main():
     saida += linhas_bloco('ROTA', rotas)
     saida += linhas_bloco('CAMS', [g for _, _, g, _ in cams],
                           np.array([[t, piso] for t, _, _, piso in cams], dtype=np.int16))
+    if ardidas:
+        saida += linhas_bloco('ARDI', [g for _, g in ardidas],
+                              np.array([[ano, 0] for ano, _ in ardidas], dtype=np.int16))
     saida += linhas_bloco('CURV', [g for _, _, g in curvas],
                           np.array([[alt, gr] for alt, gr, _ in curvas], dtype=np.int16))
     corpo = bytearray(struct.pack('<I', len(pontos)))
@@ -1139,12 +1193,12 @@ def main():
         'fontes': {'classes': fonte_cos, 'mdt': a.mdt or 'Copernicus 30 m', 'chm': a.chm, 'vias': fonte_vias,
                    'agua': a.agua, 'horizonte_km': round((margem or min(a.alcance, 4000.0)) / 1000) if H is not None else None,
                    'casas': ' + '.join(sorted(fontes_casas)) or None,
-                   'penedos_rejeitados': n_penedo},
+                   'penedos_rejeitados': n_penedo, 'ardidas': fonte_ardidas},
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,
                 'casas': CASA is not None,
-                'plantas': not a.sem_plantas,
+                'plantas': not a.sem_plantas, 'ardidas': bool(ardidas),
                 'altura_medida': ALTV is not None},
     })
     zonas.sort(key=lambda z: z['titulo'])

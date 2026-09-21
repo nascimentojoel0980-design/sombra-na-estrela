@@ -28,7 +28,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 R = 6378137.0
 NOME = {0: 'sem dado', 1: 'urbano', 2: 'agricola', 3: 'pastagem', 4: 'montado',
         5: 'floresta', 6: 'mato rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua',
-        10: 'chao nu', 11: 'matagal', 12: 'zona humida'}
+        10: 'chao nu', 11: 'matagal', 12: 'zona humida', 13: 'ardido recente'}
 
 
 def le(f):
@@ -256,6 +256,8 @@ def main():
         # de 0,5 m. O rasteiro ate 1,5 m tem textura de arbusto e nas zonas
         # ardidas em 2017 (oeste) confundia-se com a floresta na foto (d=0,8);
         # a pergunta certa e "floresta vs chao aberto", nao "vs tudo o resto".
+        # O ardido recente (13) fica de fora dos dois lados: a foto pode ser
+        # de antes do fogo e mostrar pinhal onde o mapa, com razao, ja nao poe.
         aberto = np.isin(C, [3, 7, 10]) | ((C == 6) & ((ALTV < 5) if ALTV is not None else True))
         # E so em NUCLEO: o recorte tem 40 m e a celula 5 m; no carvalhal aberto
         # do planalto da Guarda uma celula "floresta" e uma copa com pasto a

@@ -250,3 +250,44 @@ def vias(pasta, caixa):
 
 def ha_vias(pasta, caixa):
     return bool(folhas(os.path.join(pasta, 'osm-vias'), 'vias', 'geojson', caixa))
+
+
+# ---------------------------------------------------------------- ardidas
+# Cartografia nacional de areas ardidas (ICNF), recortada a area de
+# construcao: icnf-ardidas/ardidas_estrela.gpkg (EPSG 3763). Campo 'Ano' e
+# DH_Inicio (ms desde 1970, guardado como texto).
+# O que conta como "recente": fogo DEPOIS das fontes que medem o que esta de
+# pe -- o LiDAR da DGT voou Abr-Set 2024 (Abr-Jun quase tudo) e a COS 2025
+# e do inicio de 2025. Um fogo de Agosto de 2025 nao esta em nenhuma das duas:
+# a carta e o laser dizem pinhal, e o pinhal ja nao esta la.
+ARDIDO_DESDE_MS = 1719792000000      # 2024-07-01 UTC
+
+
+def ha_ardidas(pasta):
+    return os.path.exists(os.path.join(pasta, 'icnf-ardidas', 'ardidas_estrela.gpkg'))
+
+
+def ardidas_poligonos(pasta, caixa):
+    """(ano, inicio_ms ou None, aneis em graus) dos poligonos que tocam a caixa."""
+    lo0, la0, lo1, la1 = caixa
+    f = os.path.join(pasta, 'icnf-ardidas', 'ardidas_estrela.gpkg')
+    c = sqlite3.connect(f)
+    (tab, srs), = c.execute('select table_name, srs_id from gpkg_contents where data_type=\'features\'').fetchall()
+    xs, ys = _tr('EPSG:4326', 'EPSG:%d' % srs, [lo0, lo1, lo0, lo1], [la0, la0, la1, la1])
+    q = ('select t.Ano, t.DH_Inicio, t.geom from %s t, rtree_%s_geom r '
+         'where t.fid = r.id and r.maxx >= ? and r.minx <= ? and r.maxy >= ? and r.miny <= ?' % (tab, tab))
+    for ano, ini, g in c.execute(q, (min(xs) - 50, max(xs) + 50, min(ys) - 50, max(ys) + 50)):
+        if g is None or ano is None: continue
+        aneis = _para_graus(_gpkg_aneis(g), srs)
+        a0 = np.array(aneis[0])
+        if a0[:, 0].max() < lo0 or a0[:, 0].min() > lo1 or a0[:, 1].max() < la0 or a0[:, 1].min() > la1:
+            continue
+        try: ini = int(float(ini)) if ini not in (None, '') else None
+        except ValueError: ini = None
+        yield int(ano), ini, aneis
+    c.close()
+
+
+def ardido_recente(ano, ini):
+    """Depois das fontes: 2025 em diante, ou 2024 com inicio a partir de Julho."""
+    return ano >= 2025 or (ano == 2024 and ini is not None and ini >= ARDIDO_DESDE_MS)

@@ -61,7 +61,16 @@ const CLASSES = {
   // Zonas humidas da COS 2025 (classe 8 da COS; 8 no motor ja era 'parede').
   // Nao nasce nada: turfeira e lameiro encharcado, nao mato.
   12: { cor: [0.62, 0.76, 0.70] },
+  // Ardido recente: fogo depois das fontes (LiDAR 2024, COS 2025), da carta
+  // do ICNF. Cinza e chao queimado; nao nasce nada. A carta e o laser ainda
+  // dizem pinhal -- e o que la estava quando mediram.
+  13: { cor: [0.40, 0.33, 0.29] },
 };
+// contornos das areas ardidas (ICNF), por ano: a historia do fogo por cima do chao
+const COR_ARDIDA = (ano) => ano >= 2025 ? [0.80, 0.10, 0.08] : ano >= 2024 ? [0.93, 0.48, 0.08]
+                          : ano >= 2022 ? [0.62, 0.20, 0.55] : [0.45, 0.30, 0.12];
+const ARDIDAS_LEGENDA = [{ nome: '2025', cor: COR_ARDIDA(2025) }, { nome: '2024', cor: COR_ARDIDA(2024) },
+                         { nome: '2022–2023', cor: COR_ARDIDA(2022) }, { nome: '2017–2021', cor: COR_ARDIDA(2017) }];
 const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).now();
 // Por onde se anda nao cresce mato. Cada genero tem a sua largura limpa, de
 // cada lado do eixo, e a sua largura desenhada. Nao e enfeite: e o que faz o
@@ -72,7 +81,7 @@ const agoraMs = () => (typeof performance !== 'undefined' ? performance : Date).
 const NOME_CLASSE = {
   0: 'sem dado', 1: 'urbano', 2: 'agrícola', 3: 'pastagem', 4: 'montado',
   5: 'floresta', 6: 'mato rasteiro', 7: 'rocha com blocos', 8: 'parede de rocha',
-  9: 'água', 10: 'chão nu', 11: 'matagal', 12: 'zona húmida',
+  9: 'água', 10: 'chão nu', 11: 'matagal', 12: 'zona húmida', 13: 'ardido recente (fogo desde 07/2024, ICNF)',
 };
 
 const CAMINHOS = [
@@ -263,6 +272,8 @@ async function carregaTerreno(url) {
   T.caminhos = cm.linhas; T.caminhosTipo = cm.extra;   // [tipo, 0] por linha
   const cv = leLinhas(B.CURV, true);
   T.curvas = cv.linhas; T.curvasAlt = cv.extra;    // [alt, mestra] por linha
+  const ar = B.ARDI ? leLinhas(B.ARDI, true) : { linhas: [], extra: [] };
+  T.ardidas = ar.linhas; T.ardidasAno = ar.extra;  // [ano, 0] por contorno
 
   T.pontos = [];
   if (B.PONT) {
@@ -491,7 +502,7 @@ function semeiaTudo(T, op) {
 if (typeof module !== 'undefined') module.exports = { carregaTerreno, malhaTerreno, semeiaTudo, CLASSES, BLOCO, D0 };
 // ARMADILHA 11: um const de topo NAO esta no window. A pagina precisa destas
 // tabelas para desenhar a legenda, por isso pendura-se aqui explicitamente.
-if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, NOME_CAMINHO, PONTOS_LEGENDA, PISOS, FOTO_FONTES };
+if (typeof window !== 'undefined') window.LEGENDA = { CLASSES, NOME_CLASSE, CAMINHOS, NOME_CAMINHO, PONTOS_LEGENDA, PISOS, FOTO_FONTES, ARDIDAS_LEGENDA };
 
 // ===========================================================================
 // O desenho. WebGL2 directo, sem biblioteca de mapa por baixo.
@@ -1252,12 +1263,12 @@ function abreVista(canvas, T, op) {
   let M, BLO, S, texClasse, texHori, texCota, bufInst, aInst, C = [], vivo = true;
   const cam = { x: T.larg / 2, y: T.alt / 2, dist: op.dist || 2400,
                 rumo: op.rumo || 0.6, incl: op.incl == null ? 0.95 : op.incl };
-  const mostrar = { curvas: true, nomes: true, plantas: true,
+  const mostrar = { curvas: true, nomes: true, plantas: true, ardidas: true,
                     caminhos: true, percursos: true, sombra: true,
                     foto: null,          // null = carta; 'esri' = ortofoto drapeado
                     // o caminho por cima das copas, mas nao atraves dos montes
                     porCima: true };
-  const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0 };
+  const conta = { total: 0, desenhadas: 0, triChao: 0, blocosChao: 0, semear: 0, malha: 0, fotosDespejadas: 0, fotosFalhadas: 0 };
   let solAlt = 30, solAz = 180, solV = [0, 0, 1];
   let corDest = [0.10, 0.36, 0.78];
 
@@ -1373,6 +1384,20 @@ function abreVista(canvas, T, op) {
   const fc = fitaCaminhos(T, 0.9); A.grupos = fc.grupos; A.nCam = fc.pos.length / 3;
   if (A.nCam) vbo(P.rota, 'aP', fc.pos, 3);
 
+  // contornos das areas ardidas, um grupo por ano (cada um com a sua cor)
+  A.ardi = gl.createVertexArray(); gl.bindVertexArray(A.ardi); A.gruposArdi = []; A.nArdi = 0;
+  if (T.ardidas && T.ardidas.length) {
+    const porAno = new Map();
+    T.ardidas.forEach((l, i) => { const ano = T.ardidasAno ? T.ardidasAno[i * 2] : 0;   // extra e plano: [ano, 0] por linha if (!porAno.has(ano)) porAno.set(ano, []); porAno.get(ano).push(l); });
+    const partes = []; let ini = 0;
+    for (const ano of [...porAno.keys()].sort((x, y) => x - y)) {
+      const f = new Float32Array(fitaLinhas(T, porAno.get(ano), Math.max(3.0, T.passoC * 0.6), 0.9));
+      partes.push(f); A.gruposArdi.push({ ano, ini, n: f.length / 3 }); ini += f.length / 3;
+    }
+    const tudo = new Float32Array(ini * 3); let k = 0; for (const f of partes) { tudo.set(f, k); k += f.length; }
+    A.nArdi = ini; if (A.nArdi) vbo(P.rota, 'aP', tudo, 3);
+  }
+
   // trilho em destaque e marca de "estou aqui": VAOs proprios, refeitos so
   // quando mudam (o destaque quando se escolhe outro, a marca a cada fixo)
   A.dest = gl.createVertexArray(); A.bufDest = gl.createBuffer(); A.nDest = 0;
@@ -1451,38 +1476,70 @@ function abreVista(canvas, T, op) {
   // imagem (Web Mercator XYZ). O nivel de zoom escolhe-se pela distancia da
   // camara: perto z18 (0,46 m/px), longe z15 (3,6 m/px). Enquanto o nivel bom
   // nao chega usa-se o que houver (mais grosso) ou a carta. Cache pequena.
-  const fotos = new Map();            // chave 'bi:z' -> {tex, pronta}
-  let fotosAPedir = 0;
+  // Guarda-se por bytes e despeja-se o que ha mais tempo nao se ve. Antes a
+  // cache era de 96 texturas e despejava a mais ANTIGA, estivesse a vista ou
+  // nao: numa zona de 11x12 km (132 blocos) ou na serra inteira (600) os
+  // blocos a vista despejavam-se uns aos outros a cada quadro e a vista
+  // piscava entre foto, carta e azulejo grosso (gravacao de 21/09/2026).
+  const fotos = new Map();            // chave 'bi:z' -> {tex, pronta, bytes, usada, falhou}
+  let fotosAPedir = 0, fotosBytes = 0, quadro = 0;
+  const ORC_FOTO = (typeof navigator !== 'undefined' && navigator.deviceMemory && navigator.deviceMemory <= 4) ? 110e6 : 260e6;
   const merc = (lo, la) => [lo / 180 * 20037508.342789244,
                             Math.log(Math.tan(Math.PI / 4 + la * Math.PI / 360)) * 6378137];
-  function nivelPara(d) { return d < 600 ? 18 : d < 1800 ? 17 : d < 5000 ? 16 : 15; }
+  // O nivel de zoom vem do que o ecra consegue mostrar: metros por pixel do
+  // ecra a distancia do bloco contra os metros por pixel do azulejo. Pedir
+  // mais fino do que isso e so peso -- e era o que fazia a serra inteira
+  // pedir z15 para 600 blocos (1 GB de texturas).
+  function nivelPara(mpp, laM) {
+    const z0 = 156543.03392804097 * Math.cos(laM * Math.PI / 180);   // m/px a z0
+    return Math.max(12, Math.min(18, Math.floor(Math.log2(z0 / Math.max(0.05, mpp * 0.75)))));
+  }
   // o nivel nunca pede mais de ~1100 px por bloco: num bloco de 1 km isso e
   // z17 (20 azulejos); z18 seriam 81 azulejos por bloco e a fila encravava.
-  // Na vista geral (blocos de 3,2 km) fica z15/z16.
   function nivelMax(b) {
     const larg = b.x1 - b.x0, laM = T.la0 + (b.y0 + b.y1) / 2 / T.mlat;
     let z = 19;
     while (z > 12 && larg / (40075016.68557849 * Math.cos(laM * Math.PI / 180) / Math.pow(2, z) / 256) > 1100) z--;
     return z;
   }
-  function fotoDoBloco(bi, b, d, fonte) {
-    const z = Math.min(fonte.zmax || 18, nivelPara(d), nivelMax(b));
-    // Grosso primeiro: z13 sao 1-2 azulejos por bloco e cobre a vista inteira
-    // num instante; o nivel bom vem a seguir e substitui. Antes cada bloco
-    // esperava pelo seu nivel fino e a vista ficava em manta de retalhos.
-    let pronto = null;
+  function fotoDoBloco(bi, b, mpp, fonte) {
+    const laM = T.la0 + (b.y0 + b.y1) / 2 / T.mlat;
+    const z = Math.min(fonte.zmax || 18, nivelPara(mpp, laM), nivelMax(b));
+    // Grosso primeiro: tres niveis abaixo sao 1-2 azulejos por bloco e cobre
+    // a vista inteira num instante; o nivel bom vem a seguir e substitui.
+    let pronto = null, zp = -1;
     for (let zz = z; zz >= 12; zz--) {
       const e = fotos.get(bi + ':' + zz);
-      if (e && e.pronta) { pronto = e.tex; if (zz >= z) return pronto; break; }
+      if (e && e.pronta) { pronto = e.tex; zp = zz; e.usada = quadro; break; }
     }
-    if (!pronto) pedeFoto(bi, b, Math.min(z, 13), fonte);
+    // tambem se pode ter uma mais fina do que a precisa (a camara afastou-se)
+    if (!pronto) for (let zz = z + 1; zz <= 18; zz++) {
+      const e = fotos.get(bi + ':' + zz);
+      if (e && e.pronta) { pronto = e.tex; zp = zz; e.usada = quadro; break; }
+    }
+    if (zp >= z) return pronto;
+    if (!pronto) pedeFoto(bi, b, Math.max(12, z - 3), fonte);
     else pedeFoto(bi, b, z, fonte);
     return pronto;
   }
+  function despejaFotos() {
+    if (fotosBytes <= ORC_FOTO) return;
+    // as que nao se viram neste quadro, da mais esquecida para a mais recente
+    const cand = [];
+    for (const [k, e] of fotos) if (e.pronta && e.usada < quadro) cand.push([k, e]);
+    cand.sort((a, b) => a[1].usada - b[1].usada);
+    for (const [k, e] of cand) {
+      if (fotosBytes <= ORC_FOTO * 0.8) break;
+      gl.deleteTexture(e.tex); fotosBytes -= e.bytes; fotos.delete(k); conta.fotosDespejadas++;
+    }
+    // se tudo o que ha esta a vista, fica: despejar o visivel e piscar
+  }
   function pedeFoto(bi, b, z, fonte) {
     const k = bi + ':' + z;
-    if (fotos.has(k) || fotosAPedir >= 6) return;
-    const e = { tex: null, pronta: false, t0: agoraMs() }; fotos.set(k, e); fotosAPedir++;
+    const ja = fotos.get(k);
+    if (ja) { if (ja.falhou && agoraMs() - ja.falhou > 60000) fotos.delete(k); else return; }
+    if (fotosAPedir >= 6) return;
+    const e = { tex: null, pronta: false, bytes: 0, usada: quadro, falhou: 0, t0: agoraMs() }; fotos.set(k, e); fotosAPedir++;
     const ll0 = T.emLL(b.x0, b.y0), ll1 = T.emLL(b.x1, b.y1);
     const m0 = merc(ll0[0], ll0[1]), m1 = merc(ll1[0], ll1[1]);
     const N = Math.pow(2, z), tam = 40075016.68557849 / N;          // m por azulejo
@@ -1505,7 +1562,10 @@ function abreVista(canvas, T, op) {
     }
     Promise.all(pedidos).then((rs) => {
       fotosAPedir = Math.max(0, fotosAPedir - 1);
-      if (!rs.some(Boolean)) { fotos.delete(k); return; }
+      // sem rede: fica marcado como falhado e so se volta a pedir dai a um
+      // minuto (antes apagava-se e pedia-se outra vez no quadro seguinte)
+      if (!rs.some(Boolean)) { e.falhou = agoraMs(); conta.fotosFalhadas++; return; }
+      if (gl.isContextLost()) { fotos.delete(k); return; }
       const tex = gl.createTexture(); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, cv2.width, cv2.height, 0, gl.RGB, gl.UNSIGNED_BYTE, cv2);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
@@ -1513,9 +1573,9 @@ function abreVista(canvas, T, op) {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.generateMipmap(gl.TEXTURE_2D);
-      e.tex = tex; e.pronta = true;
-      // cache: nao passar de 96 texturas
-      if (fotos.size > 96) { for (const [kk, ee] of fotos) { if (ee.pronta && kk !== k) { gl.deleteTexture(ee.tex); fotos.delete(kk); break; } } }
+      e.tex = tex; e.pronta = true; e.bytes = cv2.width * cv2.height * 4;   // RGB8 fica em 4 bytes/px na pratica, sem contar mipmaps
+      e.usada = quadro; fotosBytes += e.bytes;
+      despejaFotos();
     });
   }
 
@@ -1623,7 +1683,7 @@ function abreVista(canvas, T, op) {
       const nv = b.niveis[passoDoBloco(d, T.passo, mppBase * d)];
       let temFoto = 0;
       if (foto) {
-        const tex = fotoDoBloco(bi, b, d, foto);
+        const tex = fotoDoBloco(bi, b, mppBase * d, foto);
         if (tex) { gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tex); temFoto = 1;
                    gl.uniform4f(L.chao.uFotoCaixa, b.x0, b.y0, b.x1, b.y1); }
       }
@@ -1632,6 +1692,8 @@ function abreVista(canvas, T, op) {
       triChao += nv.n / 3; blocosChao++;
     }
     conta.triChao = triChao; conta.blocosChao = blocosChao;
+    conta.fotos = fotos.size; conta.fotosMB = fotosBytes / 1e6;
+    quadro++;
 
     if (mostrar.curvas && A.nCurva) {
       gl.useProgram(P.curva); comuns(L.curva);
@@ -1694,6 +1756,14 @@ function abreVista(canvas, T, op) {
         for (const g of A.grupos) {
           if (!g.n) continue;
           const c = g.eixo ? COR_EIXO : (g.piso && PISOS[g.piso] ? PISOS[g.piso].cor : CAMINHOS[g.tipo].cor);
+          gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
+          gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
+        }
+      }
+      if (mostrar.ardidas && A.nArdi) {
+        gl.bindVertexArray(A.ardi);
+        for (const g of A.gruposArdi) {
+          const c = COR_ARDIDA(g.ano);
           gl.uniform3f(L.rota.uCor, c[0], c[1], c[2]);
           gl.drawArrays(gl.TRIANGLES, g.ini, g.n);
         }

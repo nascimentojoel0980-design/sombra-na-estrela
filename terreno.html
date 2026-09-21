@@ -220,6 +220,8 @@
     <select class=esc id=chao><option value="">carta</option><option value="esri">ortofoto (Esri)</option></select></div>
   <div class=lin><span>Percursos<small>as rotas marcadas</small></span>
     <label class=int><input type=checkbox data-m=percursos checked><i></i></label></div>
+  <div class=lin><span>Áreas ardidas<small>contornos do ICNF por ano, desde 2017</small></span>
+    <label class=int><input type=checkbox data-m=ardidas checked><i></i></label></div>
   <div class=lin><span>Caminhos e trilhos<small>estradas, estradões, trilhos</small></span>
     <label class=int><input type=checkbox data-m=caminhos checked><i></i></label></div>
   <div class=lin><span>Sempre à vista<small>a cor do caminho passa por cima das copas, mas não atravessa os montes</small></span>
@@ -249,7 +251,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=47"></script>
+<script src="fonte/terreno.js?v=48"></script>
 <script src="fonte/previsao.js?v=3"></script>
 <script>
 const VER = '11';
@@ -552,6 +554,12 @@ const d0 = document.getElementById('d0');
      + 'percurso marcado<span class=md>por cima</span></div>'
      + '<div class=it><i class=sw style="background:#9e4530"></i>'
      + 'casas<span class=md>Microsoft + OSM</span></div></div>';
+  if (L.ARDIDAS_LEGENDA) {
+    h += '<div class=g><div class=t>Áreas ardidas (ICNF)</div>';
+    for (const p of L.ARDIDAS_LEGENDA)
+      h += '<div class=it><i class=ln style="background:' + hex(p.cor) + ';width:18px"></i>' + esc(p.nome) + '</div>';
+    h += '<div class=it><span class=md style="margin-left:0">o chão só muda onde o fogo é posterior às fontes (desde 07/2024)</span></div></div>';
+  }
   if (L.PONTOS_LEGENDA) {
     h += '<div class=g><div class=t>Nomes no mapa</div>';
     for (const p of L.PONTOS_LEGENDA)

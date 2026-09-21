@@ -75,7 +75,7 @@
   <h2>Zonas do terreno usadas</h2>
   <div id=zonas class=nota></div>
 </main>
-<script src="fonte/terreno.js?v=47"></script>
+<script src="fonte/terreno.js?v=48"></script>
 <script src="fonte/previsao.js?v=3"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -150,12 +150,12 @@ const CHAO_ANDAR = {
   caminho: ['caminho, estrada ou trilho marcado', 1.0], urbano: ['povoação / campo agrícola', 1.0],
   erva: ['erva, pastagem ou chão nu', 0.85], humida: ['zona húmida / lameiro', 0.7], rasteiro: ['mato rasteiro', 0.8],
   matagal: ['matagal alto (giesta, urze alta)', 0.55], arv: ['floresta aberta', 0.8], mata: ['floresta densa', 0.7],
-  rocha: ['blocos de rocha', 0.6], parede: ['escarpa / parede', 0.4], agua: ['água', 0.5], fora: ['fora do mapa', 0.85],
+  rocha: ['blocos de rocha', 0.6], parede: ['escarpa / parede', 0.4], agua: ['água', 0.5], ardido: ['chão ardido recente', 0.75], fora: ['fora do mapa', 0.85],
 };
 function tipoChao(c) {
   if (c < 0) return 'fora';
   if (c & 128) return 'caminho';
-  return { 0: 'erva', 1: 'urbano', 2: 'urbano', 3: 'erva', 4: 'arv', 5: 'mata', 6: 'rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua', 10: 'erva', 11: 'matagal', 12: 'humida' }[c & 127] || 'erva';
+  return { 0: 'erva', 1: 'urbano', 2: 'urbano', 3: 'erva', 4: 'arv', 5: 'mata', 6: 'rasteiro', 7: 'rocha', 8: 'parede', 9: 'agua', 10: 'erva', 11: 'matagal', 12: 'humida', 13: 'ardido' }[c & 127] || 'erva';
 }
 function estimaTempo(Ts, pts, e) {
   const ps = simplificaTrilho(pts, 5);          // os mesmos pontos que medeTrilho usou (e.z alinha)
