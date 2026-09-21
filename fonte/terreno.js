@@ -1388,7 +1388,8 @@ function abreVista(canvas, T, op) {
   A.ardi = gl.createVertexArray(); gl.bindVertexArray(A.ardi); A.gruposArdi = []; A.nArdi = 0;
   if (T.ardidas && T.ardidas.length) {
     const porAno = new Map();
-    T.ardidas.forEach((l, i) => { const ano = T.ardidasAno ? T.ardidasAno[i * 2] : 0;   // extra e plano: [ano, 0] por linha if (!porAno.has(ano)) porAno.set(ano, []); porAno.get(ano).push(l); });
+    // o extra e plano: [ano, 0] por linha
+    T.ardidas.forEach((l, i) => { const ano = T.ardidasAno ? T.ardidasAno[i * 2] : 0; if (!porAno.has(ano)) porAno.set(ano, []); porAno.get(ano).push(l); });
     const partes = []; let ini = 0;
     for (const ano of [...porAno.keys()].sort((x, y) => x - y)) {
       const f = new Float32Array(fitaLinhas(T, porAno.get(ano), Math.max(3.0, T.passoC * 0.6), 0.9));
