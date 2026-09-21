@@ -444,6 +444,8 @@ def main():
                     help='acima desta cota, uma pegada so da Microsoft, pequena e fora de '
                          'urbano/agricola, e tratada como penedo e nao se desenha')
     ap.add_argument('--penedo-m2', type=float, default=60.0)
+    ap.add_argument('--rocha-rms', type=float, default=80.0,
+                    help='pastagem, mato rasteiro e chao nu com esta rugosidade (cm de RMS do MDT-2m) ou mais passam a rocha')
     ap.add_argument('--fontes', default=os.path.join(RAIZ, '..', 'sne-dados-fonte'),
                     help='pasta do repositorio sne-dados-fonte (COS 2025 Serie 2 e '
                          'contornos Microsoft + OSM, recortados a area toda do mapa)')
@@ -953,20 +955,34 @@ def main():
     # celulas de rocha da Torre medem 0). O RMS do residuo do MDT a 2 m ve.
     # Guarda-se por celula de classe, em cm; o motor decide densidade e
     # tamanho dos blocos por ele (so nas classes de pedra).
-    RUGO = None
-    if usa_fontes and not a.sem_plantas and fontes.ha_raster(a.fontes, 'rug8', a.caixa):
+    RUGO = None; km2_vira_rocha = 0.0
+    if usa_fontes and fontes.ha_raster(a.fontes, 'rug8', a.caixa):
         zr, cr = fontes.raster_mosaico(a.fontes, 'rug8', a.caixa, preenche=None)
         passo_rug = abs(cr[2] - cr[0]) / zr.shape[1] * mlon
         if a.classe >= 4 * passo_rug: R = amostra_grossa(zr, cr, lonsC, latsC, 4, 'media')
         else: R = amostra(zr, cr, lonsC, latsC)
         R = np.where(np.isnan(R), 0, R)
         RUGO = np.clip(np.round(R * 100), 0, 253).astype(np.uint8)
+        # A COS nao separa rocha de mato onde o planalto e um campo de blocos
+        # com urze pelo meio (rocha da COS: mediana 55 cm de RMS; pastagem 20;
+        # rasteiro 26; P90 do rasteiro 70). Pastagem, mato rasteiro e chao nu
+        # com RMS >= --rocha-rms (80 cm) passam a rocha com blocos: a medicao
+        # manda na carta, como no CHM. Fica de fora o que e parede (>= 45
+        # graus, decidido a seguir), o agricola (socalcos e muros tambem sao
+        # rugosos) e o urbano.
+        base = C & 127; corr = C & 128
+        vira = np.isin(base, [3, 6, 10]) & (RUGO >= a.rocha_rms)
+        km2_vira_rocha = float(vira.sum()) * a.classe * a.classe / 1e6
+        base = np.where(vira, 7, base)
+        C = (base | corr).astype(np.uint8)
         b7 = (C & 127) == 7
+        print('rugosidade (rug8): media %.0f cm; %.2f km2 de pastagem/mato/chao nu com RMS >= %.0f cm passam a rocha; '
+              'rocha agora %.2f km2 (RMS medio %.0f cm)'
+              % (RUGO.mean(), km2_vira_rocha, a.rocha_rms, b7.sum() * a.classe * a.classe / 1e6, RUGO[b7].mean() if b7.any() else 0))
         # so nas celulas de rocha: e so ai que o motor a usa (blocos), e um
         # bloco cheio custava 2,5 MB comprimidos por zona (c0r0: 5,8 -> 8,0 MB)
         RUGO = np.where(b7, RUGO, 0).astype(np.uint8)
-        print('rugosidade (rug8): media %.0f cm; nas celulas de rocha %.0f cm, %.0f%% delas >= 8 cm'
-              % (RUGO.mean(), RUGO[b7].mean() if b7.any() else 0, 100 * (RUGO[b7] >= 8).mean() if b7.any() else 0))
+        if a.sem_plantas: RUGO = None          # a vista geral nao desenha blocos: nao leva o bloco
 
     # --- areas ardidas (ICNF), depois de tudo o que decide o chao
     # Um fogo posterior as fontes (LiDAR Abr-Set 2024, COS 2025) deixa a carta
@@ -1248,7 +1264,7 @@ def main():
                    'agua': a.agua, 'horizonte_km': round((margem or min(a.alcance, 4000.0)) / 1000) if H is not None else None,
                    'casas': ' + '.join(sorted(fontes_casas)) or None,
                    'penedos_rejeitados': n_penedo, 'ardidas': fonte_ardidas,
-                   'rugosidade': 'armazem:rug8 (RMS do residuo do MDT-2m)' if RUGO is not None else None},
+                   'rugosidade': ('armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= %.0f cm passam a rocha: %.2f km2' % (a.rocha_rms, km2_vira_rocha)) if km2_vira_rocha or RUGO is not None else None},
         'bytes': os.path.getsize(dest),
         'tem': {'curvas': bool(curvas), 'pontos': bool(pontos), 'rotas': bool(rotas),
                 'caminhos': bool(cams), 'sombra': H is not None,
