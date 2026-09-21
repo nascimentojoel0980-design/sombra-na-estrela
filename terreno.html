@@ -225,7 +225,7 @@
 </div>
 <div id=estado class=caixa>a carregar…</div>
 
-<script src="fonte/terreno.js?v=42"></script>
+<script src="fonte/terreno.js?v=43"></script>
 <script>
 const VER = '11';
 let cv = document.getElementById('c'); const estado = document.getElementById('estado');
@@ -501,7 +501,8 @@ const d0 = document.getElementById('d0');
       : hex(c.cor);
     h += '<div class=it><i class=ln style="background:' + fundo
        + ';width:' + Math.round(6 + c.larg * 2.2) + 'px"></i>'
-       + esc(nome) + '<span class=md>' + c.larg.toFixed(1).replace('.', ',') + ' m</span></div>';
+       + esc(nome) + (c.inferida ? ' <span class=md style="margin-left:4px">' + esc(c.inferida) + '</span>' : '')
+       + '<span class=md>' + c.larg.toFixed(1).replace('.', ',') + ' m</span></div>';
   }
   if (L.PISOS) {
     h += '<div class=t style="margin-top:8px">Piso, quando o OSM o diz</div>';

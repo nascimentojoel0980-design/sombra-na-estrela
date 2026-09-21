@@ -91,6 +91,11 @@ const CAMINHOS = [
   { n: 'rio',      limpo:  3, larg: 3.0, cor: [0.30, 0.55, 0.82] },
   { n: 'ribeira',  limpo:  2, larg: 1.6, cor: [0.36, 0.60, 0.84] },
   { n: 'levada',   limpo:  1.5, larg: 1.4, cor: [0.42, 0.64, 0.84] },
+  // 'urbana' nao vem do ficheiro: e um 'caminho' (rua residencial, de servico
+  // ou sem classificacao no OSM) sem piso conhecido cuja maioria dos vertices
+  // cai em URBANO da COS. Uma rua dentro de uma povoacao esta alcatroada,
+  // e pintava-se de cinzento claro como um caminho rural (21/09/2026).
+  { n: 'urbana',   limpo:  5, larg: 4.0, cor: [0.38, 0.38, 0.40], inferida: 'caminho em zona urbana da COS' },
 ];
 // Os pontos com nome agrupam-se por cor: a legenda da pagina le isto.
 const GRUPO_PONTO = {
@@ -926,10 +931,23 @@ function fitaCaminhos(T, acima) {
   // grupos por (tipo, piso): a largura vem do tipo, a cor do piso se se souber
   const porTipo = CAMINHOS.map(() => []);
   const porTP = CAMINHOS.map(() => PISOS.map(() => []));
+  const URBANA = CAMINHOS.findIndex((c) => c.n === 'urbana');
+  const emUrbano = (l) => {                         // fraccao dos vertices em urbano (classe 1)
+    if (!T.classe) return 0;
+    let n = 0, u = 0;
+    for (let k = 0; k < l.length; k += 2) {
+      const m = T.emM(l[k], l[k + 1]);
+      const i = Math.floor(m[0] / T.larg * T.mx), j = Math.floor((T.alt - m[1]) / T.alt * T.my);
+      if (i < 0 || j < 0 || i >= T.mx || j >= T.my) continue;
+      n++; if ((T.classe[j * T.mx + i] & 127) === 1) u++;
+    }
+    return n ? u / n : 0;
+  };
   for (let i = 0; i < T.caminhos.length; i++) {
     const t0 = T.caminhosTipo ? T.caminhosTipo[i * 2] : 3;
-    const t = porTipo[t0] ? t0 : 3;
+    let t = porTipo[t0] ? t0 : 3;
     const p = T.caminhosTipo ? (T.caminhosTipo[i * 2 + 1] || 0) : 0;
+    if (t === 3 && p === 0 && URBANA >= 0 && emUrbano(T.caminhos[i]) >= 0.5) t = URBANA;
     porTipo[t].push(T.caminhos[i]);
     porTP[t][PISOS[p] ? p : 0].push(T.caminhos[i]);
   }
