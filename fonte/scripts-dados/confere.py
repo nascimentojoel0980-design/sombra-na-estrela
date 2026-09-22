@@ -226,6 +226,17 @@ def main():
     # e outra, a 2b: coerencia com as zonas finas ja aprovadas.
     O = Ortos(os.path.join(RAIZ, a.ortos))
     grossa = T['pc'] >= 20
+    # Poligonos ardidos do ICNF posteriores as fontes: o ortofoto de prova e
+    # de antes deles, por isso as provas por foto nao valem la dentro (nem
+    # para a floresta que la havia, nem para a erva/mato que la esta hoje).
+    QARD = np.zeros((my, mx), dtype=np.uint8); n_qard = 0
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import fontes as _fontes
+        if _fontes.ha_ardidas(a.fontes):
+            for ano, ini, aneis in _fontes.ardidas_poligonos(a.fontes, (lo0, la0, lo1, la1)):
+                if _fontes.ardido_recente(ano, ini): pinta_poligono(QARD, aneis, (lo0, la0, lo1, la1), mx, my); n_qard += 1
+    except Exception as e:
+        _fontes = None
     if grossa:
         B.nao('floresta', 'textura do ortofoto nao se aplica a celulas de %.0f m; ver coerencia com zonas finas' % T['pc'])
         pasta = os.path.dirname(os.path.abspath(a.terreno if os.path.isabs(a.terreno) else os.path.join(RAIZ, a.terreno)))
@@ -299,8 +310,8 @@ def main():
             return swv(p, (2 * n + 1, 2 * n + 1)).all(axis=(2, 3))
         F = NF = np.array([]); nF = 0
         for n in (4, 2, 0):
-            F, nF = amostra(nucleo(C == 5, n), a.amostra)
-            NF, _ = amostra(nucleo(aberto, n), a.amostra)
+            F, nF = amostra(nucleo((C == 5) & (QARD == 0), n), a.amostra)
+            NF, _ = amostra(nucleo(aberto & (QARD == 0), n), a.amostra)
             if len(F) >= 60 and len(NF) >= 60: nuc = n; break
         else: nuc = 0
         # O ortofoto de prova e de ANTES dos fogos recentes (classe 13). Onde
@@ -308,9 +319,9 @@ def main():
         # mostra o chao de hoje e nao serve de prova: nem aprova nem chumba
         # (c7r0 Medelim, 21/09/2026: 16 km2 ardidos em 2025, a floresta que
         # sobra sao 0,65 km2 de bordas e a textura deixa de separar).
-        ardido = float((C == 13).mean())
+        ardido = float((QARD == 1).mean())
         if ardido > 0.10:
-            B.nao('floresta', '%.0f%% da zona ardeu depois do ortofoto de prova (classe 13): a foto ja nao mostra o chao de hoje'
+            B.nao('floresta', '%.0f%% da zona ardeu depois do ortofoto de prova (poligonos ICNF pos-fontes): a foto ja nao mostra o chao de hoje'
                   % (100 * ardido))
         elif len(F) >= 20 and len(NF) >= 20:
             dB = coesao(F[:, 0], NF[:, 0]); dC = coesao(F[:, 1], NF[:, 1])
@@ -423,14 +434,11 @@ def main():
     # com milhares de celulas a mediana e firme); um poligono SEM quebra
     # nenhuma e o que nao se deve acreditar.
     try:
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import fontes as _fontes
-        tem_ardidas = _fontes.ha_ardidas(a.fontes); tem_ndvi = _fontes.ha_raster(a.fontes, 'ndvi', (lo0, la0, lo1, la1))
+        tem_ardidas = _fontes is not None and _fontes.ha_ardidas(a.fontes); tem_ndvi = tem_ardidas and _fontes.ha_raster(a.fontes, 'ndvi', (lo0, la0, lo1, la1))
     except Exception as e:
-        tem_ardidas = tem_ndvi = False; _fontes = None
+        tem_ardidas = tem_ndvi = False
     if tem_ardidas:
-        Q = np.zeros((my, mx), dtype=np.uint8); nq = 0
-        for ano, ini, aneis in _fontes.ardidas_poligonos(a.fontes, (lo0, la0, lo1, la1)):
-            if _fontes.ardido_recente(ano, ini): pinta_poligono(Q, aneis, (lo0, la0, lo1, la1), mx, my); nq += 1
+        Q = QARD; nq = n_qard
         km2_q = float(Q.sum()) * ac
         if km2_q >= 0.5 and tem_ndvi:
             zn, cn = _fontes.raster_mosaico(a.fontes, 'ndvi', (lo0, la0, lo1, la1), preenche=None)

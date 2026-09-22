@@ -992,7 +992,7 @@ def main():
     # desde 2017, para se ver a historia. Urbano, agricola, agua e parede nao
     # se pintam de ardido: a casa e a albufeira nao ardem no mapa.
     ardidas = []                 # (ano, anel recortado a caixa) para o ficheiro
-    n_ardido_rec = 0; km2_ardido = 0.0; km2_rebenta = 0.0
+    n_ardido_rec = 0; km2_ardido = 0.0; km2_rebenta = 0.0; km2_erva = 0.0
     if not a.sem_fontes and fontes.ha_ardidas(a.fontes):
         base = C & 127; corr = C & 128
         Q = np.zeros((my, mx), dtype=np.uint8)
@@ -1005,31 +1005,41 @@ def main():
                         ardidas.append((ano, troco))
             if fontes.ardido_recente(ano, ini):
                 pinta(Q, aneis, 1, a.caixa, mx, my); n_ardido_rec += 1
-        queimado = (Q == 1) & ~np.isin(base, [1, 2, 8, 9])
-        # O que esta VIVO hoje decide entre cinza e rebentacao: o NDVI mais
-        # recente do Sentinel-2 (armazem). Dois anos depois do fogo de Set
-        # 2024 (c3r5) o chao ja esta em 0,42 de NDVI (a vegetacao de fora em
-        # 0,60): e mato a rebentar, nao cinza. Ate 0,35 fica 'ardido recente'
-        # (13); acima passa a mato rasteiro (6) com 0,8 m modelados -- a
-        # altura do laser (de antes do fogo) nao serve ali. Arvores nunca:
-        # arderam. Sem NDVI no armazem fica tudo 13, como antes.
-        rebenta = np.zeros_like(queimado)
+        # A rocha nao arde: os blocos ficam (Torre, 22/09/2026: 302 mil celulas
+        # de rocha dentro dos poligonos de 2025 tinham ficado castanhas e sem
+        # pedras -- "nem tem pedras nem verde nenhum").
+        queimado = (Q == 1) & ~np.isin(base, [1, 2, 7, 8, 9])
+        # O que esta VIVO hoje decide o que se desenha, pelo NDVI mais recente
+        # do Sentinel-2 (armazem), calibrado nas classes de FORA dos poligonos
+        # na mesma cena (Set 2026, seco): chao nu 0,22; rocha 0,33-0,37;
+        # pastagem seca 0,24 (Medelim) a 0,59 (lameiros de Manteigas); mato
+        # rasteiro 0,39-0,47; matagal 0,56-0,69; floresta 0,58-0,87.
+        #   <= 0,22          cinza (13): nada de pe
+        #   0,22 .. 0,40     erva a nascer (3): o primeiro que volta
+        #   > 0,40           mato rasteiro a rebentar (6), 0,8 m modelados
+        # Arvores nunca: arderam, e a altura do laser (de antes do fogo) nao
+        # serve ali. Sem NDVI no armazem, ou debaixo de nuvem, fica cinza.
+        erva = np.zeros_like(queimado); rebenta = np.zeros_like(queimado)
         if fontes.ha_raster(a.fontes, 'ndvi', a.caixa):
             zn, cn = fontes.raster_mosaico(a.fontes, 'ndvi', a.caixa, preenche=None)
             NDVI_HOJE = amostra(zn, cn, lonsC, latsC)
-            rebenta = queimado & np.isfinite(NDVI_HOJE) & (NDVI_HOJE > 0.35)
+            vivo = queimado & np.isfinite(NDVI_HOJE)
+            erva = vivo & (NDVI_HOJE > 0.22) & (NDVI_HOJE <= 0.40)
+            rebenta = vivo & (NDVI_HOJE > 0.40)
         base = np.where(queimado, 13, base)
+        base = np.where(erva, 3, base)
         base = np.where(rebenta, 6, base)
         C = (base | corr).astype(np.uint8)
         if ALTV is not None:
             ALTV[queimado] = 0
             ALTV[rebenta] = 8            # 0,8 m: rebentacao modelada
-        km2_ardido = float((queimado & ~rebenta).sum()) * a.classe * a.classe / 1e6
+        km2_erva = float(erva.sum()) * a.classe * a.classe / 1e6
+        km2_ardido = float((queimado & ~rebenta & ~erva).sum()) * a.classe * a.classe / 1e6
         km2_rebenta = float(rebenta.sum()) * a.classe * a.classe / 1e6
-        print('areas ardidas ICNF: %d poligonos tocam a caixa, %d recentes (desde 07/2024) -> %.2f km2 de ardido recente (NDVI <= 0,35) e %.2f km2 a rebentar (mato rasteiro, NDVI > 0,35); %d contornos desde 2017'
-              % (n_pol, n_ardido_rec, km2_ardido, km2_rebenta, len(ardidas)))
-    fonte_ardidas = ('ICNF areas ardidas (recente = fogo desde 07/2024): %d poligonos recentes, %.2f km2 de cinza (NDVI <= 0,35) + %.2f km2 a rebentar'
-                     % (n_ardido_rec, km2_ardido, km2_rebenta)) if not a.sem_fontes and fontes.ha_ardidas(a.fontes) else None
+        print('areas ardidas ICNF: %d poligonos tocam a caixa, %d recentes (desde 07/2024) -> %.2f km2 de cinza (NDVI <= 0,22), %.2f km2 de erva a nascer (0,22-0,40), %.2f km2 a rebentar (mato rasteiro, > 0,40); a rocha fica rocha; %d contornos desde 2017'
+              % (n_pol, n_ardido_rec, km2_ardido, km2_erva, km2_rebenta, len(ardidas)))
+    fonte_ardidas = ('ICNF areas ardidas (recente = fogo desde 07/2024): %d poligonos recentes, %.2f km2 de cinza (NDVI <= 0,22) + %.2f km2 de erva (0,22-0,40) + %.2f km2 a rebentar (> 0,40); rocha fica rocha'
+                     % (n_ardido_rec, km2_ardido, km2_erva, km2_rebenta)) if not a.sem_fontes and fontes.ha_ardidas(a.fontes) else None
 
     # --- curvas de nivel (ja vem dos azulejos: nao ha nada a calcular)
     curvas = []

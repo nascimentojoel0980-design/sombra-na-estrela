@@ -1,0 +1,100 @@
+{
+ "terreno": "/home/user/sombra-na-estrela/dados/terreno/c5r6-v21.terr.gz",
+ "linhas": [
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cotas",
+   "passa": true,
+   "texto": "correlacao 0.9993 com o Copernicus 30 m; vies -0.3 m, P90 do desvio 5.4 m",
+   "valor": {
+    "r": 0.9992950628381636,
+    "vies": -0.304656982421875
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "floresta",
+   "passa": true,
+   "texto": "contra a textura do ortofoto, 284+2000 celulas em nucleo de 20 m: brilho d=1.20, contraste d=0.23 (>=0,8 separa, efeito grande de Cohen)",
+   "valor": {
+    "d_brilho": 1.2010436058044434,
+    "d_contraste": 0.2276887446641922,
+    "nucleo_m": 20.0
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cobertura do ortofoto",
+   "passa": true,
+   "texto": "27% da caixa tem ortofoto de detalhe (faixa dos percursos)",
+   "valor": {
+    "pct": 27.0
+   }
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "rocha / chao nu / mato",
+   "passa": null,
+   "texto": "quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); vem da COS e nao esta verificada",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "floresta tem copa",
+   "passa": true,
+   "texto": "99.8% das celulas de floresta medem >= 5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "matagal tem copa",
+   "passa": true,
+   "texto": "99.5% do matagal mede >= 1,5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "paredes sao ingremes",
+   "passa": true,
+   "texto": "100.0% das paredes tem declive >= 40 graus",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "agua e plana",
+   "passa": true,
+   "texto": "100.0% da agua tem declive < 12 graus",
+   "valor": null
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "posicao da carta",
+   "passa": true,
+   "texto": "85% dos telhados (11,049) assentam em urbano ou agricola da COS (com a grelha espelhada eram 0,3%)",
+   "valor": {
+    "p": 0.8494886415060187
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "casas",
+   "passa": true,
+   "texto": "147,825 vertices de contorno (ms + osm); 2.12 km2 de urbano na carta. Densidade NAO verificada contra o ortofoto; alturas modeladas onde a fonte nao mede",
+   "valor": {
+    "urbano_km2": 2.116475
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "ardido recente",
+   "passa": true,
+   "texto": "NDVI Sentinel-2 de 2026-09-20 nos 4 poligonos do ICNF posteriores as fontes (6.57 km2): mediana 0.25 dentro, 0.45 na vegetacao de fora; ardeu se dentro <= 0,90 x fora. Na carta: 2.36 km2 de cinza (13) e o resto a rebentar (6)",
+   "valor": {
+    "dentro": 0.25,
+    "fora": 0.44999998807907104,
+    "data": "2026-09-20",
+    "km2_poligonos": 6.56505
+   }
+  }
+ ]
+}
