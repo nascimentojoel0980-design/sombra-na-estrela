@@ -67,6 +67,33 @@ def le(f):
     return T
 
 
+def pinta_poligono(destino, gs, caixa, mx, my):
+    """enche aneis (graus) na grelha; linha 0 = norte, como o cozedor"""
+    lo0, la0, lo1, la1 = caixa
+    kx = mx / (lo1 - lo0); ky = my / (la1 - la0)
+    A = []
+    for anel in gs:
+        n = len(anel)
+        for i in range(n):
+            ax, ay = anel[i]; bx, by = anel[(i + 1) % n]
+            if ay == by: continue
+            A.append(((ax - lo0) * kx, (la1 - ay) * ky, (bx - lo0) * kx, (la1 - by) * ky))
+    if not A: return
+    A = np.array(A, dtype=np.float64)
+    ymin = max(0, int(math.floor(min(A[:, 1].min(), A[:, 3].min()))))
+    ymax = min(my - 1, int(math.ceil(max(A[:, 1].max(), A[:, 3].max()))))
+    for j in range(ymin, ymax + 1):
+        yc = j + 0.5
+        sel = ((A[:, 1] <= yc) & (A[:, 3] > yc)) | ((A[:, 3] <= yc) & (A[:, 1] > yc))
+        if not sel.any(): continue
+        E = A[sel]
+        t = (yc - E[:, 1]) / (E[:, 3] - E[:, 1])
+        xs = np.sort(E[:, 0] + t * (E[:, 2] - E[:, 0]))
+        for k in range(0, len(xs) - 1, 2):
+            i0 = max(0, int(math.ceil(xs[k] - 0.5))); i1 = min(mx - 1, int(math.floor(xs[k + 1] - 0.5)))
+            if i1 >= i0: destino[j, i0:i1 + 1] = 1
+
+
 class Boletim:
     def __init__(self): self.linhas = []
     def ver(self, nome, ok, txt, valor=None):
@@ -139,6 +166,7 @@ def main():
     ap.add_argument('--amostra', type=int, default=2000)
     ap.add_argument('--semente', type=int, default=20260920)
     ap.add_argument('--json', default=None)
+    ap.add_argument('--fontes', default=os.path.join(RAIZ, '..', 'sne-dados-fonte'), help='o armazem (para o NDVI recente)')
     ap.add_argument('--casas-fonte', default='OSM',
                     help='de onde vieram os contornos (o cozedor passa-o); so para o texto')
     ap.add_argument('--classes-fonte', default='azulejos antigos',
@@ -381,6 +409,56 @@ def main():
               % (f"{T['nVertCasa']:,}", a.casas_fonte, urb), {'urbano_km2': urb})
     else:
         B.nao('casas', 'a zona foi cozida sem contornos de edificios')
+
+    # ---- 5b. ardido recente: o que esta VIVO hoje. O ortofoto de prova e de
+    # antes dos fogos e mostra verde onde ja so ha cinza ("mas na ortofoto
+    # esta verde", 21/09/2026). A prova certa e o NDVI do Sentinel-2 mais
+    # recente (armazem, ferramentas/sentinel_ndvi.py), sobre os POLIGONOS do
+    # ICNF posteriores as fontes (nao sobre a classe 13, que ja e decidida
+    # pelo NDVI -- seria circular): se ardeu, a mediana de dentro fica abaixo
+    # da vegetacao de fora. Quanto: Medelim (Ago 2025) 0,25 vs 0,37; Gouveia
+    # (Set 2024, a rebentar) 0,42 vs 0,60; Mortagua/Carvalhal (Set 2024,
+    # eucaliptal a rebentar com forca) 0,58 vs 0,74 -- dois anos depois o
+    # rebento ja repoe 80% do NDVI. O que se exige e uma quebra real (>= 10%,
+    # com milhares de celulas a mediana e firme); um poligono SEM quebra
+    # nenhuma e o que nao se deve acreditar.
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); import fontes as _fontes
+        tem_ardidas = _fontes.ha_ardidas(a.fontes); tem_ndvi = _fontes.ha_raster(a.fontes, 'ndvi', (lo0, la0, lo1, la1))
+    except Exception as e:
+        tem_ardidas = tem_ndvi = False; _fontes = None
+    if tem_ardidas:
+        Q = np.zeros((my, mx), dtype=np.uint8); nq = 0
+        for ano, ini, aneis in _fontes.ardidas_poligonos(a.fontes, (lo0, la0, lo1, la1)):
+            if _fontes.ardido_recente(ano, ini): pinta_poligono(Q, aneis, (lo0, la0, lo1, la1), mx, my); nq += 1
+        km2_q = float(Q.sum()) * ac
+        if km2_q >= 0.5 and tem_ndvi:
+            zn, cn = _fontes.raster_mosaico(a.fontes, 'ndvi', (lo0, la0, lo1, la1), preenche=None)
+            hN, wN = zn.shape
+            ci = np.clip(((np.arange(mx) + 0.5) / mx * (lo1 - lo0) + lo0 - cn[0]) / (cn[2] - cn[0]) * wN, 0, wN - 1).astype(int)
+            rj = np.clip((cn[3] - (la1 - (np.arange(my) + 0.5) / my * (la1 - la0))) / (cn[3] - cn[1]) * hN, 0, hN - 1).astype(int)
+            N = zn[np.ix_(rj, ci)]
+            dentro = N[(Q == 1) & np.isfinite(N)]
+            fora = N[(Q == 0) & np.isin(C, [3, 4, 5, 6, 11, 13]) & np.isfinite(N)]
+            data = ''
+            try:
+                import rasterio as _rio
+                f0 = _fontes.folhas(os.path.join(a.fontes, 'sentinel', 'ndvi'), 'ndvi', 'tif', (lo0, la0, lo1, la1))[0]
+                with _rio.open(f0) as r: cen = json.loads(r.tags().get('CENAS', '{}'))
+                data = ', '.join(sorted(set(v['data'] for v in cen.values()))) if cen else ''
+            except Exception: pass
+            if dentro.size >= 100 and fora.size >= 100:
+                md, mf = float(np.median(dentro)), float(np.median(fora))
+                B.ver('ardido recente', bool(md <= 0.90 * mf),
+                      'NDVI Sentinel-2 de %s nos %d poligonos do ICNF posteriores as fontes (%.2f km2): mediana %.2f dentro, %.2f na vegetacao de fora; '
+                      'ardeu se dentro <= 0,90 x fora. Na carta: %.2f km2 de cinza (13) e o resto a rebentar (6)'
+                      % (data or 'hoje', nq, km2_q, md, mf, float((C == 13).sum()) * ac), {'dentro': md, 'fora': mf, 'data': data, 'km2_poligonos': km2_q})
+            else:
+                B.nao('ardido recente', 'NDVI sem celulas validas que cheguem (nuvem?) em %.2f km2 de poligonos ardidos' % km2_q)
+        elif km2_q >= 0.5:
+            B.nao('ardido recente', '%.2f km2 de poligonos ardidos posteriores as fontes e sem NDVI recente no armazem (ferramentas/sentinel_ndvi.py)' % km2_q)
+        elif km2_q > 0:
+            B.nao('ardido recente', 'so %.2f km2 de poligonos ardidos posteriores as fontes: pouco para medir' % km2_q)
 
     if 'saco' in a.classes_fonte or 'azulejos' in a.classes_fonte:
         B.nao('carta de classes', 'cozida com %s: 7, 8 e 9 da COS num saco so' % a.classes_fonte)

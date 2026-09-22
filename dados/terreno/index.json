@@ -3,7 +3,7 @@
   {
    "nome": "c6r4",
    "titulo": "Albardeiros e arredores",
-   "ficheiro": "c6r4-v19.terr.gz",
+   "ficheiro": "c6r4-v20.terr.gz",
    "caixa": [
     -7.36,
     40.42,
@@ -30,10 +30,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.07 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.04 km2 de cinza (NDVI <= 0,35) + 0.03 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.95 km2"
    },
-   "bytes": 9026713,
+   "bytes": 9027088,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -51,7 +51,7 @@
   {
    "nome": "c3r5",
    "titulo": "Aldeia Nova e arredores",
-   "ficheiro": "c3r5-v19.terr.gz",
+   "ficheiro": "c3r5-v20.terr.gz",
    "caixa": [
     -7.75,
     40.53,
@@ -78,10 +78,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 13 poligonos recentes, 37.08 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 13 poligonos recentes, 13.73 km2 de cinza (NDVI <= 0,35) + 23.35 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.58 km2"
    },
-   "bytes": 8359173,
+   "bytes": 8514417,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -99,7 +99,7 @@
   {
    "nome": "c6r0",
    "titulo": "Aldeia de Santa Margarida e arredores",
-   "ficheiro": "c6r0-v19.terr.gz",
+   "ficheiro": "c6r0-v20.terr.gz",
    "caixa": [
     -7.36,
     40.0,
@@ -126,10 +126,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 1.57 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 1.48 km2 de cinza (NDVI <= 0,35) + 0.09 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.26 km2"
    },
-   "bytes": 6252680,
+   "bytes": 6254653,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -147,7 +147,7 @@
   {
    "nome": "c4r6",
    "titulo": "Antas e arredores",
-   "ficheiro": "c4r6-v19.terr.gz",
+   "ficheiro": "c4r6-v20.terr.gz",
    "caixa": [
     -7.62,
     40.64,
@@ -174,10 +174,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 8.86 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.42 km2 de cinza (NDVI <= 0,35) + 6.44 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.34 km2"
    },
-   "bytes": 4773882,
+   "bytes": 4809919,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -195,7 +195,7 @@
   {
    "nome": "c5r0",
    "titulo": "Atalaia do Campo e arredores",
-   "ficheiro": "c5r0-v19.terr.gz",
+   "ficheiro": "c5r0-v20.terr.gz",
    "caixa": [
     -7.49,
     40.0,
@@ -222,10 +222,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 4.87 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.99 km2 de cinza (NDVI <= 0,35) + 1.87 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.24 km2"
    },
-   "bytes": 5757364,
+   "bytes": 5782528,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -243,7 +243,7 @@
   {
    "nome": "c0r3",
    "titulo": "Boiço e arredores",
-   "ficheiro": "c0r3-v19.terr.gz",
+   "ficheiro": "c0r3-v20.terr.gz",
    "caixa": [
     -8.1,
     40.31,
@@ -270,10 +270,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 1.08 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.05 km2 de cinza (NDVI <= 0,35) + 1.03 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.58 km2"
    },
-   "bytes": 6770939,
+   "bytes": 6772583,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -291,7 +291,7 @@
   {
    "nome": "c4r2",
    "titulo": "Bouça e arredores",
-   "ficheiro": "c4r2-v19.terr.gz",
+   "ficheiro": "c4r2-v20.terr.gz",
    "caixa": [
     -7.62,
     40.2,
@@ -318,10 +318,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 101,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 29.95 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 19.83 km2 de cinza (NDVI <= 0,35) + 10.12 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 2.40 km2"
    },
-   "bytes": 8660788,
+   "bytes": 8766602,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -339,7 +339,7 @@
   {
    "nome": "c3r2",
    "titulo": "Cabeço do Bulde e arredores",
-   "ficheiro": "c3r2-v19.terr.gz",
+   "ficheiro": "c3r2-v20.terr.gz",
    "caixa": [
     -7.75,
     40.2,
@@ -366,10 +366,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 4,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 116.79 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 85.36 km2 de cinza (NDVI <= 0,35) + 31.43 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.87 km2"
    },
-   "bytes": 7113997,
+   "bytes": 7467866,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -387,7 +387,7 @@
   {
    "nome": "c0r4",
    "titulo": "Carvalhal e arredores",
-   "ficheiro": "c0r4-v19.terr.gz",
+   "ficheiro": "c0r4-v20.terr.gz",
    "caixa": [
     -8.1,
     40.42,
@@ -414,10 +414,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 5.21 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.48 km2 de cinza (NDVI <= 0,35) + 4.73 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.70 km2"
    },
-   "bytes": 6807248,
+   "bytes": 6820403,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -435,7 +435,7 @@
   {
    "nome": "c6r5",
    "titulo": "Cavadoude e arredores",
-   "ficheiro": "c6r5-v19.terr.gz",
+   "ficheiro": "c6r5-v20.terr.gz",
    "caixa": [
     -7.36,
     40.53,
@@ -462,10 +462,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 2.06 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.86 km2 de cinza (NDVI <= 0,35) + 1.20 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.75 km2"
    },
-   "bytes": 9037200,
+   "bytes": 9047921,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -483,7 +483,7 @@
   {
    "nome": "c1r1",
    "titulo": "Cavaleiros de Baixo e arredores",
-   "ficheiro": "c1r1-v19.terr.gz",
+   "ficheiro": "c1r1-v20.terr.gz",
    "caixa": [
     -8.01,
     40.09,
@@ -510,10 +510,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 6.35 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 3.94 km2 de cinza (NDVI <= 0,35) + 2.41 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 3.97 km2"
    },
-   "bytes": 9221766,
+   "bytes": 9241796,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -531,7 +531,7 @@
   {
    "nome": "c1r2",
    "titulo": "Cerdeira e arredores",
-   "ficheiro": "c1r2-v19.terr.gz",
+   "ficheiro": "c1r2-v20.terr.gz",
    "caixa": [
     -8.01,
     40.2,
@@ -558,10 +558,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 62.72 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 20.00 km2 de cinza (NDVI <= 0,35) + 42.72 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 2.95 km2"
    },
-   "bytes": 8896353,
+   "bytes": 9088352,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -579,7 +579,7 @@
   {
    "nome": "c2r3",
    "titulo": "Chamusca da Beira e arredores",
-   "ficheiro": "c2r3-v19.terr.gz",
+   "ficheiro": "c2r3-v20.terr.gz",
    "caixa": [
     -7.88,
     40.31,
@@ -606,10 +606,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 14.44 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 3.16 km2 de cinza (NDVI <= 0,35) + 11.28 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.55 km2"
    },
-   "bytes": 9326517,
+   "bytes": 9374215,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -627,7 +627,7 @@
   {
    "nome": "c2r4",
    "titulo": "Chaveiral e arredores",
-   "ficheiro": "c2r4-v19.terr.gz",
+   "ficheiro": "c2r4-v20.terr.gz",
    "caixa": [
     -7.88,
     40.42,
@@ -654,10 +654,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 13.01 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 3.61 km2 de cinza (NDVI <= 0,35) + 9.40 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.96 km2"
    },
-   "bytes": 8381036,
+   "bytes": 8444549,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -675,7 +675,7 @@
   {
    "nome": "c2r6",
    "titulo": "Corvos-à-Nogueira e arredores",
-   "ficheiro": "c2r6-v19.terr.gz",
+   "ficheiro": "c2r6-v20.terr.gz",
    "caixa": [
     -7.88,
     40.64,
@@ -702,10 +702,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.03 km2 de cinza (NDVI <= 0,35) + 0.13 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.18 km2"
    },
-   "bytes": 5476220,
+   "bytes": 5476687,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -723,7 +723,7 @@
   {
    "nome": "c6r2",
    "titulo": "Escarigo e arredores",
-   "ficheiro": "c6r2-v19.terr.gz",
+   "ficheiro": "c6r2-v20.terr.gz",
    "caixa": [
     -7.36,
     40.2,
@@ -750,10 +750,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 3.52 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.13 km2 de cinza (NDVI <= 0,35) + 1.38 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.27 km2"
    },
-   "bytes": 7639922,
+   "bytes": 7662912,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -771,7 +771,7 @@
   {
    "nome": "c3r6",
    "titulo": "Esmolfe e arredores",
-   "ficheiro": "c3r6-v19.terr.gz",
+   "ficheiro": "c3r6-v20.terr.gz",
    "caixa": [
     -7.75,
     40.64,
@@ -798,10 +798,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 25.74 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 7.47 km2 de cinza (NDVI <= 0,35) + 18.28 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.44 km2"
    },
-   "bytes": 4625820,
+   "bytes": 4730421,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -819,7 +819,7 @@
   {
    "nome": "c7r6",
    "titulo": "Espedrada e arredores",
-   "ficheiro": "c7r6-v19.terr.gz",
+   "ficheiro": "c7r6-v20.terr.gz",
    "caixa": [
     -7.23,
     40.64,
@@ -846,10 +846,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 20.85 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 13.78 km2 de cinza (NDVI <= 0,35) + 7.07 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.12 km2"
    },
-   "bytes": 2379167,
+   "bytes": 2464751,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -867,7 +867,7 @@
   {
    "nome": "c2r2",
    "titulo": "Fajoeira e arredores",
-   "ficheiro": "c2r2-v19.terr.gz",
+   "ficheiro": "c2r2-v20.terr.gz",
    "caixa": [
     -7.88,
     40.2,
@@ -894,10 +894,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 1,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 115.00 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 60.66 km2 de cinza (NDVI <= 0,35) + 54.33 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 3.55 km2"
    },
-   "bytes": 7714740,
+   "bytes": 8082381,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -915,7 +915,7 @@
   {
    "nome": "c5r1",
    "titulo": "Fatela e arredores",
-   "ficheiro": "c5r1-v19.terr.gz",
+   "ficheiro": "c5r1-v20.terr.gz",
    "caixa": [
     -7.49,
     40.09,
@@ -942,10 +942,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.64 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.48 km2 de cinza (NDVI <= 0,35) + 0.16 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.61 km2"
    },
-   "bytes": 7770917,
+   "bytes": 7773463,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -963,7 +963,7 @@
   {
    "nome": "c0r0",
    "titulo": "Fonte Limpa e arredores",
-   "ficheiro": "c0r0-v19.terr.gz",
+   "ficheiro": "c0r0-v20.terr.gz",
    "caixa": [
     -8.1,
     40.0,
@@ -990,10 +990,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2 de cinza (NDVI <= 0,35) + 0.01 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.04 km2"
    },
-   "bytes": 5908656,
+   "bytes": 5908685,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1011,7 +1011,7 @@
   {
    "nome": "c0r2",
    "titulo": "Fontão e arredores",
-   "ficheiro": "c0r2-v19.terr.gz",
+   "ficheiro": "c0r2-v20.terr.gz",
    "caixa": [
     -8.1,
     40.2,
@@ -1038,10 +1038,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.05 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.02 km2 de cinza (NDVI <= 0,35) + 0.03 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.43 km2"
    },
-   "bytes": 6782611,
+   "bytes": 6782799,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1059,7 +1059,7 @@
   {
    "nome": "c4r1",
    "titulo": "Freixial e arredores",
-   "ficheiro": "c4r1-v19.terr.gz",
+   "ficheiro": "c4r1-v20.terr.gz",
    "caixa": [
     -7.62,
     40.09,
@@ -1086,10 +1086,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 45.74 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 26.60 km2 de cinza (NDVI <= 0,35) + 19.14 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.94 km2"
    },
-   "bytes": 7637751,
+   "bytes": 7833892,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1107,7 +1107,7 @@
   {
    "nome": "c5r5",
    "titulo": "Galisteu e arredores",
-   "ficheiro": "c5r5-v19.terr.gz",
+   "ficheiro": "c5r5-v20.terr.gz",
    "caixa": [
     -7.49,
     40.53,
@@ -1134,10 +1134,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 2,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 1.06 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 0.70 km2 de cinza (NDVI <= 0,35) + 0.36 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.66 km2"
    },
-   "bytes": 8445177,
+   "bytes": 8450582,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1155,7 +1155,7 @@
   {
    "nome": "c7r5",
    "titulo": "Gonçalo Bocas e arredores",
-   "ficheiro": "c7r5-v19.terr.gz",
+   "ficheiro": "c7r5-v20.terr.gz",
    "caixa": [
     -7.23,
     40.53,
@@ -1182,10 +1182,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 2.52 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 1.07 km2 de cinza (NDVI <= 0,35) + 1.45 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.93 km2"
    },
-   "bytes": 5349894,
+   "bytes": 5361152,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1203,7 +1203,7 @@
   {
    "nome": "c2r0",
    "titulo": "Janeiro de Baixo e arredores",
-   "ficheiro": "c2r0-v19.terr.gz",
+   "ficheiro": "c2r0-v20.terr.gz",
    "caixa": [
     -7.88,
     40.0,
@@ -1230,10 +1230,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 3.82 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 1.98 km2 de cinza (NDVI <= 0,35) + 1.84 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.92 km2"
    },
-   "bytes": 8130182,
+   "bytes": 8150831,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1251,7 +1251,7 @@
   {
    "nome": "c1r4",
    "titulo": "Laceiras e arredores",
-   "ficheiro": "c1r4-v19.terr.gz",
+   "ficheiro": "c1r4-v20.terr.gz",
    "caixa": [
     -8.01,
     40.42,
@@ -1278,10 +1278,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 34.81 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 9.69 km2 de cinza (NDVI <= 0,35) + 25.12 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.82 km2"
    },
-   "bytes": 8899428,
+   "bytes": 9037751,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1299,7 +1299,7 @@
   {
    "nome": "c1r5",
    "titulo": "Largo Eirô e arredores",
-   "ficheiro": "c1r5-v19.terr.gz",
+   "ficheiro": "c1r5-v20.terr.gz",
    "caixa": [
     -8.01,
     40.53,
@@ -1326,10 +1326,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 0.89 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 8 poligonos recentes, 0.30 km2 de cinza (NDVI <= 0,35) + 0.59 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.72 km2"
    },
-   "bytes": 9910953,
+   "bytes": 9916061,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1347,7 +1347,7 @@
   {
    "nome": "c7r0",
    "titulo": "Medelim e arredores",
-   "ficheiro": "c7r0-v19.terr.gz",
+   "ficheiro": "c7r0-v20.terr.gz",
    "caixa": [
     -7.23,
     40.0,
@@ -1374,10 +1374,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.44 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 13.08 km2 de cinza (NDVI <= 0,35) + 3.36 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.12 km2"
    },
-   "bytes": 3658177,
+   "bytes": 3726323,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1395,7 +1395,7 @@
   {
    "nome": "c2r1",
    "titulo": "Meãs e arredores",
-   "ficheiro": "c2r1-v19.terr.gz",
+   "ficheiro": "c2r1-v20.terr.gz",
    "caixa": [
     -7.88,
     40.09,
@@ -1422,10 +1422,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 78.32 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 57.37 km2 de cinza (NDVI <= 0,35) + 20.94 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 2.88 km2"
    },
-   "bytes": 7937131,
+   "bytes": 8177944,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1443,7 +1443,7 @@
   {
    "nome": "c2r5",
    "titulo": "Moimenta de Maceira Dão e arredores",
-   "ficheiro": "c2r5-v19.terr.gz",
+   "ficheiro": "c2r5-v20.terr.gz",
    "caixa": [
     -7.88,
     40.53,
@@ -1470,10 +1470,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 10.54 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 3.70 km2 de cinza (NDVI <= 0,35) + 6.83 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.38 km2"
    },
-   "bytes": 8971356,
+   "bytes": 9018971,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1491,7 +1491,7 @@
   {
    "nome": "c0r5",
    "titulo": "Mosteiro e arredores",
-   "ficheiro": "c0r5-v19.terr.gz",
+   "ficheiro": "c0r5-v20.terr.gz",
    "caixa": [
     -8.1,
     40.53,
@@ -1518,10 +1518,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.16 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 5 poligonos recentes, 0.01 km2 de cinza (NDVI <= 0,35) + 0.15 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.29 km2"
    },
-   "bytes": 6525908,
+   "bytes": 6526300,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1539,7 +1539,7 @@
   {
    "nome": "c6r3",
    "titulo": "Olas e arredores",
-   "ficheiro": "c6r3-v19.terr.gz",
+   "ficheiro": "c6r3-v20.terr.gz",
    "caixa": [
     -7.36,
     40.31,
@@ -1566,10 +1566,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 26.10 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 20.38 km2 de cinza (NDVI <= 0,35) + 5.72 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 2.15 km2"
    },
-   "bytes": 8016607,
+   "bytes": 8124435,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1587,7 +1587,7 @@
   {
    "nome": "c3r1",
    "titulo": "Ourondo e arredores",
-   "ficheiro": "c3r1-v19.terr.gz",
+   "ficheiro": "c3r1-v20.terr.gz",
    "caixa": [
     -7.75,
     40.09,
@@ -1614,10 +1614,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 90.44 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 55.46 km2 de cinza (NDVI <= 0,35) + 34.98 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.55 km2"
    },
-   "bytes": 7833870,
+   "bytes": 8190252,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1635,7 +1635,7 @@
   {
    "nome": "c1r0",
    "titulo": "Pampilhosa da Serra e arredores",
-   "ficheiro": "c1r0-v19.terr.gz",
+   "ficheiro": "c1r0-v20.terr.gz",
    "caixa": [
     -8.01,
     40.0,
@@ -1662,7 +1662,7 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2 de cinza (NDVI <= 0,35) + 0.00 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 2.35 km2"
    },
    "bytes": 8114619,
@@ -1683,7 +1683,7 @@
   {
    "nome": "c7r1",
    "titulo": "Penamacor e arredores",
-   "ficheiro": "c7r1-v19.terr.gz",
+   "ficheiro": "c7r1-v20.terr.gz",
    "caixa": [
     -7.23,
     40.09,
@@ -1710,10 +1710,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 4.54 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 3.26 km2 de cinza (NDVI <= 0,35) + 1.28 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.24 km2"
    },
-   "bytes": 4669899,
+   "bytes": 4693024,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1731,7 +1731,7 @@
   {
    "nome": "c3r4",
    "titulo": "Pinhanços e arredores",
-   "ficheiro": "c3r4-v19.terr.gz",
+   "ficheiro": "c3r4-v20.terr.gz",
    "caixa": [
     -7.75,
     40.42,
@@ -1758,10 +1758,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 16,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 1.86 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 9 poligonos recentes, 0.81 km2 de cinza (NDVI <= 0,35) + 1.05 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.52 km2"
    },
-   "bytes": 8228672,
+   "bytes": 8239686,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1779,7 +1779,7 @@
   {
    "nome": "c4r5",
    "titulo": "Ponte Nova e arredores",
-   "ficheiro": "c4r5-v19.terr.gz",
+   "ficheiro": "c4r5-v20.terr.gz",
    "caixa": [
     -7.62,
     40.53,
@@ -1806,10 +1806,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 0.88 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 7 poligonos recentes, 0.52 km2 de cinza (NDVI <= 0,35) + 0.36 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.13 km2"
    },
-   "bytes": 8697705,
+   "bytes": 8704066,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1827,7 +1827,7 @@
   {
    "nome": "c4r4",
    "titulo": "Portela de Folgosinho e arredores",
-   "ficheiro": "c4r4-v19.terr.gz",
+   "ficheiro": "c4r4-v20.terr.gz",
    "caixa": [
     -7.62,
     40.42,
@@ -1854,10 +1854,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 85,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 0.58 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 0.28 km2 de cinza (NDVI <= 0,35) + 0.30 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.72 km2"
    },
-   "bytes": 8365353,
+   "bytes": 8368555,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1875,7 +1875,7 @@
   {
    "nome": "c6r1",
    "titulo": "Póvoa Palhaça e arredores",
-   "ficheiro": "c6r1-v19.terr.gz",
+   "ficheiro": "c6r1-v20.terr.gz",
    "caixa": [
     -7.36,
     40.09,
@@ -1902,7 +1902,7 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.00 km2 de cinza (NDVI <= 0,35) + 0.00 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.19 km2"
    },
    "bytes": 7394310,
@@ -1923,7 +1923,7 @@
   {
    "nome": "c7r4",
    "titulo": "Quinta da Caravella e arredores",
-   "ficheiro": "c7r4-v19.terr.gz",
+   "ficheiro": "c7r4-v20.terr.gz",
    "caixa": [
     -7.23,
     40.42,
@@ -1950,10 +1950,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 4.92 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 2.12 km2 de cinza (NDVI <= 0,35) + 2.80 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.39 km2"
    },
-   "bytes": 5106383,
+   "bytes": 5126114,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -1971,7 +1971,7 @@
   {
    "nome": "c5r6",
    "titulo": "Quinta da Marvela e arredores",
-   "ficheiro": "c5r6-v19.terr.gz",
+   "ficheiro": "c5r6-v20.terr.gz",
    "caixa": [
     -7.49,
     40.64,
@@ -1998,10 +1998,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 6.24 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 4 poligonos recentes, 4.71 km2 de cinza (NDVI <= 0,35) + 1.52 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.00 km2"
    },
-   "bytes": 4676547,
+   "bytes": 4699218,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2019,7 +2019,7 @@
   {
    "nome": "c5r4",
    "titulo": "Quinta da Taberna e arredores",
-   "ficheiro": "c5r4-v19.terr.gz",
+   "ficheiro": "c5r4-v20.terr.gz",
    "caixa": [
     -7.49,
     40.42,
@@ -2046,7 +2046,7 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 5,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 0 poligonos recentes, 0.00 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 0 poligonos recentes, 0.00 km2 de cinza (NDVI <= 0,35) + 0.00 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 2.12 km2"
    },
    "bytes": 8481164,
@@ -2067,7 +2067,7 @@
   {
    "nome": "c7r3",
    "titulo": "Quinta do Clérigo e arredores",
-   "ficheiro": "c7r3-v19.terr.gz",
+   "ficheiro": "c7r3-v20.terr.gz",
    "caixa": [
     -7.23,
     40.31,
@@ -2094,10 +2094,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 60.24 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 46.19 km2 de cinza (NDVI <= 0,35) + 14.05 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.79 km2"
    },
-   "bytes": 4562421,
+   "bytes": 4746043,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2115,7 +2115,7 @@
   {
    "nome": "c5r2",
    "titulo": "Quinta dos Alvercões e arredores",
-   "ficheiro": "c5r2-v19.terr.gz",
+   "ficheiro": "c5r2-v20.terr.gz",
    "caixa": [
     -7.49,
     40.2,
@@ -2142,10 +2142,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 0.65 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 6 poligonos recentes, 0.16 km2 de cinza (NDVI <= 0,35) + 0.49 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.52 km2"
    },
-   "bytes": 7899210,
+   "bytes": 7902214,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2163,7 +2163,7 @@
   {
    "nome": "c3r0",
    "titulo": "Rochas de Cima e arredores",
-   "ficheiro": "c3r0-v19.terr.gz",
+   "ficheiro": "c3r0-v20.terr.gz",
    "caixa": [
     -7.75,
     40.0,
@@ -2190,10 +2190,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 16.90 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 10.37 km2 de cinza (NDVI <= 0,35) + 6.53 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.05 km2"
    },
-   "bytes": 7766696,
+   "bytes": 7841411,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2211,7 +2211,7 @@
   {
    "nome": "c0r1",
    "titulo": "Sandinha e arredores",
-   "ficheiro": "c0r1-v19.terr.gz",
+   "ficheiro": "c0r1-v20.terr.gz",
    "caixa": [
     -8.1,
     40.09,
@@ -2238,10 +2238,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.01 km2 de cinza (NDVI <= 0,35) + 0.00 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.38 km2"
    },
-   "bytes": 7152405,
+   "bytes": 7152468,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2259,7 +2259,7 @@
   {
    "nome": "c5r3",
    "titulo": "Sarzedo e arredores",
-   "ficheiro": "c5r3-v19.terr.gz",
+   "ficheiro": "c5r3-v20.terr.gz",
    "caixa": [
     -7.49,
     40.31,
@@ -2286,10 +2286,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.10 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 0.02 km2 de cinza (NDVI <= 0,35) + 0.08 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.83 km2"
    },
-   "bytes": 8608960,
+   "bytes": 8609395,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2307,7 +2307,7 @@
   {
    "nome": "serra",
    "titulo": "Serra da Estrela (vista geral)",
-   "ficheiro": "serra-v5.terr.gz",
+   "ficheiro": "serra-v6.terr.gz",
    "caixa": [
     -8.1,
     40.0,
@@ -2334,10 +2334,10 @@
     "horizonte_km": 15,
     "casas": null,
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 152 poligonos recentes, 983.43 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 152 poligonos recentes, 560.77 km2 de cinza (NDVI <= 0,35) + 422.66 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 29.39 km2"
    },
-   "bytes": 8564794,
+   "bytes": 8603797,
    "tem": {
     "curvas": false,
     "pontos": true,
@@ -2355,7 +2355,7 @@
   {
    "nome": "c1r6",
    "titulo": "São Martinho e arredores",
-   "ficheiro": "c1r6-v19.terr.gz",
+   "ficheiro": "c1r6-v20.terr.gz",
    "caixa": [
     -8.01,
     40.64,
@@ -2382,10 +2382,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.01 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 0.00 km2 de cinza (NDVI <= 0,35) + 0.01 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.29 km2"
    },
-   "bytes": 6451718,
+   "bytes": 6451679,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2403,7 +2403,7 @@
   {
    "nome": "c4r0",
    "titulo": "São Vicente da Beira e arredores",
-   "ficheiro": "c4r0-v19.terr.gz",
+   "ficheiro": "c4r0-v20.terr.gz",
    "caixa": [
     -7.62,
     40.0,
@@ -2430,10 +2430,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 1,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 55.38 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 35.31 km2 de cinza (NDVI <= 0,35) + 20.07 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.41 km2"
    },
-   "bytes": 6303288,
+   "bytes": 6514767,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2451,7 +2451,7 @@
   {
    "nome": "torre",
    "titulo": "Torre e Lagoa Comprida",
-   "ficheiro": "torre-v19.terr.gz",
+   "ficheiro": "torre-v20.terr.gz",
    "caixa": [
     -7.75,
     40.31,
@@ -2478,10 +2478,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 163,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 13.29 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 2 poligonos recentes, 7.55 km2 de cinza (NDVI <= 0,35) + 5.74 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 5.27 km2"
    },
-   "bytes": 9314276,
+   "bytes": 9354294,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2499,7 +2499,7 @@
   {
    "nome": "manteigas",
    "titulo": "Vale Glaciar de Manteigas",
-   "ficheiro": "manteigas-v19.terr.gz",
+   "ficheiro": "manteigas-v20.terr.gz",
    "caixa": [
     -7.62,
     40.31,
@@ -2526,10 +2526,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 742,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.21 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.20 km2 de cinza (NDVI <= 0,35) + 0.01 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 7.52 km2"
    },
-   "bytes": 9226005,
+   "bytes": 9226452,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2547,7 +2547,7 @@
   {
    "nome": "c7r2",
    "titulo": "Vale da Senhora da Póvoa e arredores",
-   "ficheiro": "c7r2-v19.terr.gz",
+   "ficheiro": "c7r2-v20.terr.gz",
    "caixa": [
     -7.23,
     40.2,
@@ -2574,10 +2574,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 13.02 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 6.83 km2 de cinza (NDVI <= 0,35) + 6.19 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.29 km2"
    },
-   "bytes": 4944158,
+   "bytes": 5004152,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2595,7 +2595,7 @@
   {
    "nome": "c0r6",
    "titulo": "Vasconha e arredores",
-   "ficheiro": "c0r6-v19.terr.gz",
+   "ficheiro": "c0r6-v20.terr.gz",
    "caixa": [
     -8.1,
     40.64,
@@ -2622,10 +2622,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.07 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 1 poligonos recentes, 0.05 km2 de cinza (NDVI <= 0,35) + 0.03 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.46 km2"
    },
-   "bytes": 3771979,
+   "bytes": 3772257,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2643,7 +2643,7 @@
   {
    "nome": "c6r6",
    "titulo": "Velosa e arredores",
-   "ficheiro": "c6r6-v19.terr.gz",
+   "ficheiro": "c6r6-v20.terr.gz",
    "caixa": [
     -7.36,
     40.64,
@@ -2670,10 +2670,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 11.31 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 8.72 km2 de cinza (NDVI <= 0,35) + 2.59 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 0.55 km2"
    },
-   "bytes": 4446084,
+   "bytes": 4500324,
    "tem": {
     "curvas": true,
     "pontos": true,
@@ -2691,7 +2691,7 @@
   {
    "nome": "c1r3",
    "titulo": "Vila Chã e arredores",
-   "ficheiro": "c1r3-v19.terr.gz",
+   "ficheiro": "c1r3-v20.terr.gz",
    "caixa": [
     -8.01,
     40.31,
@@ -2718,10 +2718,10 @@
     "horizonte_km": 15,
     "casas": "ms + osm",
     "penedos_rejeitados": 0,
-    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 12.36 km2",
+    "ardidas": "ICNF areas ardidas (recente = fogo desde 07/2024): 3 poligonos recentes, 1.44 km2 de cinza (NDVI <= 0,35) + 10.91 km2 a rebentar",
     "rugosidade": "armazem:rug8 (RMS do residuo do MDT-2m); pastagem/mato/chao nu com RMS >= 80 cm passam a rocha: 1.06 km2"
    },
-   "bytes": 9121645,
+   "bytes": 9158926,
    "tem": {
     "curvas": true,
     "pontos": true,

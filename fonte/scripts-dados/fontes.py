@@ -147,6 +147,8 @@ RASTER = {
     'rug8': dict(pasta='lidar-derivado/rug8', escala=0.01, nodata=(254, 255)),
     # agua mensal Sentinel-2: 1 agua, 0 nao, 255 nuvem/sem dado (um por mes)
     'agua': dict(pasta='sentinel/agua-mensal', escala=1.0, nodata=(255,)),
+    # NDVI mais recente (Sentinel-2, 10 m, x100 cortado a 0..100): ferramentas/sentinel_ndvi.py
+    'ndvi': dict(pasta='sentinel/ndvi', escala=0.01, nodata=(255,)),
 }
 
 

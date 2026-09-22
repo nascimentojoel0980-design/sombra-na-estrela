@@ -1,0 +1,107 @@
+{
+ "terreno": "/home/user/sombra-na-estrela/dados/terreno/c3r4-v20.terr.gz",
+ "linhas": [
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cotas",
+   "passa": true,
+   "texto": "correlacao 0.9997 com o Copernicus 30 m; vies +0.3 m, P90 do desvio 6.6 m",
+   "valor": {
+    "r": 0.9996831699002308,
+    "vies": 0.31982421875
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "floresta",
+   "passa": true,
+   "texto": "contra a textura do ortofoto, 947+2000 celulas em nucleo de 20 m: brilho d=2.43, contraste d=0.16 (>=0,8 separa, efeito grande de Cohen)",
+   "valor": {
+    "d_brilho": 2.4341371059417725,
+    "d_contraste": 0.1618955284357071,
+    "nucleo_m": 20.0
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "cobertura do ortofoto",
+   "passa": true,
+   "texto": "18% da caixa tem ortofoto de detalhe (faixa dos percursos)",
+   "valor": {
+    "pct": 18.0
+   }
+  },
+  {
+   "tipo": "NAO VERIFICADO",
+   "nome": "rocha / chao nu / mato",
+   "passa": null,
+   "texto": "quatro vias medidas e nenhuma separa (ver O_Satelite_Nao_Separa_Rocha.md); vem da COS e nao esta verificada",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "floresta tem copa",
+   "passa": true,
+   "texto": "99.7% das celulas de floresta medem >= 5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "matagal tem copa",
+   "passa": true,
+   "texto": "99.3% do matagal mede >= 1,5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "chao nu esta nu",
+   "passa": true,
+   "texto": "100.0% do chao nu mede < 0,5 m",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "paredes sao ingremes",
+   "passa": true,
+   "texto": "100.0% das paredes tem declive >= 40 graus",
+   "valor": null
+  },
+  {
+   "tipo": "CONSISTENCIA",
+   "nome": "agua e plana",
+   "passa": true,
+   "texto": "100.0% da agua tem declive < 12 graus",
+   "valor": null
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "posicao da carta",
+   "passa": true,
+   "texto": "91% dos telhados (43,453) assentam em urbano ou agricola da COS (com a grelha espelhada eram 0,3%)",
+   "valor": {
+    "p": 0.9139760200676593
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "casas",
+   "passa": true,
+   "texto": "571,821 vertices de contorno (ms + osm); 8.47 km2 de urbano na carta. Densidade NAO verificada contra o ortofoto; alturas modeladas onde a fonte nao mede",
+   "valor": {
+    "urbano_km2": 8.4693
+   }
+  },
+  {
+   "tipo": "VERIFICACAO",
+   "nome": "ardido recente",
+   "passa": true,
+   "texto": "NDVI Sentinel-2 de 2026-09-20 nos 9 poligonos do ICNF posteriores as fontes (2.20 km2): mediana 0.38 dentro, 0.62 na vegetacao de fora; ardeu se dentro <= 0,90 x fora. Na carta: 0.81 km2 de cinza (13) e o resto a rebentar (6)",
+   "valor": {
+    "dentro": 0.3799999952316284,
+    "fora": 0.6200000047683716,
+    "data": "2026-09-20",
+    "km2_poligonos": 2.1985
+   }
+  }
+ ]
+}
