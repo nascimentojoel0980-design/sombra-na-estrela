@@ -84,19 +84,22 @@ class Terreno:
             self.zs.append(T)
         if not self.zs: sys.exit('nenhuma zona cozida toca a caixa')
         self.sol = []                      # lista de (alt, az) das horas a considerar
-    def monte(self, lo, la):
-        """fraccao das horas escolhidas em que o ponto esta a sombra do monte"""
+    def monte_h(self, lo, la):
+        """por cada hora escolhida, 1 se o ponto esta a sombra do monte"""
         T = self.zona(lo, la)
-        if T is None or T['hori'] is None or not self.sol: return 0.0
+        if T is None or T['hori'] is None or not self.sol: return [0.0] * len(self.sol)
         hx, hy, nd, H = T['hori']; lo0, la0, lo1, la1 = T['caixa']
         i = min(hx - 1, max(0, int(round((lo - lo0) / (lo1 - lo0) * (hx - 1))))); j = min(hy - 1, max(0, int(round((la1 - la) / (la1 - la0) * (hy - 1)))))
-        n = 0
+        out = []
         for alt, az in self.sol:
-            if alt <= 0: n += 1; continue
+            if alt <= 0: out.append(1.0); continue
             f = az / 360 * nd; l0 = int(f) % nd; l1 = (l0 + 1) % nd; w = f - int(f)
             h = (H[l0, j, i] * (1 - w) + H[l1, j, i] * w) / 2
-            if alt <= h: n += 1
-        return n / len(self.sol)
+            out.append(1.0 if alt <= h else 0.0)
+        return out
+    def monte(self, lo, la):
+        """fraccao das horas escolhidas em que o ponto esta a sombra do monte"""
+        m = self.monte_h(lo, la); return sum(m) / len(m) if m else 0.0
     def zona(self, lo, la):
         for T in self.zs:
             lo0, la0, lo1, la1 = T['caixa']
@@ -131,10 +134,10 @@ def grafo(caixa, terr, mlon, mlat, casa=None, raio_casa=1200.0):
     de casa -- e o que se evita quando nao se quer passar pela cidade."""
     ch = lambda p: (round(p[0], 6), round(p[1], 6))
     adj = {}; arestas = {}
-    def liga(a, b, m, h, sombra, povo):
+    def liga(a, b, m, h, sombra, povo, sombra_h=None):
         k = (a, b) if a < b else (b, a)
         if k in arestas: return
-        arestas[k] = {'m': m, 'h': h, 'sombra': sombra, 'povo': povo}
+        arestas[k] = {'m': m, 'h': h, 'sombra': sombra, 'povo': povo, 'sombra_h': sombra_h}
         adj.setdefault(a, []).append(b); adj.setdefault(b, []).append(a)
     n = 0
     for h, s, ref, linha in fontes.vias(fontes_dir, caixa):
@@ -146,31 +149,48 @@ def grafo(caixa, terr, mlon, mlat, casa=None, raio_casa=1200.0):
             if m > 2000: continue                   # linha partida, nao e um troco
             # sombra: amostra de 10 em 10 m ao longo do troco
             k = max(1, int(m / 10)); som = 0.0; nv = 0; urb = 0
+            nh = len(terr.sol); som_h = [0.0] * nh
             for t in (np.arange(k) + 0.5) / k:
                 plo, pla = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
                 c = terr.copa(plo, pla)
                 if c is None: continue
-                som += max(c, terr.monte(plo, pla)); nv += 1
+                mh = terr.monte_h(plo, pla)
+                som += max(c, sum(mh) / nh if nh else 0.0); nv += 1
+                for q in range(nh): som_h[q] += max(c, mh[q])
                 if terr.classe(plo, pla) == 1: urb += 1
             meio = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
             perto = casa is not None and metros(meio, casa, mlon, mlat) <= raio_casa
             povo = (not perto) and ((nv and urb / nv > 0.5) or h in ('residential', 'living_street', 'pedestrian', 'steps'))
-            liga(a, b, m, h, som / nv if nv else 0.0, povo)
+            liga(a, b, m, h, som / nv if nv else 0.0, povo, [x / nv for x in som_h] if nv else None)
         n += 1
     return adj, arestas
 
 
 SEM_CIDADE = True
+HORAS = None          # horas locais das amostras de sol
+SAIDA = None          # hora de saida; com ela a sombra e a da hora a que se la chega
+VEL = 3.8             # km/h medios para estimar a hora de chegada a cada no
 
-def custo(e, penal=None, k=None):
-    f = FACTOR[e['h']] * (1 + 2.0 * (1 - e['sombra']))
+def sombra_de(e, andado_m):
+    """sombra do troco: media das horas, ou a da hora prevista de passagem"""
+    if SAIDA is None or not e.get('sombra_h') or not HORAS: return e['sombra']
+    h = SAIDA + andado_m / 1000 / VEL
+    if h <= HORAS[0]: return e['sombra_h'][0]
+    if h >= HORAS[-1]: return e['sombra_h'][-1]
+    for q in range(1, len(HORAS)):
+        if h <= HORAS[q]:
+            w = (h - HORAS[q - 1]) / (HORAS[q] - HORAS[q - 1]); return e['sombra_h'][q - 1] * (1 - w) + e['sombra_h'][q] * w
+    return e['sombra']
+
+def custo(e, penal=None, k=None, andado_m=0.0):
+    f = FACTOR[e['h']] * (1 + 2.0 * (1 - sombra_de(e, andado_m)))
     if SEM_CIDADE and e.get('povo'): f *= 8.0       # so como ultimo recurso
     if penal and k in penal: f *= 6.0
     return e['m'] * f
 
 
-def dijkstra(adj, arestas, ini, penal=None, alvo=None):
-    d = {ini: 0.0}; comp = {ini: 0.0}; ant = {}
+def dijkstra(adj, arestas, ini, penal=None, alvo=None, andado0=0.0):
+    d = {ini: 0.0}; comp = {ini: andado0}; ant = {}
     fila = [(0.0, ini)]
     while fila:
         dc, u = heapq.heappop(fila)
@@ -178,7 +198,7 @@ def dijkstra(adj, arestas, ini, penal=None, alvo=None):
         if alvo is not None and u == alvo: break
         for v in adj.get(u, ()):
             k = (u, v) if u < v else (v, u); e = arestas[k]
-            nc = dc + custo(e, penal, k)
+            nc = dc + custo(e, penal, k, comp[u])
             if nc < d.get(v, 1e30):
                 d[v] = nc; comp[v] = comp[u] + e['m']; ant[v] = u; heapq.heappush(fila, (nc, v))
     return d, comp, ant
@@ -196,7 +216,7 @@ def avalia(nos, arestas, terr, mlon, mlat):
     L = 0.0; som = 0.0; usadas = {}; porVia = {}
     for a, b in zip(nos, nos[1:]):
         k = (a, b) if a < b else (b, a); e = arestas[k]
-        L += e['m']; som += e['m'] * e['sombra']; usadas[k] = usadas.get(k, 0) + 1
+        som += e['m'] * sombra_de(e, L); L += e['m']; usadas[k] = usadas.get(k, 0) + 1
         porVia[e['h']] = porVia.get(e['h'], 0.0) + e['m']
     repetido = sum(arestas[k]['m'] * (n - 1) for k, n in usadas.items() if n > 1)
     povo = sum(arestas[k]['m'] * n for k, n in usadas.items() if arestas[k].get('povo'))
@@ -234,8 +254,11 @@ def main():
     ap.add_argument('--n', type=int, default=3, help='quantas alternativas mostrar')
     ap.add_argument('--cidade', action='store_true', help='deixa passar por povoacoes e ruas (por defeito evita-se, fora de %d m de casa)' % 1200)
     ap.add_argument('--povo-max', type=float, default=1.0, help='km maximos em povoacao/ruas fora do raio de casa')
+    ap.add_argument('--rumo', nargs=2, type=float, default=None, metavar=('DE', 'ATE'), help='so pontos de viragem neste sector de azimute (graus, 0 = N, horario), p.ex. 225 315 = poente')
+    ap.add_argument('--por', nargs='*', type=float, default=[], metavar='LON LAT', help='pontos de passagem obrigatorios, por ordem (pares lon lat)')
     ap.add_argument('--data', default=None, help='dia da caminhada (AAAA-MM-DD; por defeito hoje)')
     ap.add_argument('--horas', nargs='*', type=float, default=[8, 9, 10, 11, 12], help='horas locais a considerar para a sombra do monte')
+    ap.add_argument('--saida-hora', type=float, default=None, help='hora de saida de casa: a sombra de cada troco passa a ser a da hora prevista de la passar (a %.1f km/h)' % 3.8)
     a = ap.parse_args(); fontes_dir = a.fontes; t0 = time.time()
     lo, la = a.casa; mlat = 110540.0; mlon = 111320.0 * math.cos(math.radians(la))
     r = a.km[1] / 2 * 1.15 * 1000           # raio de procura: metade do comprimento, com folga
@@ -249,15 +272,31 @@ def main():
         terr.sol.append(posicao_sol(q, la, lo))
     print('zonas: %s' % ', '.join(T['nome'] for T in terr.zs))
     print('sol em %s as %s: altura %s' % (dia, ' '.join('%gh' % h for h in a.horas), ' '.join('%.0f' % s[0] for s in terr.sol)))
-    global SEM_CIDADE; SEM_CIDADE = not a.cidade
+    global SEM_CIDADE, HORAS, SAIDA; SEM_CIDADE = not a.cidade; HORAS = sorted(a.horas); SAIDA = a.saida_hora
+    if SAIDA is not None and (HORAS[0] > SAIDA or HORAS[-1] < SAIDA + 7): print('aviso: --horas devia cobrir de %g a %g h' % (SAIDA, SAIDA + 7))
     adj, arestas = grafo(caixa, terr, mlon, mlat, casa=(lo, la))
     print('grafo: %d nos, %d arestas (%.0f s)' % (len(adj), len(arestas), time.time() - t0), flush=True)
     casa = min(adj, key=lambda p: metros(p, (lo, la), mlon, mlat))
     dc = metros(casa, (lo, la), mlon, mlat)
     print('no de partida a %.0f m de casa: %.6f %.6f' % (dc, casa[0], casa[1]))
-    d, comp, ant = dijkstra(adj, arestas, casa)
-    meio = (a.km[0] + a.km[1]) / 2 * 1000 / 2
+    pernas = []; usadas = set(); inicio = casa; L_fixo = 0.0
+    for q in range(0, len(a.por), 2):
+        alvo = min(adj, key=lambda p: metros(p, (a.por[q], a.por[q + 1]), mlon, mlat))
+        print('passagem obrigatoria %.5f %.5f -> no a %.0f m' % (a.por[q], a.por[q + 1], metros(alvo, (a.por[q], a.por[q + 1]), mlon, mlat)))
+        dq, cq, aq = dijkstra(adj, arestas, inicio, penal=usadas, alvo=alvo, andado0=L_fixo)
+        perna = caminho(aq, inicio, alvo)
+        if not perna: sys.exit('sem caminho ate a passagem %d' % (q // 2 + 1))
+        pernas.append(perna); usadas |= set((u, v) if u < v else (v, u) for u, v in zip(perna, perna[1:]))
+        L_fixo = cq[alvo]; inicio = alvo
+    d, comp, ant = dijkstra(adj, arestas, inicio, penal=usadas, andado0=L_fixo)
+    # o que falta andar depois do ultimo ponto de passagem, dividido por dois (ida ate a viragem e volta)
+    meio = max(300.0, ((a.km[0] + a.km[1]) / 2 * 1000 - L_fixo) / 2)
+    print('pernas obrigatorias: %.1f km; falta %.1f km de circuito' % (L_fixo / 1000, 2 * meio / 1000))
     cand = [n for n in d if 0.75 * meio <= comp[n] <= 1.35 * meio]
+    if a.rumo:
+        def az(n): return math.degrees(math.atan2((n[0] - lo) * mlon, (n[1] - la) * mlat)) % 360
+        d0, d1 = a.rumo
+        cand = [n for n in cand if (d0 <= az(n) <= d1) if d0 <= d1 or (az(n) >= d0 or az(n) <= d1)]
     # espalhar os candidatos pelas direccoes (36 sectores), os de menor custo em cada
     sect = {}
     for n in cand:
@@ -267,14 +306,18 @@ def main():
     for s, ns in sect.items(): cand += sorted(ns, key=lambda n: d[n])[:6]
     print('%d pontos de viragem candidatos (%.1f-%.1f km de ida)' % (len(cand), 0.75 * meio / 1000, 1.35 * meio / 1000), flush=True)
     res = []
+    if inicio != casa: cand.append(inicio)          # a volta directa do ultimo ponto de passagem tambem conta
     for n in cand:
-        ida = caminho(ant, casa, n)
+        ida = caminho(ant, inicio, n)
         if not ida: continue
-        penal = set((u, v) if u < v else (v, u) for u, v in zip(ida, ida[1:]))
-        d2, comp2, ant2 = dijkstra(adj, arestas, n, penal=penal, alvo=casa)
+        penal = set(usadas) | set((u, v) if u < v else (v, u) for u, v in zip(ida, ida[1:]))
+        d2, comp2, ant2 = dijkstra(adj, arestas, n, penal=penal, alvo=casa, andado0=comp[n])
         volta = caminho(ant2, n, casa)
         if not volta: continue
-        nos = ida + volta[1:]
+        nos = []
+        for perna in pernas: nos += perna if not nos else perna[1:]
+        nos += ida if not nos else ida[1:]
+        nos += volta[1:]
         ev = avalia(nos, arestas, terr, mlon, mlat)
         if not (a.km[0] <= ev['km'] <= a.km[1]) or ev['circular'] < a.circular: continue
         if SEM_CIDADE and ev['povo_km'] > a.povo_max: continue
